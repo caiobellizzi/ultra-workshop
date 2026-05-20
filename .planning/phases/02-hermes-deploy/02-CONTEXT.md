@@ -81,3 +81,25 @@ Reuse from Phase 1: VPS host already provisioned, `uabrain` user exists, vault g
 ## Deferred Ideas
 
 None captured this session.
+
+---
+
+## Amendment — 2026-05-20 (post plan-checker)
+
+**REQ-ws-014 substrate substitution (user-approved):**
+Research confirmed Hermes `delegate_task` is NOT restart-durable and Hermes FTS5
+stores session *history*, not live HITL coroutine state. User explicitly approved
+substituting a Hermes-adjacent durable store: `pending_hitl.db` (SQLite) at
+`/home/uws/.ultra-workshop/pending_hitl.db`, scanned by `hermes-skills/startup-hitl-scan.py`
+which re-emits the Telegram inline keyboard on service start. Functionally satisfies
+"HITL pause survives `systemctl restart uws-hermes`" — acceptance text in REQUIREMENTS.md
+reads as semantic intent, not implementation prescription.
+
+**Config format:**
+Plans produce a single `hermes-config/config.yaml` rather than three TOML files —
+Hermes v0.14.0 uses YAML. CONTEXT.md §Code Context above is superseded by the
+plans on this point.
+
+**Open research questions:** 3 items resolved-at-execute (HERMES_CONFIG_PATH env
+support, `hermes mcp list` CLI presence, workspace-mcp env inheritance). Plans
+include fallback hedges; executor verifies on VPS.

@@ -657,7 +657,9 @@ echo "Step 5: Tap [Approve] in Telegram now — flow should complete"
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED-AT-EXECUTE — user decision 2026-05-20)
+
+> User accepted resolving these on the VPS during execute-phase. Plans hedge with fallbacks.
 
 1. **Does Hermes support `HERMES_CONFIG_PATH` env var to point config.yaml to `/opt/ultra-workshop/hermes-config/config.yaml`?**
    - What we know: Hermes reads `~/.hermes/config.yaml` by default
