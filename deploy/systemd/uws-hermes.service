@@ -28,6 +28,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/home/uws/.hermes /home/uws/.local /home/uws/.cache /home/uws/.nvm /home/uws/.config /var/log/ultra-workshop /tmp /opt/ultra-workshop
+TimeoutStopSec=210
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=uws-hermes
