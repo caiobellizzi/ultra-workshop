@@ -3,6 +3,8 @@ Description=ultra-workshop Hermes Agent gateway
 After=network-online.target uab-brain.service
 Wants=network-online.target
 Requires=uab-brain.service
+StartLimitIntervalSec=120
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -13,19 +15,19 @@ EnvironmentFile=/etc/uws/env
 Environment=HERMES_INSTALL_DIR=/opt/ultra-workshop/hermes
 Environment=HERMES_CONFIG_PATH=/opt/ultra-workshop/hermes-config/config.yaml
 Environment=HOME=/home/uws
-Environment=PATH=/home/uws/.local/bin:/opt/ultra-workshop/hermes/hermes-agent/.venv/bin:/home/uws/.nvm/versions/node/v24.15.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/opt/ultra-workshop/hermes/hermes-agent/.venv/bin/hermes gateway start
+Environment=XDG_RUNTIME_DIR=/run/user/997
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/997/bus
+Environment=PATH=/home/uws/.local/bin:/opt/ultra-workshop/hermes/venv/bin:/home/uws/.nvm/versions/node/v24.15.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/opt/ultra-workshop/hermes/venv/bin/python -m hermes_cli.main gateway run --replace
 Restart=on-failure
 RestartSec=10
-StartLimitIntervalSec=120
-StartLimitBurst=5
 MemoryMax=4G
 CPUQuota=200%
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/home/uws/.hermes /var/log/ultra-workshop /tmp
+ProtectHome=read-only
+ReadWritePaths=/home/uws/.hermes /home/uws/.local /home/uws/.cache /home/uws/.nvm /home/uws/.config /var/log/ultra-workshop /tmp /opt/ultra-workshop
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=uws-hermes
