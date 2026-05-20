@@ -1,0 +1,34 @@
+[Unit]
+Description=ultra-workshop Hermes Agent gateway
+After=network-online.target uab-brain.service
+Wants=network-online.target
+Requires=uab-brain.service
+
+[Service]
+Type=simple
+User=uws
+Group=uws
+WorkingDirectory=/opt/ultra-workshop
+EnvironmentFile=/etc/uws/env
+Environment=HERMES_INSTALL_DIR=/opt/ultra-workshop/hermes
+Environment=HERMES_CONFIG_PATH=/opt/ultra-workshop/hermes-config/config.yaml
+Environment=HOME=/home/uws
+Environment=PATH=/home/uws/.local/bin:/opt/ultra-workshop/hermes/hermes-agent/.venv/bin:/home/uws/.nvm/versions/node/v24.15.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/opt/ultra-workshop/hermes/hermes-agent/.venv/bin/hermes gateway start
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=120
+StartLimitBurst=5
+MemoryMax=4G
+CPUQuota=200%
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/uws/.hermes /var/log/ultra-workshop /tmp
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=uws-hermes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+model: "openai/private-worker"
+
+agent:
+  max_turns: 50
+
+approvals:
+  mode: smart
+
+clarify:
+  timeout: 300
+
+mcp_servers: {}
+
+platforms:
+  telegram:
+    extra:
+      allow_from:
+        - "7113965359"
