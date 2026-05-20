@@ -42,10 +42,13 @@ Plans:
   3. `systemctl status uab-telegram` returns `inactive (dead)` — no dual-gateway
   4. `hermes mcp list` shows all 5 servers: `github`, `context7`, `crawl4ai`, `hostinger-api`, `google-workspace`
   5. `systemctl restart uws-hermes` mid-flow preserves a pending HITL approval in Hermes FTS5; tapping Approve completes the flow
-**Plans**: 2 plans
+**Plans**: 5 plans
 Plans:
-- [ ] 01-01-PLAN.md — GitHub remote, VPS deploy key, VPS cron, env vars on both systems
-- [ ] 01-02-PLAN.md — Mac vault remote, Obsidian-Git install+config, end-to-end smoke test
+- [ ] 02-01-PLAN.md — Wave 0: pre-deploy gates (swap, uab-telegram mask, Node.js 24, LiteLLM 30s)
+- [ ] 02-02-PLAN.md — Wave 1: uws user + dirs + Hermes install + systemd unit + base config
+- [ ] 02-03-PLAN.md — Wave 2: Telegram gateway wiring + chat-ID gate (REQ-ws-002, REQ-ws-013)
+- [ ] 02-04-PLAN.md — Wave 2: 5 MCP registrations (github, context7, crawl4ai-SSE, hostinger, google-workspace)
+- [ ] 02-05-PLAN.md — Wave 3: HITL restart-resilience (startup-skill + bats V14 smoke + Approve flow)
 
 ### Phase 3: Skill Toolkit
 **Goal**: All skills the pipeline depends on exist, have correct Hermes frontmatter, and pass smoke tests — including the skill audit toolchain itself
