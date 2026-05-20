@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 ## Current Position
 
 Phase: 1 of 5 (Vault Sync)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-05-20 — Planning artifacts bootstrapped from PLAN.md intel (post-grill v3)
+Plan: 2 of 2 in current phase
+Status: Complete ✓
+Last activity: 2026-05-20 — Phase 1 complete — bidirectional vault sync live
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 20% (phase 1 complete — 1/5 phases)
 
 ## Performance Metrics
 
