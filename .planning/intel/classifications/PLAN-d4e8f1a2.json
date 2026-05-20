@@ -1,0 +1,19 @@
+{
+  "source_path": "/Users/caiobellizzi/Documents/Projects/ultra-workshop/docs/ingest/PLAN.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Plan: ultra-workshop — Phase 1 (sibling repo bootstrap)",
+  "summary": "Phase 1 design contract for bootstrapping the ultra-workshop autonomous coding agent team, covering scope, phases, and locked decisions.",
+  "scope": [
+    "ultra-workshop",
+    "autonomous coding agents",
+    "sibling repo bootstrap",
+    "agent team",
+    "Phase 1"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": 0,
+  "notes": "MANIFEST_TYPE=SPEC treated as authoritative. File content only partially readable via claude-mem observation (title only); cross_refs could not be extracted. Precedence set to 0 per MANIFEST_PRECEDENCE."
+}
