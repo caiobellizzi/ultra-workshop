@@ -27,7 +27,10 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
   2. A note saved in Mac Obsidian appears on the VPS vault within ~5 minutes without manual action
   3. `git log` on both sides shows the same commit after a sync cycle
   4. Vault env vars (`VAULT_VPS_PATH`, `VAULT_DEFAULT_BRANCH`, `VAULT_REMOTE`) are present on both VPS and Mac
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — GitHub remote, VPS deploy key, VPS cron, env vars on both systems
+- [ ] 01-02-PLAN.md — Mac vault remote, Obsidian-Git install+config, end-to-end smoke test
 
 ### Phase 2: Hermes Deploy
 **Goal**: Hermes Agent is running on the VPS as a systemd service, accepting Telegram commands from the allowed chat ID, with all 5 MCP servers registered
@@ -39,7 +42,10 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
   3. `systemctl status uab-telegram` returns `inactive (dead)` — no dual-gateway
   4. `hermes mcp list` shows all 5 servers: `github`, `context7`, `crawl4ai`, `hostinger-api`, `google-workspace`
   5. `systemctl restart uws-hermes` mid-flow preserves a pending HITL approval in Hermes FTS5; tapping Approve completes the flow
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — GitHub remote, VPS deploy key, VPS cron, env vars on both systems
+- [ ] 01-02-PLAN.md — Mac vault remote, Obsidian-Git install+config, end-to-end smoke test
 
 ### Phase 3: Skill Toolkit
 **Goal**: All skills the pipeline depends on exist, have correct Hermes frontmatter, and pass smoke tests — including the skill audit toolchain itself
@@ -51,7 +57,10 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
   3. ~10 agent-agnostic skills are live in `~/.hermes/skills/` and each passes `hermes skill run <name> --dry-run`
   4. `hermes skill run brain-query --question "what is PARA"` returns a vault-grounded answer with citations
   5. `hermes skill run aider --task "echo to file"` returns a diff; cost ledger shows two LLM calls (cloud-sonnet + private-worker)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — GitHub remote, VPS deploy key, VPS cron, env vars on both systems
+- [ ] 01-02-PLAN.md — Mac vault remote, Obsidian-Git install+config, end-to-end smoke test
 
 ### Phase 4: Build/Fix Pipeline
 **Goal**: A user can type `/build <task>` or `/fix <issue-url>` in Telegram, approve a HITL prompt, and receive a pull request URL — with a full audit trail in the task ledger and cost posted to Brain's ledger
@@ -63,7 +72,10 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
   3. `~/.ultra-workshop/tasks/<id>/task_ledger.md` and `progress_log.jsonl` both exist after every completed build
   4. An ADR appears at `vault/_system/workshop-adrs/<task-id>.md` with correct frontmatter after PR creation
   5. At $20/day spend the system refuses new LLM calls with "budget exhausted"; at $18 cron routines self-cancel with a single Telegram warning
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — GitHub remote, VPS deploy key, VPS cron, env vars on both systems
+- [ ] 01-02-PLAN.md — Mac vault remote, Obsidian-Git install+config, end-to-end smoke test
 **UI hint**: yes
 
 ### Phase 5: Autonomous Routines & Integration Loops
@@ -77,7 +89,10 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
   4. Brain's daily-digest `post-to-telegram` action appears in Telegram within 30 seconds of Brain writing to `.workshop-queue.jsonl`
   5. `readlink /opt/ultra-workshop/workshop/trust_shared.py` returns the Brain trust module path; `trust_shared.classify_action('git push')` returns the expected risk tier
   6. `vault/_system/integration-contract.md` exists and matches the frontmatter vocabulary spec
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 01-01-PLAN.md — GitHub remote, VPS deploy key, VPS cron, env vars on both systems
+- [ ] 01-02-PLAN.md — Mac vault remote, Obsidian-Git install+config, end-to-end smoke test
 
 ---
 
@@ -87,7 +102,7 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Vault Sync | 0/TBD | Not started | - |
+| 1. Vault Sync | 0/2 | Not started | - |
 | 2. Hermes Deploy | 0/TBD | Not started | - |
 | 3. Skill Toolkit | 0/TBD | Not started | - |
 | 4. Build/Fix Pipeline | 0/TBD | Not started | - |
