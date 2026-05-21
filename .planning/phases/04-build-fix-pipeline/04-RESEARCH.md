@@ -597,7 +597,7 @@ date: 2026-05-21
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does Hermes v0.14.0 support Python skill body execution?**
    - What we know: All Phase 3 skills use `terminal python3 /path/to/script.py` from the SKILL.md body. The `delegate_task` and `clarify` tools are available in the Hermes execution context.

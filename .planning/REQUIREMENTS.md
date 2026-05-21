@@ -74,11 +74,11 @@ Acceptance: `hermes skill run aider --task "echo to file"` returns a diff; cost 
 ### Orchestration Pipeline
 
 **REQ-ws-028** — Pydantic specialist output schemas
-`workshop/types.py` defines `Plan`, `PlanStep`, `Diff`, `FileChange`, `Review`, `Issue`, `IngestResult`; JSON schema injected into prompts; `delegate_typed()` in `workshop/orchestrator.py`.
-Acceptance: Validation + retry logic in `delegate_typed(role, output_type, ...)`; max 2 parse retries per role
+`workshop/types.py` defines `Plan`, `PlanStep`, `Diff`, `FileChange`, `Review`, `Issue`, `IngestResult`; JSON schema injected into specialist prompts; `run_specialist()` in `workshop/orchestrator.py` (Architecture B subprocess pattern).
+Acceptance: Validation via `model_validate_json()` in `run_specialist()`; `RuntimeError` on non-zero subprocess exit; `subprocess.TimeoutExpired` on timeout; 18 unit tests covering all schema types and orchestrator error paths *(Note: `delegate_typed()` replaced by subprocess `run_specialist()` — same user-observable outcome)*
 
 **REQ-ws-007** — workshop-build skill
-`workshop-build` Hermes skill orchestrates 5-role specialist pipeline via `delegate_task` calls.
+`workshop-build` Hermes skill orchestrates 5-role specialist pipeline via `run_specialist()` subprocess calls (Architecture B).
 Acceptance: Pipeline runs triage → planner → coder → reviewer → pr_opener; reviewer→coder retry max 2; Pydantic schemas validated; end-to-end `/build <task>` → PR URL in Telegram within ~5 min (V8)
 
 **REQ-ws-008** — workshop-fix skill
