@@ -60,10 +60,13 @@ Plans:
   3. ~10 agent-agnostic skills are live in `~/.hermes/skills/` and each passes `hermes skill run <name> --dry-run`
   4. `hermes skill run brain-query --question "what is PARA"` returns a vault-grounded answer with citations
   5. `hermes skill run aider --task "echo to file"` returns a diff; cost ledger shows two LLM calls (cloud-sonnet + private-worker)
-**Plans**: 2 plans
+**Plans**: 5 plans
 Plans:
-- [ ] 01-01-PLAN.md — GitHub remote, VPS deploy key, VPS cron, env vars on both systems
-- [ ] 01-02-PLAN.md — Mac vault remote, Obsidian-Git install+config, end-to-end smoke test
+- [ ] 03-01-PLAN.md — Wave 0: hermes-skill-run.sh wrapper + bats helpers + pytest frontmatter validator
+- [ ] 03-02-PLAN.md — Wave 1: audit-claude-skills.py script (REQ-ws-003)
+- [ ] 03-03-PLAN.md — Wave 1: ~10 Tier 1 skill ports (REQ-ws-004)
+- [ ] 03-04-PLAN.md — Wave 2: brain_http.py + 3 brain-bridge skills (REQ-ws-005)
+- [ ] 03-05-PLAN.md — Wave 2: aider skill + LiteLLM precheck + SKIP logic (REQ-ws-006)
 
 ### Phase 4: Build/Fix Pipeline
 **Goal**: A user can type `/build <task>` or `/fix <issue-url>` in Telegram, approve a HITL prompt, and receive a pull request URL — with a full audit trail in the task ledger and cost posted to Brain's ledger

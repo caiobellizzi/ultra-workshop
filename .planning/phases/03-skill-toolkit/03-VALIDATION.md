@@ -40,7 +40,18 @@ created: 2026-05-21
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| _planner fills_ | _ | _ | _ | _ | _ | _ | _ | _ | ⬜ pending |
+| 01-T1 | 03-01 | 0 | REQ-ws-003/004/005/006 (infra) | T-03-01,T-03-02 | hermes-skill-run.sh uses exec not eval; no shell injection | bash dry-run | `bash scripts/hermes-skill-run.sh some-skill --dry-run` exits 0 | scripts/hermes-skill-run.sh | ⬜ pending |
+| 01-T2 | 03-01 | 0 | REQ-ws-003/004/005/006 (infra) | T-03-03 | sudo -u uws drop; VPS chmod +x | bats | `bats tests/phase-03/scaffold.bats` 2/2 pass | tests/phase-03/helpers.bash, tests/phase-03/scaffold.bats | ⬜ pending |
+| 01-T3 | 03-01 | 0 | REQ-ws-003/004/005/006 (infra) | T-03-SC | pytest collection clean | pytest | `pytest hermes-skills/test_skill_frontmatter.py --collect-only` exits 0 | hermes-skills/test_skill_frontmatter.py | ⬜ pending |
+| 02-T1 | 03-02 | 1 | REQ-ws-003 | T-03-04,T-03-05 | dry-run safety; no writes outside translated/ | pytest | `pytest scripts/test_audit.py` RED (pre-impl) | scripts/test_audit.py | ⬜ pending |
+| 02-T2 | 03-02 | 1 | REQ-ws-003 | T-03-04,T-03-07 | path traversal mitigation; idempotency | pytest | `pytest scripts/test_audit.py -v` all pass (GREEN) | scripts/audit-claude-skills.py | ⬜ pending |
+| 03-T1 | 03-03 | 1 | REQ-ws-004 | T-03-08,T-03-09 | no tools:/mcpServers: keys; dry-run in body | pytest | `pytest hermes-skills/test_skill_frontmatter.py -v -k "caveman or diagnose or knowledge"` | skills/caveman/SKILL.md … skills/triage/SKILL.md (7 files) | ⬜ pending |
+| 03-T2 | 03-03 | 1 | REQ-ws-004 | T-03-10,T-03-11 | no subagent_type=Explore; TRANSLATION NOTE present | bats | `bats tests/phase-03/skills-smoke.bats` 10/10 | skills/commit/SKILL.md, skills/triage-issue/SKILL.md, skills/qa/SKILL.md, tests/phase-03/skills-smoke.bats | ⬜ pending |
+| 04-T1 | 03-04 | 2 | REQ-ws-005 | T-03-12,T-03-13 | form-data not JSON; synchronous; error surfaced stderr | bash + ssh | VPS `python3 brain_http.py query 'ping'` returns JSON with run_id | hermes-skills/brain_http.py | ⬜ pending |
+| 04-T2 | 03-04 | 2 | REQ-ws-005 | T-03-14,T-03-15 | brain-ingest HITL warning; V4 relaxation documented | bats | `bats tests/phase-03/brain-smoke.bats` 3+ pass (dry-runs) | skills/brain-query/SKILL.md, skills/brain-ingest/SKILL.md, skills/brain-research/SKILL.md, tests/phase-03/brain-smoke.bats | ⬜ pending |
+| 05-T0 | 03-05 | 2 | REQ-ws-006 | T-03-20 | V5 precheck gate | checkpoint | Human confirms private-worker reachable via curl precheck | — | ⬜ pending |
+| 05-T1 | 03-05 | 2 | REQ-ws-006 | T-03-16,T-03-17 | shell=False; no LITELLM_API_KEY in stdout | pytest | `pytest hermes-skills/test_skill_frontmatter.py -v -k aider` 2 pass | hermes-skills/aider_runner.py, skills/aider/SKILL.md | ⬜ pending |
+| 05-T2 | 03-05 | 2 | REQ-ws-006 | T-03-18,T-03-19 | SKIP not FAIL when private-worker down; cost ledger non-blocking | bats | `bats tests/phase-03/aider-smoke.bats` exits 0 (1+ pass, rest SKIP if private-worker down) | tests/phase-03/aider-smoke.bats | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
