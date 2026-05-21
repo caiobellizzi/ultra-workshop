@@ -1,0 +1,6 @@
+name: startup-hitl-scan
+description: "On gateway startup, re-emits Telegram inline keyboards for interrupted HITL sessions (REQ-ws-014)"
+version: 1.0.0
+author: ultra-workshop
+events:
+  - gateway:startup

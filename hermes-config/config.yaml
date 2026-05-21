@@ -15,6 +15,13 @@ clarify:
 
 mcp_servers: {}
 
+# HITL restart-resilience hook (REQ-ws-014)
+# Deployed to: /home/uws/.hermes/hooks/startup-hitl-scan/
+#   HOOK.yaml  — declares event: gateway:startup
+#   handler.py — imports /opt/ultra-workshop/hermes-skills/startup-hitl-scan.py
+# pending_hitl.db: /home/uws/.ultra-workshop/pending_hitl.db (uws:uws 0600)
+# Hook is auto-discovered from ~/.hermes/hooks/ on gateway start.
+
 platforms:
   telegram:
     token: "${TELEGRAM_BOT_TOKEN}"
