@@ -87,8 +87,13 @@ def run_aider(task: str, workspace_file: Optional[str] = None) -> None:
         print("[aider_runner] ERROR: LITELLM_API_KEY not set in environment", file=sys.stderr, flush=True)
         sys.exit(1)
 
+    # Resolve aider binary: prefer sibling venv bin/ next to the running Python
+    # so the correct version is used regardless of PATH.
+    _venv_aider = Path(sys.executable).parent / "aider"
+    aider_bin = str(_venv_aider) if _venv_aider.exists() else "aider"
+
     argv = [
-        "aider",
+        aider_bin,
         "--model", "openai/cloud-sonnet",
         "--editor-model", "openai/private-worker",
         "--architect",
