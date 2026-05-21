@@ -97,11 +97,13 @@ Plans:
   4. An ADR appears at `vault/_system/workshop-adrs/<task-id>.md` with correct frontmatter after PR creation
   5. At $20/day spend the system refuses new LLM calls with "budget exhausted"; at $18 cron routines self-cancel with a single Telegram warning
 
-**Plans**: 2 plans
+**Plans**: 4 plans
 Plans:
 
-- [ ] 01-01-PLAN.md — GitHub remote, VPS deploy key, VPS cron, env vars on both systems
-- [ ] 01-02-PLAN.md — Mac vault remote, Obsidian-Git install+config, end-to-end smoke test
+- [ ] 04-00-PLAN.md — Wave 0 prerequisites: GITHUB_PAT, gh CLI, test-workshop-sandbox repo
+- [ ] 04-01-PLAN.md — workshop/ Python package: types, subprocess orchestrator, ledger, cost
+- [ ] 04-02-PLAN.md — Five specialist SKILL.md files + workshop_push.py
+- [ ] 04-03-PLAN.md — Entry-point scripts, SKILL.md wrappers, VPS deploy, smoke tests
 
 **UI hint**: yes
 
