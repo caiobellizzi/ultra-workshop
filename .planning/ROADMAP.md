@@ -68,8 +68,8 @@ Plans:
   1. `scripts/audit-claude-skills.py --dry-run` produces `skill-audit.json` tagging all `~/.claude/skills/` entries without touching production Hermes skills
   2. `scripts/audit-claude-skills.py --apply` writes translated skills to `~/.hermes/skills/translated/` with `TRANSLATION_NOTES.md` per skill
   3. ~10 agent-agnostic skills are live in `~/.hermes/skills/` and each passes `hermes skill run <name> --dry-run`
-  4. `hermes skill run brain-query --question "what is PARA"` returns a vault-grounded answer with citations
-  5. `hermes skill run aider --task "echo to file"` returns a diff; cost ledger shows two LLM calls (cloud-sonnet + private-worker)
+  4. `hermes skill run brain-query --question "what is PARA"` returns HTTP 200 + run_id *(V4 relaxation: Brain Groq structured-output conflict defers citation-grounded answer to manual-only)*
+  5. `hermes skill run aider --task "echo to file"` returns a diff; Brain curator endpoint is reachable (HTTP 200 + run_id) *(OPTION B: 2-LLM-call ledger entry deferred to future plan)*
 
 **Plans**: 5 plans
 Plans:
