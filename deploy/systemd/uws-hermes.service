@@ -19,7 +19,7 @@ Environment=XDG_RUNTIME_DIR=/run/user/997
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/997/bus
 Environment=PATH=/home/uws/.local/bin:/opt/ultra-workshop/hermes/venv/bin:/home/uws/.nvm/versions/node/v24.15.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=/opt/ultra-workshop/hermes/venv/bin/python -m hermes_cli.main gateway run --replace
-Restart=on-failure
+Restart=always
 RestartSec=10
 MemoryMax=4G
 CPUQuota=200%

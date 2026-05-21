@@ -1,4 +1,8 @@
-model: "openai/private-worker"
+model:
+  default: "private-worker"
+  provider: "custom"
+  base_url: "http://127.0.0.1:4000/v1"
+  api_key: "${LITELLM_API_KEY}"
 
 agent:
   max_turns: 50
@@ -13,6 +17,6 @@ mcp_servers: {}
 
 platforms:
   telegram:
-    extra:
-      allow_from:
-        - "7113965359"
+    token: "${TELEGRAM_BOT_TOKEN}"
+    allow_from:
+      - "7113965359"
