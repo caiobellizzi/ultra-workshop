@@ -10,7 +10,7 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 
 - [x] **Phase 1: Vault Sync** - Wire vault to GitHub remote so Brain writes are visible to Workshop before any code runs
 - [x] **Phase 2: Hermes Deploy** - Install Hermes on VPS with Telegram gateway, systemd service, and MCP registration *(REQ-ws-015 deferred)*
-- [ ] **Phase 3: Skill Toolkit** - Build and smoke-test all skills the pipeline needs: audit, Tier-1 ports, brain-bridge, Aider
+- [x] **Phase 3: Skill Toolkit** - Build and smoke-test all skills the pipeline needs: audit, Tier-1 ports, brain-bridge, Aider (completed 2026-05-21)
 - [ ] **Phase 4: Build/Fix Pipeline** - Implement 5-role specialist pipeline with HITL, ledgers, cost circuit breaker, and PR output
 - [ ] **Phase 5: Autonomous Routines & Integration Loops** - Ship 3 cron routines plus Brain↔Workshop vault signaling flows
 
@@ -75,14 +75,14 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — Wave 0: hermes-skill-run.sh wrapper + bats helpers + pytest frontmatter validator
-- [ ] 03-02-PLAN.md — Wave 1: audit-claude-skills.py script (REQ-ws-003)
-- [ ] 03-03-PLAN.md — Wave 1: ~10 Tier 1 skill ports (REQ-ws-004)
+- [x] 03-01-PLAN.md — Wave 0: hermes-skill-run.sh wrapper + bats helpers + pytest frontmatter validator
+- [x] 03-02-PLAN.md — Wave 1: audit-claude-skills.py script (REQ-ws-003)
+- [x] 03-03-PLAN.md — Wave 1: ~10 Tier 1 skill ports (REQ-ws-004)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-04-PLAN.md — Wave 2: brain_http.py + 3 brain-bridge skills (REQ-ws-005)
-- [ ] 03-05-PLAN.md — Wave 2: aider skill + LiteLLM precheck + SKIP logic (REQ-ws-006)
+- [x] 03-04-PLAN.md — Wave 2: brain_http.py + 3 brain-bridge skills (REQ-ws-005)
+- [x] 03-05-PLAN.md — Wave 2: aider skill + LiteLLM precheck + SKIP logic (REQ-ws-006)
 
 ### Phase 4: Build/Fix Pipeline
 
@@ -135,7 +135,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Vault Sync | 2/2 | ✓ Complete | 2026-05-20 |
 | 2. Hermes Deploy | 5/5 | ✓ Complete (REQ-ws-015 deferred) | 2026-05-21 |
-| 3. Skill Toolkit | 0/TBD | Not started | - |
+| 3. Skill Toolkit | 5/5 | Complete   | 2026-05-21 |
 | 4. Build/Fix Pipeline | 0/TBD | Not started | - |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
 
