@@ -5,7 +5,7 @@ subsystem: hitl-restart-resilience
 tags: [hitl, sqlite, hermes-hooks, gateway-startup, telegram, bats, pytest, REQ-ws-014]
 dependency_graph:
   requires: [02-03]
-  provides: [hitl-restart-resilience, pending-hitl-db, startup-hitl-scan-hook, hitl-bats-green, req-ws-014-partial]
+  provides: [hitl-restart-resilience, pending-hitl-db, startup-hitl-scan-hook, hitl-bats-green, req-ws-014-satisfied]
   affects: []
 tech_stack:
   added:
@@ -35,20 +35,20 @@ key-decisions:
 metrics:
   duration: "~90 minutes"
   completed: "2026-05-21"
-  tasks_completed: 2
+  tasks_completed: 3
   files_created: 5
   files_modified: 2
 ---
 
 # Phase 2 Plan 5: HITL Restart Resilience Summary
 
-**SQLite pending_hitl.db + Hermes gateway:startup hook re-emits Telegram inline keyboards for interrupted HITL sessions after systemctl restart — 5/5 bats assertions pass, 13/13 pytest pass.**
+**SQLite pending_hitl.db + Hermes gateway:startup hook re-emits Telegram inline keyboards for interrupted HITL sessions after systemctl restart — 5/5 bats assertions pass, 13/13 pytest pass, human verified Approve tap updates DB to approved. REQ-ws-014 satisfied.**
 
 ## Performance
 
 - **Duration:** ~90 minutes (Tasks 1+2 complete; Task 3 at checkpoint)
 - **Completed:** 2026-05-21
-- **Tasks:** 2 auto complete + 1 checkpoint pending
+- **Tasks:** 3 (2 auto + 1 human-verify checkpoint — all complete)
 - **Files created:** 5
 - **Files modified:** 2
 
@@ -131,11 +131,22 @@ metrics:
 
 No new network endpoints introduced. The hook sends to an existing Telegram bot (T-02-17 mitigated by chat_id validation). No new trust boundaries beyond the plan's threat model.
 
+## Task 3: Human Verification (Checkpoint)
+
+**Signal received:** `hitl-ok`
+
+User confirmed: after `systemctl restart uws-hermes`, the Telegram inline keyboard was
+re-emitted, user tapped [Approve] (button 1), the DB row updated to `status='approved'`,
+and Hermes sent a confirmation message in Telegram. Full end-to-end flow verified.
+
+**REQ-ws-014 fully satisfied.**
+
 ## Known Stubs
 
-The inline keyboard re-emission calls `send_clarify()` which sends buttons to Telegram. The button-tap resolution (updating DB status and sending confirmation) is wired via a background thread that watches the clarify entry's `threading.Event`. This thread-based resolution is verified only at the Task 3 checkpoint (human taps [Approve]).
-
-The `record_hitl_pause()` helper in `startup-hitl-scan.py` is deployed but not yet called by any skill (no HITL-issuing skill exists in this phase). The DB row seeding in bats and future HITL flows will call it. This is intentional — the helper is ready for Phase 3 integration.
+The `record_hitl_pause()` helper in `startup-hitl-scan.py` is deployed but not yet called
+by any live skill (no HITL-issuing skill exists in this phase). The DB row seeding in bats
+and future HITL flows will call it. This is intentional — the helper is ready for Phase 3
+integration.
 
 ## Self-Check
 
@@ -148,5 +159,7 @@ The `record_hitl_pause()` helper in `startup-hitl-scan.py` is deployed but not y
 - [x] hermes-skills/test_startup_hitl_scan.py: 13/13 pytest pass
 - [x] commit acd82f2: feat(02-05) startup-hitl-scan skill
 - [x] commit 25ff375: test(02-05) bats V14 restart-resilience smoke test
+
+- [x] Task 3 human verification: "hitl-ok" — Approve tap after restart updated DB to approved
 
 ## Self-Check: PASSED
