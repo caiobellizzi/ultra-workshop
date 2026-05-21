@@ -756,32 +756,37 @@ def main():
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`hermes skill run` wrapper vs. acceptance criteria wording**
    - What we know: Hermes v0.14.0 has no `hermes skill run` subcommand; acceptance criteria uses this exact phrasing.
    - What's unclear: Should the planner define `scripts/hermes-skill-run.sh` as the canonical smoke command, or should the ROADMAP acceptance criteria be interpreted as "any invocation that triggers the skill and validates it runs"?
    - Recommendation: Create `scripts/hermes-skill-run.sh` and use it in all bats smoke tests. Document in README that this wrapper implements the acceptance criteria interface. No user decision needed unless they want a different invocation pattern.
+   **RESOLVED:** `scripts/hermes-skill-run.sh` is the canonical smoke command. All bats tests use it. ROADMAP acceptance criteria `hermes skill run <name> --dry-run` is implemented via this wrapper. No alternative invocation pattern required.
 
 2. **Aider `--model openai/cloud-sonnet` prefix convention**
    - What we know: LiteLLM proxy is at `127.0.0.1:4000`; aliases are `cloud-sonnet`, `private-worker`; aider uses `--openai-api-base` to redirect.
    - What's unclear: Whether the `openai/` prefix is required or if bare `cloud-sonnet` works with `--openai-api-base` set.
    - Recommendation: Test at execute time. If bare alias doesn't work, add `openai/` prefix. This is a 1-line fix at execution.
+   **RESOLVED:** Plans encode `openai/cloud-sonnet` and `openai/private-worker` (with prefix) as the standard. Executor confirms at install time; if bare alias works, the prefix is harmless. No plan change needed.
 
 3. **Brain LiteLLM structured output error (live test failed)**
    - What we know: `POST /agents/query/runs` returned `status: "ERROR"` due to Groq structured output constraint + tool-calling conflict. This is a Brain-side config issue.
    - What's unclear: Will this affect Phase 3 brain-bridge skill smoke tests? The query agent uses `default-worker` which falls back to `cloud-groq`, which fails on structured output.
    - Recommendation: The skill smoke test should pass if Brain returns HTTP 200 with any content (even an error message in `content`). The L3 validation (`returns vault-grounded answer with citations`) may require the Brain LiteLLM issue to be fixed first OR testing against the `chat` agent instead of `query`. **Escalate to user:** Does the Phase 3 smoke test for brain-query need to return a real vault answer, or just verify the HTTP round-trip succeeds?
+   **RESOLVED:** HTTP round-trip only (V4 relaxation per user decision 2026-05-21). Phase 3 asserts HTTP 200 + run_id + form-data shape. Citation-grounded answer test deferred to follow-up backlog until Brain's Groq + tool-calling conflict is fixed.
 
 4. **`~/.hermes/skills/translated/` on VPS**
    - What we know: The constraint says translated skills go to `~/.hermes/skills/translated/`. The audit script runs on Mac (`~/.claude/skills/` is Mac-local). The VPS is the production Hermes host.
    - What's unclear: Does `~/.hermes/skills/translated/` need to exist on both Mac and VPS, or only one?
    - Recommendation: The audit script writes to Mac-local `~/.hermes/skills/translated/` (this is correct per the constraint). The planner should NOT rsync `translated/` to the VPS — those are staging artifacts, not production. Only manually-reviewed skills go to VPS `~/.hermes/skills/`. The `skills/` directory in the repo IS the VPS-deployment artifact.
+   **RESOLVED:** Audit script writes to Mac-local `~/.hermes/skills/translated/` only. The `skills/` repo directory is the VPS deployment artifact. `translated/` is never rsynced to VPS.
 
 5. **Brain-side LM Studio availability for `private-worker` during Aider smoke test**
    - What we know: `private-worker` = LM Studio gemma-4-e4b via LM Link on the Mac; Mac is asleep ~14h/day; timeout is 30s.
    - What's unclear: The aider smoke test requires `private-worker` (editor model). If Mac is asleep, the call times out.
    - Recommendation: The smoke test should use `--editor-model openai/default-worker` as a fallback for the initial smoke test. The final acceptance test (V5) should use real `cloud-sonnet` + `private-worker`. Document this distinction in the plan.
+   **RESOLVED:** V5 strict — no fallback to default-worker. Plan 05 includes a precheck task that pings private-worker via LiteLLM. If unreachable, bats smoke uses `skip "private-worker unavailable"` (SKIP, not FAIL, not silent PASS) and the task is flagged for manual rerun.
 
 ---
 
