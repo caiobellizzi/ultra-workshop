@@ -8,8 +8,8 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 
 ## Phases
 
-- [ ] **Phase 1: Vault Sync** - Wire vault to GitHub remote so Brain writes are visible to Workshop before any code runs
-- [ ] **Phase 2: Hermes Deploy** - Install Hermes on VPS with Telegram gateway, systemd service, and MCP registration
+- [x] **Phase 1: Vault Sync** - Wire vault to GitHub remote so Brain writes are visible to Workshop before any code runs
+- [x] **Phase 2: Hermes Deploy** - Install Hermes on VPS with Telegram gateway, systemd service, and MCP registration *(REQ-ws-015 deferred)*
 - [ ] **Phase 3: Skill Toolkit** - Build and smoke-test all skills the pipeline needs: audit, Tier-1 ports, brain-bridge, Aider
 - [ ] **Phase 4: Build/Fix Pipeline** - Implement 5-role specialist pipeline with HITL, ledgers, cost circuit breaker, and PR output
 - [ ] **Phase 5: Autonomous Routines & Integration Loops** - Ship 3 cron routines plus Brain↔Workshop vault signaling flows
@@ -44,11 +44,11 @@ Plans:
   5. `systemctl restart uws-hermes` mid-flow preserves a pending HITL approval in Hermes FTS5; tapping Approve completes the flow
 **Plans**: 5 plans
 Plans:
-- [ ] 02-01-PLAN.md — Wave 0: pre-deploy gates (swap, uab-telegram mask, Node.js 24, LiteLLM 30s)
-- [ ] 02-02-PLAN.md — Wave 1: uws user + dirs + Hermes install + systemd unit + base config
-- [ ] 02-03-PLAN.md — Wave 2: Telegram gateway wiring + chat-ID gate (REQ-ws-002, REQ-ws-013)
-- [ ] 02-04-PLAN.md — Wave 2: 5 MCP registrations (github, context7, crawl4ai-SSE, hostinger, google-workspace)
-- [ ] 02-05-PLAN.md — Wave 3: HITL restart-resilience (startup-skill + bats V14 smoke + Approve flow)
+- [x] 02-01-PLAN.md — Wave 0: pre-deploy gates (swap, uab-telegram mask, Node.js 24, LiteLLM 30s)
+- [x] 02-02-PLAN.md — Wave 1: uws user + dirs + Hermes install + systemd unit + base config
+- [x] 02-03-PLAN.md — Wave 2: Telegram gateway wiring + chat-ID gate (REQ-ws-002, REQ-ws-013)
+- [x] 02-04-PLAN.md — Wave 2: 5 MCP registrations — DEFERRED (prerequisites not in place)
+- [x] 02-05-PLAN.md — Wave 3: HITL restart-resilience (startup-skill + bats V14 smoke + Approve flow)
 
 ### Phase 3: Skill Toolkit
 **Goal**: All skills the pipeline depends on exist, have correct Hermes frontmatter, and pass smoke tests — including the skill audit toolchain itself
@@ -105,8 +105,8 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Vault Sync | 0/2 | Not started | - |
-| 2. Hermes Deploy | 0/TBD | Not started | - |
+| 1. Vault Sync | 2/2 | ✓ Complete | 2026-05-20 |
+| 2. Hermes Deploy | 5/5 | ✓ Complete (REQ-ws-015 deferred) | 2026-05-21 |
 | 3. Skill Toolkit | 0/TBD | Not started | - |
 | 4. Build/Fix Pipeline | 0/TBD | Not started | - |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
