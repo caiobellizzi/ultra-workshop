@@ -101,8 +101,8 @@ Plans:
 Plans:
 
 - [x] 04-00-PLAN.md — Wave 0 prerequisites: GITHUB_PAT, gh CLI, test-workshop-sandbox repo
-- [ ] 04-01-PLAN.md — workshop/ Python package: types, subprocess orchestrator, ledger, cost
-- [ ] 04-02-PLAN.md — Five specialist SKILL.md files + workshop_push.py
+- [x] 04-01-PLAN.md — workshop/ Python package: types, subprocess orchestrator, ledger, cost
+- [x] 04-02-PLAN.md — Five specialist SKILL.md files + workshop_push.py
 - [ ] 04-03-PLAN.md — Entry-point scripts, SKILL.md wrappers, VPS deploy, smoke tests
 
 **UI hint**: yes

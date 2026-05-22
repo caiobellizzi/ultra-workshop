@@ -10,8 +10,8 @@ progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
-  percent: 60
+  completed_plans: 15
+  percent: 80
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 ## Current Position
 
 Phase: 04 (build-fix-pipeline) — EXECUTING
-Plan: 2 of 4
-Status: Ready to execute
+Plan: 4 of 4
+Status: Wave 1 complete — proceeding to Wave 2
 Last activity: 2026-05-22
 
 Progress: [████████░░] 81%
@@ -61,7 +61,10 @@ Key decisions affecting first plans:
 - L22: `workshop/orchestrator.py` NOT `workshop/graph.py` — LangGraph excluded from Phase 1
 - L10: Coder = Aider subprocess (NOT Claude Code, NOT OpenHands)
 - L26: Update LiteLLM `private-worker` timeout to 30s and rsync to VPS during Phase 2
-- [Phase ?]: 04-00-SUMMARY.md
+- Phase 4 Wave 0: Architecture B confirmed — delegate_task NOT_SUPPORTED, subprocess-per-specialist pattern final
+- Phase 4 Wave 0: GITHUB_PAT fine-grained format (github_pat_...), injected into /etc/uws/env, gh v2.45.0 on VPS
+- Phase 4 Wave 1: workshop/ package built with TDD (18 tests pass); run_specialist() uses subprocess.run(shell=False) targeting hermes-skill-run.sh
+- Phase 4 Wave 1: 5 specialist SKILL.md files created (triage/planner/coder/reviewer/pr-opener) + workshop_push.py
 
 ### Pending Todos
 
