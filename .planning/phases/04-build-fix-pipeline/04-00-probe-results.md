@@ -18,6 +18,13 @@ Architecture B is used throughout Phase 4:
 - Installation method: apt-get install -y gh (ubuntu noble-security/universe package)
 
 ## Test-workshop-sandbox
-- Status: PENDING_PAT (create after PAT injected)
+- Status: EXISTS
 - URL: https://github.com/caiobellizzi/test-workshop-sandbox
-- Note: GITHUB_PAT not yet present in /etc/uws/env — repo existence cannot be verified until PAT is injected (Task 2 checkpoint)
+- Verified: gh repo view returned {"defaultBranchRef":{"name":"main"},"name":"test-workshop-sandbox"}
+
+## Final Status
+- GITHUB_PAT injected: YES (stored in /etc/uws/env as `GITHUB_PAT=github_pat_...` fine-grained token; count=1)
+- gh auth login as uws: PASS (✓ Logged in to github.com account caiobellizzi)
+- test-workshop-sandbox: EXISTS (defaultBranch=main, accessible via gh CLI)
+- Wave 0 prerequisites for git/PR operations: READY
+- Note: Wave 1 (types/orchestrator/specialist skills) does NOT require Wave 0 completion — Architecture B is standalone Python
