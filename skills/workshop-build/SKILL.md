@@ -19,9 +19,9 @@ Runs the full 5-role workshop pipeline for a coding task and opens a PR on human
 1. Extract the task description from the user trigger (everything after `/build`)
 2. Extract `session_id` and `chat_id` from context if available (defaults: session_id="", chat_id="7113965359")
 3. If `--dry-run` appears in the trigger: print dry-run message and stop without calling terminal
-4. Run the pipeline:
+4. Run the pipeline. **You MUST pass `timeout=1800` to the terminal tool** — the pipeline runs 4 specialist subprocess calls and easily exceeds the default 60s timeout.
    ```
-   terminal python3 /opt/ultra-workshop/hermes-skills/workshop_build.py --task "<task>" --session-id "<session_id>" --chat-id "<chat_id>"
+   terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_build.py --task \"<task>\" --session-id \"<session_id>\" --chat-id \"<chat_id>\"", timeout=1800)
    ```
 5. Capture exit code from the terminal call:
    - If exit_code == 0: pipeline succeeded without needing HITL (unexpected — log and return stdout)

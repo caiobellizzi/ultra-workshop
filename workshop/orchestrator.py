@@ -48,7 +48,7 @@ def run_specialist(
     query_json: str,
     output_schema: Type[T],
     dry_run: bool = False,
-    timeout: int = 300,
+    timeout: int = 600,
 ) -> T:
     """Call a Hermes specialist skill via hermes-skill-run.sh and parse JSON stdout.
 

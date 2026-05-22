@@ -19,9 +19,9 @@ Fetches a GitHub issue and runs the full workshop build pipeline to produce a PR
 1. Extract the issue URL from the user trigger (everything after `/fix`)
 2. Extract `session_id` and `chat_id` from context if available (defaults: session_id="", chat_id="7113965359")
 3. If `--dry-run` appears in the trigger: print dry-run message and stop without calling terminal
-4. Run:
+4. Run. **You MUST pass `timeout=1800` to the terminal tool** — the pipeline runs 4 specialist subprocess calls and easily exceeds the default 60s timeout.
    ```
-   terminal python3 /opt/ultra-workshop/hermes-skills/workshop_fix.py --issue-url "<url>" --session-id "<session_id>" --chat-id "<chat_id>"
+   terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_fix.py --issue-url \"<url>\" --session-id \"<session_id>\" --chat-id \"<chat_id>\"", timeout=1800)
    ```
 5. `workshop_fix.py` internally:
    - Fetches the issue title, body, and number via `gh issue view`
