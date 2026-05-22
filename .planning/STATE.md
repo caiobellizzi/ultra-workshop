@@ -8,9 +8,9 @@ last_updated: "2026-05-22T01:49:57.117Z"
 last_activity: 2026-05-22
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
   percent: 80
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 
 ## Current Position
 
-Phase: 04 (build-fix-pipeline) — EXECUTING
+Phase: 04 (build-fix-pipeline) — COMPLETE
 Plan: 4 of 4
-Status: Wave 1 complete — proceeding to Wave 2
+Status: Phase 04 complete — ready for verification
 Last activity: 2026-05-22
 
 Progress: [████████░░] 81%
@@ -65,6 +65,7 @@ Key decisions affecting first plans:
 - Phase 4 Wave 0: GITHUB_PAT fine-grained format (github_pat_...), injected into /etc/uws/env, gh v2.45.0 on VPS
 - Phase 4 Wave 1: workshop/ package built with TDD (18 tests pass); run_specialist() uses subprocess.run(shell=False) targeting hermes-skill-run.sh
 - Phase 4 Wave 1: 5 specialist SKILL.md files created (triage/planner/coder/reviewer/pr-opener) + workshop_push.py
+- Phase 4 Wave 2: workshop_build.py + workshop_fix.py entry points deployed to VPS /opt/ultra-workshop/; 5 bats smoke tests pass; HITL exit-code-2 gate confirmed working
 
 ### Pending Todos
 
@@ -89,5 +90,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-22T01:49:57.111Z
-Stopped at: Phase 2 context gathered
-Resume file: None
+Stopped at: Phase 4 complete — all 4 plans executed, 18 unit tests + 5 bats smoke tests pass
+Resume file: .planning/phases/04-build-fix-pipeline/04-03-SUMMARY.md
