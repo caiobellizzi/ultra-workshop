@@ -2,7 +2,7 @@
 aider_runner — subprocess wrapper for Aider coder with architect/editor model split.
 
 Wraps aider as a subprocess with:
-  - Architect model: openai/cloud-sonnet (via LiteLLM proxy)
+  - Architect model: openai/orchestrator (NIM DeepSeek V4 Pro, thinking on; cloud-sonnet via proxy failover)
   - Editor model: openai/private-worker (via LM Link → LM Studio on Mac)
   - All LLM calls routed through LiteLLM proxy at 127.0.0.1:4000/v1
 
@@ -16,7 +16,7 @@ Cost ledger (OPTION B): After aider completes, posts a completion event to Brain
 curator agent (HTTP 200 + run_id). Full 2-LLM-call cost verification is deferred.
 
 # BACKLOG: The cost ledger currently records an event marker only (OPTION B).
-# Strengthen to verify 2 LLM-call entries (cloud-sonnet + private-worker) once
+# Strengthen to verify 2 LLM-call entries (orchestrator + private-worker) once
 # Brain exposes a queryable cost-history endpoint. Decided 2026-05-21.
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ def run_aider(task: str, workspace_file: Optional[str] = None) -> None:
     """Run aider on *task* inside a temp git workspace.
 
     Creates a temporary git-initialised workspace under /tmp, invokes aider
-    with architect=cloud-sonnet + editor=private-worker via the LiteLLM proxy,
+    with architect=orchestrator + editor=private-worker via the LiteLLM proxy,
     prints the diff summary, then posts a cost-ledger marker to Brain curator.
 
     Args:
@@ -94,7 +94,7 @@ def run_aider(task: str, workspace_file: Optional[str] = None) -> None:
 
     argv = [
         aider_bin,
-        "--model", "openai/cloud-sonnet",
+        "--model", "openai/orchestrator",
         "--editor-model", "openai/private-worker",
         "--architect",
         "--openai-api-base", "http://127.0.0.1:4000/v1",
@@ -135,7 +135,7 @@ def _post_cost_ledger(task: str, success: bool) -> None:
 
     Non-blocking: cost ledger failure does NOT abort the aider result.
 
-    # BACKLOG: Strengthen to assert 2 LLM-call entries (cloud-sonnet + private-worker)
+    # BACKLOG: Strengthen to assert 2 LLM-call entries (orchestrator + private-worker)
     # once Brain exposes a queryable cost-history endpoint. Decided 2026-05-21.
     """
     status_tag = "success" if success else "failed"
@@ -143,7 +143,7 @@ def _post_cost_ledger(task: str, success: bool) -> None:
         ledger_result = _brain_http.call_agent(
             "curator",
             f"aider task completed: cost_ledger_event status={status_tag} "
-            f"model=cloud-sonnet+private-worker task={task[:80]}",
+            f"model=orchestrator+private-worker task={task[:80]}",
         )
         run_id = ledger_result.get("run_id", "unknown")
         print(f"[cost-ledger] curator run_id={run_id}", flush=True)
