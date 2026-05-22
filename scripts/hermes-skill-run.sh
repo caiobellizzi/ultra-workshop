@@ -17,21 +17,34 @@ SKILL="$1"
 shift
 QUERY="$*"
 
-# Per-skill --max-turns budget. Triage just classifies (cheap); coder/reviewer/planner
-# need headroom to read, plan, write, and verify. Override with MAX_TURNS env var.
+# Per-skill --max-turns budget AND per-skill HERMES_HOME selection (one home per
+# model alias — see plan 04-04). Triage/coder stay on private-worker (V17 local-
+# token contract); planner moves to NIM `orchestrator`; reviewer to NIM
+# `research-worker`. Override turns with MAX_TURNS env var; override home with
+# SPECIALIST_HOME_OVERRIDE env var.
 if [ -z "${MAX_TURNS:-}" ]; then
   case "$SKILL" in
-    triage-specialist)   MAX_TURNS=3 ;;
-    planner-specialist)  MAX_TURNS=8 ;;
-    reviewer-specialist) MAX_TURNS=10 ;;
-    coder-specialist)    MAX_TURNS=15 ;;
-    *)                   MAX_TURNS=8 ;;
+    triage-specialist)   MAX_TURNS=3;  HOME_DIR=specialist-home-private ;;
+    planner-specialist)  MAX_TURNS=8;  HOME_DIR=specialist-home-orchestrator ;;
+    reviewer-specialist) MAX_TURNS=10; HOME_DIR=specialist-home-research ;;
+    coder-specialist)    MAX_TURNS=15; HOME_DIR=specialist-home-private ;;
+    *)                   MAX_TURNS=8;  HOME_DIR=specialist-home-private ;;
+  esac
+else
+  case "$SKILL" in
+    triage-specialist)   HOME_DIR=specialist-home-private ;;
+    planner-specialist)  HOME_DIR=specialist-home-orchestrator ;;
+    reviewer-specialist) HOME_DIR=specialist-home-research ;;
+    coder-specialist)    HOME_DIR=specialist-home-private ;;
+    *)                   HOME_DIR=specialist-home-private ;;
   esac
 fi
 
-# Dry-run short-circuit: print what would run and exit 0.
+# Dry-run short-circuit: print what would run and exit 0. Includes the resolved
+# HERMES_HOME so per-skill model routing can be asserted in bats smoke tests.
 if echo "$QUERY" | grep -q -- "--dry-run"; then
   echo "[dry-run] would run: hermes chat --skills ${SKILL} --query '${QUERY}' -Q --max-turns ${MAX_TURNS} --yolo"
+  echo "[dry-run] HERMES_HOME=/opt/ultra-workshop/${HOME_DIR}"
   exit 0
 fi
 
@@ -41,7 +54,7 @@ fi
 # cd to uws home first — hermes walks up from cwd looking for HERMES.md and will
 # hit PermissionError if cwd is /root or another directory uws cannot stat.
 HERMES_BIN="/opt/ultra-workshop/hermes/venv/bin/hermes"
-SPECIALIST_HOME="/opt/ultra-workshop/specialist-home"
+SPECIALIST_HOME="${SPECIALIST_HOME_OVERRIDE:-/opt/ultra-workshop/${HOME_DIR}}"
 UWS_HOME=$(getent passwd uws 2>/dev/null | cut -d: -f6 || echo "/home/uws")
 cd "$UWS_HOME" 2>/dev/null || cd /tmp
 UWS_UID=$(id -u uws 2>/dev/null || echo "")
