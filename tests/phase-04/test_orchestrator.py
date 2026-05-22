@@ -148,6 +148,32 @@ def test_extract_json_raises_on_no_json():
 
 
 # ---------------------------------------------------------------------------
+# Test 8b: _extract_json strips <think>...</think> reasoning blocks (NIM
+# DeepSeek thinking-mode leak guard) before brace-matching.
+# ---------------------------------------------------------------------------
+
+def test_extract_json_strips_think_block():
+    from workshop.orchestrator import _extract_json
+
+    raw = '<think>reasoning {with braces}</think>{"k":"v"}'
+    assert _extract_json(raw) == '{"k":"v"}'
+
+
+def test_extract_json_strips_multiline_think_block():
+    from workshop.orchestrator import _extract_json
+
+    raw = '<think>\nline1\n{nested:braces}\nline2\n</think>\n{"ok": true}'
+    assert _extract_json(raw) == '{"ok": true}'
+
+
+def test_extract_json_strips_think_block_case_insensitive():
+    from workshop.orchestrator import _extract_json
+
+    raw = '<THINK>x</Think>{"a":1}'
+    assert _extract_json(raw) == '{"a":1}'
+
+
+# ---------------------------------------------------------------------------
 # Test 9: All seven types export model_json_schema() without error
 # ---------------------------------------------------------------------------
 

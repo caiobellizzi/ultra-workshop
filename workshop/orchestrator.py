@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -13,12 +14,19 @@ HERMES_SKILL_RUN = Path("/opt/ultra-workshop/scripts/hermes-skill-run.sh")
 
 T = TypeVar("T", bound=BaseModel)
 
+_THINK_RE = re.compile(r"<think\b[^>]*>.*?</think>", re.DOTALL | re.IGNORECASE)
+
 
 def _extract_json(text: str) -> str:
     """Find and return the first complete JSON object in text.
 
+    Strips ``<think>...</think>`` reasoning blocks (emitted by NIM DeepSeek
+    thinking-mode models) before brace-matching, so JSON that follows the
+    closing ``</think>`` tag is recovered cleanly.
+
     Raises ValueError if no JSON object found.
     """
+    text = _THINK_RE.sub("", text)
     start = text.find("{")
     end = text.rfind("}")
     if start == -1 or end == -1 or end <= start:
