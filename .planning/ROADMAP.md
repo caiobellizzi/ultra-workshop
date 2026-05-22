@@ -100,7 +100,7 @@ Plans:
 **Plans**: 4 plans
 Plans:
 
-- [ ] 04-00-PLAN.md — Wave 0 prerequisites: GITHUB_PAT, gh CLI, test-workshop-sandbox repo
+- [x] 04-00-PLAN.md — Wave 0 prerequisites: GITHUB_PAT, gh CLI, test-workshop-sandbox repo
 - [ ] 04-01-PLAN.md — workshop/ Python package: types, subprocess orchestrator, ledger, cost
 - [ ] 04-02-PLAN.md — Five specialist SKILL.md files + workshop_push.py
 - [ ] 04-03-PLAN.md — Entry-point scripts, SKILL.md wrappers, VPS deploy, smoke tests
@@ -138,7 +138,7 @@ Plans:
 | 1. Vault Sync | 2/2 | ✓ Complete | 2026-05-20 |
 | 2. Hermes Deploy | 5/5 | ✓ Complete (REQ-ws-015 deferred) | 2026-05-21 |
 | 3. Skill Toolkit | 5/5 | Complete   | 2026-05-21 |
-| 4. Build/Fix Pipeline | 0/TBD | Not started | - |
+| 4. Build/Fix Pipeline | 1/4 | In Progress|  |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
 
 ---

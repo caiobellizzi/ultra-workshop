@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-05-21T23:50:35.118Z"
-last_activity: 2026-05-21 -- Phase 04 execution started
+last_updated: "2026-05-22T01:49:57.117Z"
+last_activity: 2026-05-22
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 13
   percent: 60
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 ## Current Position
 
 Phase: 04 (build-fix-pipeline) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 04
-Last activity: 2026-05-21 -- Phase 04 execution started
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-05-22
 
-Progress: [██░░░░░░░░] 20% (phase 1 complete — 1/5 phases)
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [██░░░░░░░░] 20% (phase 1 complete — 1/5 phases)
 | - | - | - | - |
 
 **Recent Trend:** No data yet
+| Phase 04-build-fix-pipeline P00 | 20 | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -60,6 +61,7 @@ Key decisions affecting first plans:
 - L22: `workshop/orchestrator.py` NOT `workshop/graph.py` — LangGraph excluded from Phase 1
 - L10: Coder = Aider subprocess (NOT Claude Code, NOT OpenHands)
 - L26: Update LiteLLM `private-worker` timeout to 30s and rsync to VPS during Phase 2
+- [Phase ?]: 04-00-SUMMARY.md
 
 ### Pending Todos
 
@@ -83,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-20T15:47:37.446Z
+Last session: 2026-05-22T01:49:57.111Z
 Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-hermes-deploy/02-CONTEXT.md
+Resume file: None

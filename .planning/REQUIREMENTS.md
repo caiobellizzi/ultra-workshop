@@ -165,10 +165,10 @@ Acceptance: File exists and matches vocabulary table in PLAN.md (V23)
 | REQ-ws-005 | Phase 3 | Pending |
 | REQ-ws-006 | Phase 3 | Pending |
 | REQ-ws-028 | Phase 4 | Pending |
-| REQ-ws-007 | Phase 4 | Pending |
-| REQ-ws-008 | Phase 4 | Pending |
+| REQ-ws-007 | Phase 4 | Complete |
+| REQ-ws-008 | Phase 4 | Complete |
 | REQ-ws-009 | Phase 4 | Pending |
-| REQ-ws-010 | Phase 4 | Pending |
+| REQ-ws-010 | Phase 4 | Complete |
 | REQ-ws-011 | Phase 4 | Pending |
 | REQ-ws-012 | Phase 4 | Pending |
 | REQ-ws-016 | Phase 5 | Pending |
