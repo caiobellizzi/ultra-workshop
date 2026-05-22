@@ -1,0 +1,30 @@
+# Phase 4 Deploy Manifest
+# Generated: 2026-05-22
+# VPS: 31.97.130.253
+
+## Workshop Package (/opt/ultra-workshop/workshop/)
+workshop/__init__.py
+workshop/types.py       — Plan, Diff, Review, TriageResult Pydantic models
+workshop/orchestrator.py — run_specialist() subprocess executor
+workshop/ledger.py      — write_task_ledger(), append_progress()
+workshop/cost.py        — check_circuit_breaker(), BudgetExhausted
+
+## Entry-Point Scripts (/opt/ultra-workshop/hermes-skills/)
+hermes-skills/workshop_build.py — Architecture B pipeline runner (exits 2 at HITL gate)
+hermes-skills/workshop_fix.py   — Thin wrapper: fetches issue → delegates to workshop_build.py
+hermes-skills/workshop_push.py  — Git push + gh pr create + ADR write-back (on HITL approval)
+
+## Specialist Skills (/home/uws/.hermes/skills/)
+skills/triage-specialist/SKILL.md
+skills/planner-specialist/SKILL.md
+skills/coder-specialist/SKILL.md
+skills/reviewer-specialist/SKILL.md
+skills/pr-opener/SKILL.md
+skills/workshop-build/SKILL.md   — Hermes /build handler; catches exit code 2; calls clarify
+skills/workshop-fix/SKILL.md     — Hermes /fix handler; delegates to workshop_fix.py
+
+## Smoke Tests (run from local with bats)
+tests/phase-04/helpers.bash       — VPS SSH helpers
+tests/phase-04/build-smoke.bats   — 3 tests (dry-run, importability, python dry-run)
+tests/phase-04/fix-smoke.bats     — 2 tests (dry-run, python dry-run)
+All 5 tests: PASS
