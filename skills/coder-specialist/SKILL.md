@@ -49,7 +49,7 @@ Emit exactly this JSON object to stdout (no surrounding text):
 
 Fields:
 - `summary`: string containing the aider output (truncated to 500 chars)
-- `changes`: list of file-change objects; may be empty (`[]`)
+- `changes`: list of file-change objects; **prefer empty (`[]`)** — the reviewer reads `summary`, not `changes`. If you do populate it, each entry MUST be `{"path": "<file-path>", "diff": "<unified-diff>"}`. Do **not** use the key `file` — the validator accepts it but `path` is canonical.
 - `branch`: the git branch name in format `workshop/{task_id}`
 - `workspace_dir`: the absolute path to the cloned sandbox workspace — MUST be present and non-empty
 

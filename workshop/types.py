@@ -1,7 +1,7 @@
 # Deploy location: /opt/ultra-workshop/workshop/types.py
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class PlanStep(BaseModel):
@@ -17,7 +17,9 @@ class Plan(BaseModel):
 
 
 class FileChange(BaseModel):
-    path: str
+    model_config = {"populate_by_name": True}
+
+    path: str = Field(validation_alias=AliasChoices("path", "file"))
     diff: str
 
 
