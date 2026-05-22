@@ -52,6 +52,7 @@ def main() -> None:
     triage_query = json.dumps({"task_id": task_id, "goal": goal, "context": ""})
     triage_raw = run_specialist("triage-specialist", triage_query, TriageResult)
     append_progress(task_id, "triage_complete", {"task_type": triage_raw.task_type})
+    print("[workshop] triage_complete done", flush=True)
 
     # Stage 2: planner
     planner_query = json.dumps({
@@ -62,6 +63,7 @@ def main() -> None:
     })
     plan = run_specialist("planner-specialist", planner_query, Plan)
     append_progress(task_id, "plan_complete", {"steps": len(plan.steps)})
+    print("[workshop] plan_complete done", flush=True)
 
     # Stage 3+4: coder + reviewer with retry (max 2 retries = 3 attempts)
     diff: Diff | None = None
@@ -74,6 +76,7 @@ def main() -> None:
         })
         diff = run_specialist("coder-specialist", coder_query, Diff)
         append_progress(task_id, "coder_complete", {"branch": diff.branch, "attempt": attempt})
+        print("[workshop] coder_complete done", flush=True)
 
         reviewer_query = json.dumps({
             "task_id": task_id,
@@ -83,6 +86,7 @@ def main() -> None:
         })
         review = run_specialist("reviewer-specialist", reviewer_query, Review)
         append_progress(task_id, "review_complete", {"passed": review.passed, "attempt": attempt})
+        print("[workshop] review_complete done", flush=True)
 
         if review.passed:
             break
