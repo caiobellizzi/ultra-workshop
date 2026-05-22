@@ -82,7 +82,7 @@ These decisions were established during a /grill-me session and are LOCKED for P
 | L22 | LangGraph NOT in Phase 1; reserved Phase 2 opt-in | coordination layer |
 | L23 | Exactly 3 cron routines; no overlap with Brain's 3 timers | cron topology |
 | L24 | Integration model: "one system, two tiers, vault as connective tissue" | integration architecture |
-| L25 | Interactive `/build`/`/fix` → `private-worker`; autonomous cron → `cloud-groq` directly | LLM routing |
+| L25 | Interactive `/build`/`/fix` uses a per-specialist model matrix: triage + coder/editor + coder-orchestration → `private-worker`; planner + coder/architect → `orchestrator` (NIM DeepSeek V4 Pro, thinking on); reviewer → `research-worker` (NIM DeepSeek V4 Flash, thinking on, 1M ctx). Autonomous cron → `cloud-groq` directly. | LLM routing |
 | L26 | LiteLLM `private-worker` timeout 30s (down from 300s); rsync to VPS on deploy | LiteLLM config |
 | L27 | Vault sync = `caiobellizzi/second-brain` private GitHub remote + Obsidian-Git (Mac) + VPS cron every 5 min | vault synchronization |
 | L28 | Two-tier signaling: `workshop.suggested_action` (not dispatched) vs `workshop.action` + `workshop.confirmed: true` (dispatched) | frontmatter signaling |
@@ -184,5 +184,5 @@ Auth: none (single-tenant, same VPS loopback). Future: `Authorization: Bearer` f
 
 - Per-build cost target: ~$0.047 (~57K tokens)
 - Daily budget: $20 shared with Brain; ~420 builds ceiling; realistic 3-10/day
-- Local model (`private-worker`) must handle ≥80% of token volume (V17)
+- Local model (`private-worker`) must handle ≥80% of token volume (V17) — editor slot (highest-volume) stays local under the L25 matrix; verify empirically via cost-ledger entries after first 5 builds and tighten or relax the 80% target based on observed economics.
 - Phase 1 verification: V1–V24 must all pass before tagging v0.1.0
