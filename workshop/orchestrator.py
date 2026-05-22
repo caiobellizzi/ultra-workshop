@@ -17,20 +17,29 @@ T = TypeVar("T", bound=BaseModel)
 _THINK_RE = re.compile(r"<think\b[^>]*>.*?</think>", re.DOTALL | re.IGNORECASE)
 
 
-def _extract_json(text: str) -> str:
+def _extract_json(text: str, *, skill_name: str | None = None) -> str:
     """Find and return the first complete JSON object in text.
 
     Strips ``<think>...</think>`` reasoning blocks (emitted by NIM DeepSeek
     thinking-mode models) before brace-matching, so JSON that follows the
     closing ``</think>`` tag is recovered cleanly.
 
-    Raises ValueError if no JSON object found.
+    Raises ValueError if no JSON object found. The error message includes the
+    skill name (when provided) and the head plus tail of the raw output, so
+    Telegram surfaces an actionable diagnostic instead of a truncated narration
+    fragment.
     """
     text = _THINK_RE.sub("", text)
     start = text.find("{")
     end = text.rfind("}")
     if start == -1 or end == -1 or end <= start:
-        raise ValueError(f"No JSON object found in: {text[:200]!r}")
+        prefix = f"[{skill_name}] " if skill_name else ""
+        head = text[:300].replace("\n", " ")
+        tail = text[-300:].replace("\n", " ") if len(text) > 300 else ""
+        raise ValueError(
+            f"{prefix}No JSON object found. head={head!r}"
+            + (f" tail={tail!r}" if tail else "")
+        )
     return text[start : end + 1]
 
 
@@ -65,5 +74,5 @@ def run_specialist(
             f"Specialist {skill_name!r} exited {result.returncode}: {result.stderr[:500]}"
         )
 
-    raw_json = _extract_json(result.stdout)
+    raw_json = _extract_json(result.stdout, skill_name=skill_name)
     return output_schema.model_validate_json(raw_json)
