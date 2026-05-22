@@ -104,6 +104,7 @@ Plans:
 - [x] 04-01-PLAN.md — workshop/ Python package: types, subprocess orchestrator, ledger, cost
 - [x] 04-02-PLAN.md — Five specialist SKILL.md files + workshop_push.py
 - [x] 04-03-PLAN.md — Entry-point scripts, SKILL.md wrappers, VPS deploy, smoke tests
+- [ ] 04-05-PLAN.md — Async /build & /fix via background terminal (lift 600s cap)
 - [ ] 04-04-PLAN.md — Specialist model matrix: NIM upgrade for planner/reviewer/architect (imported 2026-05-22)
 
 **UI hint**: yes
