@@ -106,8 +106,8 @@ follow_ups: 1  # workshop_push credential/permission gap surfaced under Test 5
     - path: "workshop/orchestrator.py:20-34"
       issue: "_extract_json raises immediately if no `{` present — no fallback path or retry. Acceptable behavior (model-side bug), but the orchestrator surfaces it as a hard crash with no diagnostic context about WHICH skill failed."
   missing:
-    - "Route coder-specialist to a larger model capable of tool-use + structured output (e.g. specialist-home-orchestrator, same model as planner). This is a model-matrix revision and likely needs cost analysis."
-    - "OR: replace the SKILL.md-driven coder with a Python script that calls aider_runner.py directly (no LLM-in-the-loop for the cloning/branching/emission steps), reserving LLM-only for the actual code synthesis inside aider"
-    - "Add to orchestrator.run_specialist: when _extract_json raises, include skill_name and a tail of stdout/stderr in the exception message to make Telegram reports more actionable"
-    - "Add a `--dry-run` end-to-end test that asserts each specialist returns valid schema JSON (we have 5/5 bats smoke tests but they only assert the dry-run hardcoded JSON, not real model behavior)"
+    - "DONE 2026-05-22: Routed coder-specialist to specialist-home-orchestrator (NIM DSv4 Pro, same as planner). Required provisioning /opt/ultra-workshop/specialist-home-orchestrator/ on VPS — discovered during this fix that plan 04-04's per-model HERMES_HOMEs were never actually deployed; only the default specialist-home/ existed, which silently routed all specialists to private-worker regardless of the script's HOME_DIR selection. Provisioned the orchestrator home with SOUL.md + skills symlink + config.yaml pointing to alias `orchestrator`. Bats smoke test updated and 6/6 pass."
+    - "OPEN: specialist-home-private/ and specialist-home-research/ are also missing on the VPS. Triage and reviewer fall back to Hermes's default home (effectively private-worker) instead of the configured aliases. Plan 04-04 implementation is incomplete on the VPS — needs a follow-up to provision all three homes and validate each specialist actually hits its intended model."
+    - "DONE 2026-05-22: orchestrator.run_specialist now passes skill_name to _extract_json so ValueError messages include skill name + head/tail of raw output."
+    - "OPEN: Add an end-to-end smoke test that asserts each specialist returns valid schema JSON against the real model (we have 6/6 bats but they only assert dry-run hardcoded JSON, not real model behavior)."
   debug_session: ""

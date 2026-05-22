@@ -29,11 +29,11 @@ SCRIPT="$BATS_TEST_DIRNAME/../../scripts/hermes-skill-run.sh"
   [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-research"* ]]
 }
 
-@test "coder-specialist resolves to MAX_TURNS=15 and specialist-home-private" {
+@test "coder-specialist resolves to MAX_TURNS=15 and specialist-home-orchestrator" {
   run env -u MAX_TURNS bash "$SCRIPT" coder-specialist --dry-run "add hello.txt"
   [ "$status" -eq 0 ]
   [[ "$output" == *"--max-turns 15"* ]]
-  [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-private"* ]]
+  [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-orchestrator"* ]]
 }
 
 @test "unknown specialist falls back to MAX_TURNS=8 and specialist-home-private" {

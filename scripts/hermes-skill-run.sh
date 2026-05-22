@@ -18,16 +18,18 @@ shift
 QUERY="$*"
 
 # Per-skill --max-turns budget AND per-skill HERMES_HOME selection (one home per
-# model alias — see plan 04-04). Triage/coder stay on private-worker (V17 local-
-# token contract); planner moves to NIM `orchestrator`; reviewer to NIM
-# `research-worker`. Override turns with MAX_TURNS env var; override home with
-# SPECIALIST_HOME_OVERRIDE env var.
+# model alias — see plan 04-04). Triage stays on private-worker (V17 local-token
+# contract); planner and coder use NIM `orchestrator` (DSv4 Pro) — coder was
+# routed to private-worker originally but Gemma-4-e4b could not reliably drive
+# the SKILL.md tool-use + JSON contract (UAT 04 / 2026-05-22). Reviewer uses
+# NIM `research-worker`. Override turns with MAX_TURNS, home with
+# SPECIALIST_HOME_OVERRIDE.
 if [ -z "${MAX_TURNS:-}" ]; then
   case "$SKILL" in
     triage-specialist)   MAX_TURNS=3;  HOME_DIR=specialist-home-private ;;
     planner-specialist)  MAX_TURNS=8;  HOME_DIR=specialist-home-orchestrator ;;
     reviewer-specialist) MAX_TURNS=10; HOME_DIR=specialist-home-research ;;
-    coder-specialist)    MAX_TURNS=15; HOME_DIR=specialist-home-private ;;
+    coder-specialist)    MAX_TURNS=15; HOME_DIR=specialist-home-orchestrator ;;
     *)                   MAX_TURNS=8;  HOME_DIR=specialist-home-private ;;
   esac
 else
@@ -35,7 +37,7 @@ else
     triage-specialist)   HOME_DIR=specialist-home-private ;;
     planner-specialist)  HOME_DIR=specialist-home-orchestrator ;;
     reviewer-specialist) HOME_DIR=specialist-home-research ;;
-    coder-specialist)    HOME_DIR=specialist-home-private ;;
+    coder-specialist)    HOME_DIR=specialist-home-orchestrator ;;
     *)                   HOME_DIR=specialist-home-private ;;
   esac
 fi
