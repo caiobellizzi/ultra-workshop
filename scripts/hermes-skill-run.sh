@@ -59,11 +59,19 @@ HERMES_BIN="/opt/ultra-workshop/hermes/venv/bin/hermes"
 SPECIALIST_HOME="${SPECIALIST_HOME_OVERRIDE:-/opt/ultra-workshop/${HOME_DIR}}"
 UWS_HOME=$(getent passwd uws 2>/dev/null | cut -d: -f6 || echo "/home/uws")
 cd "$UWS_HOME" 2>/dev/null || cd /tmp
+
+# Hermes terminal-tool default cmd timeout is 180s. Coder runs aider which
+# can take several minutes; bump to 900s (15 min) so legitimate long runs
+# don't get killed mid-stream. Override per-call with TERMINAL_TIMEOUT.
+SPECIALIST_TERMINAL_TIMEOUT="${TERMINAL_TIMEOUT:-900}"
+
 UWS_UID=$(id -u uws 2>/dev/null || echo "")
 if [ -n "$UWS_UID" ] && [ "$(id -u)" = "$UWS_UID" ]; then
   exec env HERMES_HOME="$SPECIALIST_HOME" \
+    TERMINAL_TIMEOUT="$SPECIALIST_TERMINAL_TIMEOUT" \
     "$HERMES_BIN" chat --skills "$SKILL" --query "$QUERY" -Q --max-turns "$MAX_TURNS" --yolo
 else
   exec sudo -u uws env HERMES_HOME="$SPECIALIST_HOME" \
+    TERMINAL_TIMEOUT="$SPECIALIST_TERMINAL_TIMEOUT" \
     "$HERMES_BIN" chat --skills "$SKILL" --query "$QUERY" -Q --max-turns "$MAX_TURNS" --yolo
 fi

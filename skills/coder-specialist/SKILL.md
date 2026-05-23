@@ -18,15 +18,17 @@ Clones the test-workshop-sandbox repository into a temporary workspace, runs aid
 
 Envelope assembly is performed by a deterministic script — the skill body just invokes it and forwards stdout verbatim. No JSON construction by the LLM.
 
+**Call the `terminal` tool with `timeout=900`** — aider runs can take up to ~15 minutes; the Hermes terminal-tool default cap (180s) is far too short. The wrapper sets `TERMINAL_TIMEOUT=900` in the env as a backstop, but pass `timeout=900` explicitly so the per-call kwarg overrides any session default.
+
 1. If `--dry-run` appears in the trigger:
    ```
-   terminal python3 /opt/ultra-workshop/hermes-skills/workshop_coder.py --query "<query>" --dry-run
+   terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_coder.py --query \"<query>\" --dry-run", timeout=900)
    ```
    Forward stdout and stop.
 
 2. Otherwise:
    ```
-   terminal python3 /opt/ultra-workshop/hermes-skills/workshop_coder.py --query "<query>"
+   terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_coder.py --query \"<query>\"", timeout=900)
    ```
    Forward stdout verbatim — it is already the Diff JSON envelope. Do NOT wrap, prefix, or annotate.
 
