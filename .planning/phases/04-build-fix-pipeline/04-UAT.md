@@ -1,9 +1,9 @@
 ---
-status: partially_fixed
+status: complete
 phase: 04-build-fix-pipeline
-source: [04-00-SUMMARY.md, 04-01-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md]
+source: [04-00-SUMMARY.md, 04-01-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md, 04-04-SUMMARY.md, 04-05-SUMMARY.md, 04-06-SUMMARY.md]
 started: 2026-05-22T14:22:00Z
-updated: 2026-05-22T14:55:00Z
+updated: 2026-05-23T21:57:00Z
 ---
 
 ## Current Test
@@ -35,19 +35,18 @@ note: "Re-tested 2026-05-22. HITL gate fires correctly — pipeline ran triage�
 
 ### 6. Live /fix Command via Telegram
 expected: Sending `/fix <github-issue-url>` in Telegram causes Hermes to fetch the issue body, compose a task, and run the same build pipeline with the same HITL gate.
-result: issue
-reported: "Re-tested 2026-05-22 with /fix https://github.com/caiobellizzi/test-workshop-sandbox/issues/1. Original alias issue is resolved — /fix is recognized and workshop_fix.py successfully fetched the issue and initiated the build. Pipeline then crashed with exit code 1: ValueError: No JSON object found in: 'Initiating the coding process using the preloaded **Coder Specialist** skill.\n\nThe system has received your detailed query and task plan (task_id: ws-14ad72). I am now executing the multi-step workf'. Coder-specialist returned narrative prose instead of structured JSON; orchestrator._extract_json could not parse it."
-severity: major
+result: pass
+note: "Re-verified 2026-05-23 after plans 04-04/04-05/04-06 + 5 follow-up fixes (deterministic coder envelope, real aider edits, reviewer feedback threaded into coder retry, coder terminal timeout raised, diff.changes from real git diff). User confirmed live /build and /fix both complete end-to-end through HITL → PR."
 
 ## Summary
 
 total: 6
-passed: 5
-issues: 1
+passed: 6
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
-follow_ups: 1  # workshop_push credential/permission gap surfaced under Test 5
+follow_ups: 0
 
 ## Gaps
 
@@ -62,8 +61,10 @@ follow_ups: 1  # workshop_push credential/permission gap surfaced under Test 5
   resolution: "Same fix as /build — alias resolved. /fix is now recognized and workshop_fix.py fetches the issue and starts the pipeline. New downstream gap surfaced (see gap-3 below)."
 
 - truth: "After HITL approval, workshop_push.py pushes the branch and opens a PR"
-  status: failed
-  reason: "git push failed: fatal: could not read Username for 'https://github.com': No such device or address. Also: /tmp/uws-sandbox-ws-8b3619/utils.py: Permission denied."
+  status: resolved
+  resolved_on: 2026-05-23
+  resolution: "Resolved via plans 04-04/04-05/04-06 + 5 follow-up fixes. User confirmed live /build and /fix flows now complete end-to-end through HITL → PR."
+  original_reason: "git push failed: fatal: could not read Username for 'https://github.com': No such device or address. Also: /tmp/uws-sandbox-ws-8b3619/utils.py: Permission denied."
   severity: major
   test: 5  # follow-up gap surfaced during re-test of test 5
   root_cause: |
@@ -87,8 +88,10 @@ follow_ups: 1  # workshop_push credential/permission gap surfaced under Test 5
   debug_session: ""
 
 - truth: "coder-specialist returns a valid Diff JSON with workspace_dir for the orchestrator to consume"
-  status: failed
-  reason: "ValueError: No JSON object found in: 'Initiating the coding process using the preloaded **Coder Specialist** skill.\\n\\nThe system has received your detailed query and task plan (task_id: ws-14ad72). I am now executing the multi-step workf' (truncated at 200 chars by _extract_json error format)."
+  status: resolved
+  resolved_on: 2026-05-23
+  resolution: "Plan 04-06 moved envelope assembly out of the LLM into deterministic workshop_coder.py + _FENCE_RE strip in _extract_json. Follow-up fixes made aider write real edits and populated diff.changes from real git diff. Live /build and /fix confirmed working end-to-end."
+  original_reason: "ValueError: No JSON object found in: 'Initiating the coding process using the preloaded **Coder Specialist** skill.\\n\\nThe system has received your detailed query and task plan (task_id: ws-14ad72). I am now executing the multi-step workf' (truncated at 200 chars by _extract_json error format)."
   severity: major
   test: 6
   root_cause: |

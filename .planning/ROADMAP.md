@@ -11,7 +11,7 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 - [x] **Phase 1: Vault Sync** - Wire vault to GitHub remote so Brain writes are visible to Workshop before any code runs
 - [x] **Phase 2: Hermes Deploy** - Install Hermes on VPS with Telegram gateway, systemd service, and MCP registration *(REQ-ws-015 deferred)*
 - [x] **Phase 3: Skill Toolkit** - Build and smoke-test all skills the pipeline needs: audit, Tier-1 ports, brain-bridge, Aider (completed 2026-05-21)
-- [ ] **Phase 4: Build/Fix Pipeline** - Implement 5-role specialist pipeline with HITL, ledgers, cost circuit breaker, and PR output *(reopened 2026-05-22 for 04-04 model-matrix upgrade)*
+- [x] **Phase 4: Build/Fix Pipeline** - Implement 5-role specialist pipeline with HITL, ledgers, cost circuit breaker, and PR output (completed 2026-05-23)
 - [ ] **Phase 5: Autonomous Routines & Integration Loops** - Ship 3 cron routines plus Brain↔Workshop vault signaling flows
 
 ---
@@ -104,8 +104,8 @@ Plans:
 - [x] 04-01-PLAN.md — workshop/ Python package: types, subprocess orchestrator, ledger, cost
 - [x] 04-02-PLAN.md — Five specialist SKILL.md files + workshop_push.py
 - [x] 04-03-PLAN.md — Entry-point scripts, SKILL.md wrappers, VPS deploy, smoke tests
-- [ ] 04-05-PLAN.md — Async /build & /fix via background terminal (lift 600s cap)
-- [ ] 04-04-PLAN.md — Specialist model matrix: NIM upgrade for planner/reviewer/architect (imported 2026-05-22)
+- [x] 04-05-PLAN.md — Async /build & /fix via background terminal (lift 600s cap)
+- [x] 04-04-PLAN.md — Specialist model matrix: NIM upgrade for planner/reviewer/architect (imported 2026-05-22)
 
 **UI hint**: yes
 
@@ -140,7 +140,7 @@ Plans:
 | 1. Vault Sync | 2/2 | ✓ Complete | 2026-05-20 |
 | 2. Hermes Deploy | 5/5 | ✓ Complete (REQ-ws-015 deferred) | 2026-05-21 |
 | 3. Skill Toolkit | 5/5 | Complete   | 2026-05-21 |
-| 4. Build/Fix Pipeline | 1/4 | In Progress|  |
+| 4. Build/Fix Pipeline | 7/7 | Complete   | 2026-05-23 |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
 
 ---
