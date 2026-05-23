@@ -88,13 +88,39 @@ def main() -> None:
             shell=False,
         )
 
-    # 3. Run aider on the goal, targeting README.md as default workspace file
-    target_file = str(workspace / "README.md")
-    if not Path(target_file).exists():
-        Path(target_file).write_text("# workspace\n")
+    # 3. Run aider on the goal, targeting the files the plan says will be modified.
+    #    Fallback to README.md if affected_files is empty (preserves prior behaviour).
+    affected = plan.get("affected_files") or ["README.md"]
+    target_files: list[str] = []
+    scaffolded_any = False
+    for rel_path in affected:
+        abs_path = workspace / rel_path
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+        if not abs_path.exists():
+            abs_path.touch()
+            scaffolded_any = True
+        target_files.append(str(abs_path))
+
+    # Commit the scaffold so aider can apply edits against a clean tracked
+    # state. Aider's "commit before applying edits" step silently no-ops on
+    # untracked files and then skips writing the edits to disk.
+    if scaffolded_any:
+        subprocess.run(
+            ["git", "-C", str(workspace), "add", "--", *target_files],
+            capture_output=True, text=True, shell=False,
+        )
+        subprocess.run(
+            ["git", "-C", str(workspace), "commit",
+             "-m", f"scaffold for aider: {task_id}",
+             "--allow-empty", "--no-gpg-sign"],
+            capture_output=True, text=True, shell=False,
+            env={**os.environ,
+                 "GIT_AUTHOR_NAME": "uws", "GIT_AUTHOR_EMAIL": "uws@localhost",
+                 "GIT_COMMITTER_NAME": "uws", "GIT_COMMITTER_EMAIL": "uws@localhost"},
+        )
 
     aider = subprocess.run(
-        [sys.executable, str(AIDER_RUNNER), "--task", goal, "--workspace-file", target_file],
+        [sys.executable, str(AIDER_RUNNER), "--task", goal, "--workspace-file", *target_files],
         capture_output=True,
         text=True,
         shell=False,

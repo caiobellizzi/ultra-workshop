@@ -39,18 +39,20 @@ _brain_http = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_brain_http)
 
 
-def run_aider(task: str, workspace_file: Optional[str] = None) -> None:
+def run_aider(task: str, workspace_files: Optional[list[str]] = None) -> None:
     """Run aider on *task* inside a temp git workspace.
 
     Creates a temporary git-initialised workspace under /tmp, invokes aider
-    with architect=orchestrator + editor=private-worker via the LiteLLM proxy,
+    with architect=orchestrator (NIM DSv4 Pro) + editor=private-worker (local
+    Gemma via LM Studio) routed through the LiteLLM proxy,
     prints the diff summary, then posts a cost-ledger marker to Brain curator.
 
     Args:
-        task:           The coding task description to pass to aider.
-        workspace_file: Optional path to a specific file for aider to edit.
-                        If not given, a blank workspace.py is created in the
-                        temp workspace directory.
+        task:            The coding task description to pass to aider.
+        workspace_files: Optional list of file paths for aider to edit. All
+                         paths are passed as positional arguments to aider so
+                         they are added to the chat. If not given, a blank
+                         workspace.py is created in the temp workspace dir.
     """
     # --- Create temp git workspace (aider requires a git repo) ---
     workspace_dir = Path(tempfile.mkdtemp(prefix="uws-aider-workspace-"))
@@ -73,13 +75,14 @@ def run_aider(task: str, workspace_file: Optional[str] = None) -> None:
              "GIT_COMMITTER_NAME": "uws", "GIT_COMMITTER_EMAIL": "uws@localhost"},
     )
 
-    # Resolve the target file aider will edit
-    if workspace_file:
-        target_file = workspace_file
+    # Resolve the target files aider will edit. Accept either a list (new API)
+    # or fall back to a single placeholder workspace.py inside the temp dir.
+    if workspace_files:
+        target_files = list(workspace_files)
     else:
         target = workspace_dir / "workspace.py"
         target.write_text("# aider workspace\n")
-        target_file = str(target)
+        target_files = [str(target)]
 
     # --- Build aider argv (shell=False — task is a single list element) ---
     litellm_api_key = os.environ.get("LITELLM_API_KEY", "")
@@ -102,7 +105,7 @@ def run_aider(task: str, workspace_file: Optional[str] = None) -> None:
         "--yes-always",
         "--no-stream",
         "--message", task,
-        target_file,
+        *target_files,
     ]
 
     print(f"[aider_runner] running aider on task: {task[:80]!r}", flush=True)
@@ -166,8 +169,15 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--workspace-file",
+        dest="workspace_files",
+        action="append",
         default=None,
-        help="Optional path to a specific file for aider to edit.",
+        help="Path to a file for aider to edit. Repeat for multiple files; or pass several paths after a single flag.",
+        nargs="+",
     )
     args = parser.parse_args()
-    run_aider(args.task, args.workspace_file)
+    # argparse with action="append" + nargs="+" yields a list of lists; flatten.
+    flat: Optional[list[str]] = None
+    if args.workspace_files:
+        flat = [p for group in args.workspace_files for p in group]
+    run_aider(args.task, flat)
