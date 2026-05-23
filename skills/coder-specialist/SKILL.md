@@ -16,23 +16,21 @@ Clones the test-workshop-sandbox repository into a temporary workspace, runs aid
 
 ## Behavior
 
-1. Parse the `--query` argument (JSON string with keys: `task_id`, `plan`, `workspace_dir`)
-2. Determine workspace directory:
-   - If `workspace_dir` is absent or empty, create `/tmp/uws-sandbox-{task_id}/`
-3. Clone the sandbox repository if `.git` is not already present in `workspace_dir`:
+Envelope assembly is performed by a deterministic script — the skill body just invokes it and forwards stdout verbatim. No JSON construction by the LLM.
+
+1. If `--dry-run` appears in the trigger:
    ```
-   terminal git clone https://github.com/caiobellizzi/test-workshop-sandbox.git {workspace_dir}
+   terminal python3 /opt/ultra-workshop/hermes-skills/workshop_coder.py --query "<query>" --dry-run
    ```
-4. Create the task branch:
+   Forward stdout and stop.
+
+2. Otherwise:
    ```
-   terminal git -C {workspace_dir} checkout -b workshop/{task_id}
+   terminal python3 /opt/ultra-workshop/hermes-skills/workshop_coder.py --query "<query>"
    ```
-5. Run aider_runner.py to implement the plan goal:
-   ```
-   terminal python3 /opt/ultra-workshop/hermes-skills/aider_runner.py --task "{plan.goal}" --workspace-file "{workspace_dir}/README.md"
-   ```
-6. Capture the aider stdout output (diff summary). Truncate to first 500 characters if longer.
-7. Emit the Diff JSON object to stdout as the final output. The `changes` list may be empty — the reviewer uses the `summary` field for its assessment.
+   Forward stdout verbatim — it is already the Diff JSON envelope. Do NOT wrap, prefix, or annotate.
+
+The script internally clones the sandbox, creates `workshop/{task_id}`, runs `aider_runner.py`, and prints the Diff JSON envelope to stdout.
 
 ## Output Schema
 

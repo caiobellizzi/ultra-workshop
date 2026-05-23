@@ -15,6 +15,7 @@ HERMES_SKILL_RUN = Path("/opt/ultra-workshop/scripts/hermes-skill-run.sh")
 T = TypeVar("T", bound=BaseModel)
 
 _THINK_RE = re.compile(r"<think\b[^>]*>.*?</think>", re.DOTALL | re.IGNORECASE)
+_FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?```", re.DOTALL | re.IGNORECASE)
 
 
 def _extract_json(text: str, *, skill_name: str | None = None) -> str:
@@ -30,6 +31,9 @@ def _extract_json(text: str, *, skill_name: str | None = None) -> str:
     fragment.
     """
     text = _THINK_RE.sub("", text)
+    fenced = _FENCE_RE.search(text)
+    if fenced and "{" in fenced.group(1):
+        text = fenced.group(1)
     start = text.find("{")
     end = text.rfind("}")
     if start == -1 or end == -1 or end <= start:
