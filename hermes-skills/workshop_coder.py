@@ -51,10 +51,28 @@ def main() -> None:
     plan = query.get("plan", {}) or {}
     workspace_dir = query.get("workspace_dir") or f"/tmp/uws-sandbox-{task_id}/"
     goal = plan.get("goal", "")
+    previous_review = query.get("previous_review") or {}
 
     if not task_id or not goal:
         print("[workshop_coder] ERROR: query missing task_id or plan.goal", file=sys.stderr, flush=True)
         sys.exit(1)
+
+    # On retry, prepend reviewer feedback so aider knows what to fix.
+    aider_task = goal
+    if previous_review:
+        feedback = (previous_review.get("feedback") or "").strip()
+        blocking = previous_review.get("blocking_issues") or []
+        retry_prefix_parts = [
+            "RETRY: the previous attempt was rejected by the reviewer.",
+            "You MUST address the following before producing new code:",
+        ]
+        if feedback:
+            retry_prefix_parts.append(f"Reviewer feedback: {feedback}")
+        if blocking:
+            bullets = "\n".join(f"- {item}" for item in blocking)
+            retry_prefix_parts.append(f"Blocking issues that MUST be fixed:\n{bullets}")
+        retry_prefix_parts.append(f"Original goal: {goal}")
+        aider_task = "\n\n".join(retry_prefix_parts)
 
     workspace = Path(workspace_dir)
     workspace.mkdir(parents=True, exist_ok=True)
@@ -120,7 +138,7 @@ def main() -> None:
         )
 
     aider = subprocess.run(
-        [sys.executable, str(AIDER_RUNNER), "--task", goal, "--workspace-file", *target_files],
+        [sys.executable, str(AIDER_RUNNER), "--task", aider_task, "--workspace-file", *target_files],
         capture_output=True,
         text=True,
         shell=False,

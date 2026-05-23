@@ -69,11 +69,14 @@ def main() -> None:
     diff: Diff | None = None
     review: Review | None = None
     for attempt in range(3):
-        coder_query = json.dumps({
+        coder_payload = {
             "task_id": task_id,
             "plan": plan.model_dump(),
             "workspace_dir": diff.workspace_dir if diff else "",
-        })
+        }
+        if attempt > 0 and review is not None and not review.passed:
+            coder_payload["previous_review"] = review.model_dump()
+        coder_query = json.dumps(coder_payload)
         diff = run_specialist("coder-specialist", coder_query, Diff)
         append_progress(task_id, "coder_complete", {"branch": diff.branch, "attempt": attempt})
         print("[workshop] coder_complete done", flush=True)
