@@ -137,6 +137,13 @@ def main() -> None:
                  "GIT_COMMITTER_NAME": "uws", "GIT_COMMITTER_EMAIL": "uws@localhost"},
         )
 
+    # Capture HEAD SHA before aider runs so the post-run diff captures only
+    # aider's edits (and not the scaffold commit we just made above).
+    head_before_aider = subprocess.run(
+        ["git", "-C", str(workspace), "rev-parse", "HEAD"],
+        capture_output=True, text=True, shell=False, check=False,
+    ).stdout.strip()
+
     aider = subprocess.run(
         [sys.executable, str(AIDER_RUNNER), "--task", aider_task, "--workspace-file", *target_files],
         capture_output=True,
@@ -151,9 +158,25 @@ def main() -> None:
 
     summary = (aider.stdout or "")[:500]
 
+    # Walk the diff aider produced (committed + working-tree). Per-file diff
+    # is capped at 4000 chars to keep the Diff envelope JSON small — large
+    # files imply the reviewer should flag scope anyway.
+    changes: list[dict] = []
+    if head_before_aider:
+        name_only = subprocess.run(
+            ["git", "-C", str(workspace), "diff", "--name-only", head_before_aider],
+            capture_output=True, text=True, shell=False, check=False,
+        )
+        for file_path in [p for p in name_only.stdout.splitlines() if p.strip()]:
+            per_file = subprocess.run(
+                ["git", "-C", str(workspace), "diff", head_before_aider, "--", file_path],
+                capture_output=True, text=True, shell=False, check=False,
+            )
+            changes.append({"path": file_path, "diff": per_file.stdout[:4000]})
+
     payload = {
         "summary": summary,
-        "changes": [],
+        "changes": changes,
         "branch": branch,
         "workspace_dir": str(workspace),
     }

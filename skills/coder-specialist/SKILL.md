@@ -41,7 +41,9 @@ Emit exactly this JSON object to stdout (no surrounding text):
 ```json
 {
   "summary": "string — first 500 chars of aider stdout output",
-  "changes": [],
+  "changes": [
+    {"path": "utils.py", "diff": "@@ ... unified diff ..."}
+  ],
   "branch": "workshop/{task_id}",
   "workspace_dir": "/tmp/uws-sandbox-{task_id}/"
 }
@@ -49,7 +51,7 @@ Emit exactly this JSON object to stdout (no surrounding text):
 
 Fields:
 - `summary`: string containing the aider output (truncated to 500 chars)
-- `changes`: list of file-change objects; **prefer empty (`[]`)** — the reviewer reads `summary`, not `changes`. If you do populate it, each entry MUST be `{"path": "<file-path>", "diff": "<unified-diff>"}`. Do **not** use the key `file` — the validator accepts it but `path` is canonical.
+- `changes`: list of file-change objects, one per modified file. The script computes this from `git diff` against the pre-aider HEAD. Each entry MUST be `{"path": "<file-path>", "diff": "<unified-diff>"}` (per-file diff capped at 4000 chars). The reviewer compares this list against `plan.steps` and `plan.affected_files`. Do **not** use the key `file` — the validator accepts it but `path` is canonical.
 - `branch`: the git branch name in format `workshop/{task_id}`
 - `workspace_dir`: the absolute path to the cloned sandbox workspace — MUST be present and non-empty
 
