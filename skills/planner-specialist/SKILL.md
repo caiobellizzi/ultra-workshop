@@ -16,11 +16,22 @@ Generates a structured implementation Plan from a task goal and triage result.
 
 ## Behavior
 
-1. Parse the `--query` argument (JSON string with keys: `task_id`, `goal`, `triage_result`, `context`)
-2. If `context` does not already contain relevant code patterns for the goal, query Brain using the brain-query toolset to find related patterns
-3. Break the goal into 2–5 concrete, sequential implementation steps; each step identifies the files it touches
-4. Identify all `affected_files` that the implementation will create or modify, based on the goal and any Brain query results
-5. Emit the Plan JSON object to stdout as the final output
+You receive a single user message containing the `--query` argument (JSON with keys: `task_id`, `goal`, `triage_result`, `context`). **Emit the Plan JSON as your FIRST response.** No preamble. No explanation. No tool calls before the JSON.
+
+**Forbidden tools** (do NOT invoke any of these — the planner has everything it needs in the prompt):
+- `search_files`, `read_file`, `list_files`, `grep_files` — do NOT explore the codebase
+- `terminal`, `code_execution` — no shell commands
+- `web_search`, `web_extract`, `web_fetch` — no web access
+- `browser_*` — no browsing
+
+**Allowed (optional, use sparingly):**
+- `brain-query` — only if `context` is empty AND the task explicitly requires knowledge of repo-specific conventions (e.g. "add a feature flag in the existing flag system"). Skip Brain for self-contained tasks like "add a fibonacci function with docstring and test".
+
+**Steps (perform internally — do NOT call tools to do these):**
+1. Read `--query` from the prompt
+2. From `goal` + `triage_result`, identify 2–5 concrete sequential implementation steps; each step lists the files it will touch
+3. Collect `affected_files` (flat list of all paths touched across steps)
+4. Emit the Plan JSON to stdout. JSON only — nothing before, nothing after.
 
 ## Output Schema
 

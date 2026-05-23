@@ -52,9 +52,12 @@ def run_specialist(
     query_json: str,
     output_schema: Type[T],
     dry_run: bool = False,
-    timeout: int = 600,
+    timeout: int = 1200,
 ) -> T:
     """Call a Hermes specialist skill via hermes-skill-run.sh and parse JSON stdout.
+
+    Default timeout is 1200s (20 min) to accommodate reasoning models with
+    thinking-mode enabled (e.g. NIM DeepSeek V4 Pro). Override per-call as needed.
 
     Raises RuntimeError if subprocess exits non-zero.
     Raises subprocess.TimeoutExpired if specialist exceeds timeout.
