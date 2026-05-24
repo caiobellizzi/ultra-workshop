@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
-stopped_at: Phase 6 06-01 code complete; VPS live acceptance pending; Phase 5 remains not started
-last_updated: 2026-05-24T00:00:00-03:00
+stopped_at: Phase 6 06-01 VPS deployed and dry-run smoke verified; live Telegram acceptance pending; Phase 5 remains not started
+last_updated: 2026-05-24T16:38:50-03:00
 last_activity: 2026-05-24
 progress:
   total_phases: 6
@@ -69,10 +69,11 @@ Key decisions affecting first plans:
 - L17-A: Phase 6 unlocks multi-repo targeting via active registry entries in /srv/second-brain/_system/workshop-repos.json
 - L18-A: Phase 6 expands GitHub auth to registered repos while keeping repo mutations, pushes, and PR creation HITL-gated
 - Phase 6 Wave 1: repo registry, /repo command backend, repo-aware /build and /fix, repo-aware coder clone, and selected-repo PR creation implemented locally
+- Phase 6 deployment: Phase 6 files deployed to VPS, existing `GITHUB_PAT` verified with `ADMIN` permission on `caiobellizzi/test-workshop-sandbox`, and `tests/phase-06/repo-smoke.bats` passed 5/5 against the VPS
 
 ### Pending Todos
 
-- Phase 6 VPS deployment and live Telegram acceptance remain pending.
+- Phase 6 live Telegram acceptance remains pending.
 - Phase 5 is still not started in roadmap order.
 
 ### Blockers/Concerns

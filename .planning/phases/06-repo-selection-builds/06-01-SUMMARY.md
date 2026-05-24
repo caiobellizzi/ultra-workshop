@@ -48,6 +48,7 @@ requirements-completed: [REQ-ws-029]
 
 duration: 1h
 completed: 2026-05-24
+deployed: 2026-05-24
 ---
 
 # Phase 6 Plan 01 Summary
@@ -98,7 +99,7 @@ None - plan executed exactly as written.
 
 ## Issues Encountered
 
-- Full VPS smoke tests and live acceptance were not run in this turn. The code is locally verified, but the new files still need to be deployed to `/opt/ultra-workshop` and `/home/uws/.hermes/skills` before `tests/phase-06/repo-smoke.bats` can pass against the VPS.
+- VPS smoke initially failed because `uws` could not create `/srv/second-brain/_system/.workshop-repos.json.tmp`. The VPS `_system` directory was updated to group `uws` with `3775` permissions so registry atomic writes work without granting broad write access to existing files.
 - Live acceptance still needs a human Telegram approval path for `/repo create`, one real `/build --repo uws-smoke-<date> ...`, and PR confirmation against the smoke repo.
 
 ## Verification
@@ -111,16 +112,19 @@ None - plan executed exactly as written.
 - `python3 hermes-skills/workshop_repo.py add demo` - PASS, exits 2 with approval envelope
 - `bats --count tests/phase-06/repo-smoke.bats` - PASS, 5 tests discovered
 - `git diff --check` - PASS
+- VPS deploy of Phase 6 files to `/opt/ultra-workshop` and runtime skill docs to `/home/uws/.hermes/skills` - PASS
+- VPS `GITHUB_PAT` permission check with `gh repo view caiobellizzi/test-workshop-sandbox` - PASS, `viewerPermission=ADMIN`
+- VPS `/repo add caiobellizzi/test-workshop-sandbox --approved` with service-shaped env - PASS
+- `bats tests/phase-06/repo-smoke.bats` against VPS - PASS, 5/5 tests
 
 ## User Setup Required
 
-- Deploy updated `workshop/`, `hermes-skills/`, and `skills/` files to the VPS before running Phase 6 smoke tests.
-- Expand or replace `GITHUB_PAT` on the VPS so it has minimum permissions for active registry repos: view, clone, branch push, PR creation, and private repo creation.
+- No VPS PAT rotation was required for the sandbox repo; the existing token reports `ADMIN` permission for `caiobellizzi/test-workshop-sandbox`.
 - Run the live Telegram acceptance sequence from `06-01-PLAN.md` when ready.
 
 ## Next Phase Readiness
 
-Phase 6 code is locally ready for VPS deployment and live acceptance. Phase 5 remains not started in roadmap order.
+Phase 6 code is deployed to the VPS and dry-run smoke verified. Live Telegram acceptance remains pending. Phase 5 remains not started in roadmap order.
 
 ---
 *Phase: 06-repo-selection-builds*
