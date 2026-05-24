@@ -166,13 +166,13 @@ rationale: Default for personal infra; flip later if useful for others
 
 ---
 
-## LOCKED-L17 — Target repo allowlist Phase 1 = caiobellizzi/test-workshop-sandbox ONLY
+## LOCKED-L17 — Target repo allowlist Phase 1 sandbox baseline
 
 source: docs/ingest/PLAN.md §Locked decisions
 status: LOCKED
 scope: execution safety / blast radius
-decision: Phase 1 workshop may only touch `caiobellizzi/test-workshop-sandbox` repo
-rationale: Zero blast radius on real projects; expand to allowlist in Phase 2 after 10+ clean PRs
+decision: Phase 1 workshop was limited to `caiobellizzi/test-workshop-sandbox` repo until the owner-approved Phase 6 registry expansion (L17-A)
+rationale: Zero blast radius on real projects during Phase 1; Phase 6 promotion requires active registry gating and HITL
 
 ---
 
@@ -181,8 +181,28 @@ rationale: Zero blast radius on real projects; expand to allowlist in Phase 2 af
 source: docs/ingest/PLAN.md §Locked decisions
 status: LOCKED
 scope: GitHub authentication
-decision: Fine-grained PAT with `repo:write` on `test-workshop-sandbox` only. Upgrade path to GitHub App in Phase 2.
-rationale: Simpler than GitHub App for Phase 1; PAT compromise can only damage sandbox
+decision: Fine-grained PAT with `repo:write` scoped to `test-workshop-sandbox` until the owner-approved Phase 6 registry auth expansion (L18-A). Upgrade path to GitHub App remains.
+rationale: Simpler than GitHub App for Phase 1; Phase 6 broadens scope only for active registry entries with HITL gates
+
+---
+
+## OWNER-L17-A — Multi-repo support unlocked for Phase 6
+
+source: owner decision 2026-05-24 during gsd-import conflict resolution
+status: APPROVED
+scope: execution safety / blast radius
+decision: Workshop may target repositories listed as `active: true` in `/srv/second-brain/_system/workshop-repos.json`. The registry auto-seeds `caiobellizzi/test-workshop-sandbox`; `/repo remove` marks inactive and never deletes GitHub repositories. `/build` and `/fix` reject unknown or inactive repos.
+rationale: Phase 4 sandbox pipeline is complete; repo targeting is now a bounded follow-up phase with explicit registry gating.
+
+---
+
+## OWNER-L18-A — GitHub auth/security expanded for Phase 6
+
+source: owner decision 2026-05-24 during gsd-import conflict resolution
+status: APPROVED
+scope: GitHub authentication
+decision: `GITHUB_PAT` on the VPS may cover registered repos with the minimum permissions needed for view, clone, branch push, PR creation, and private repo creation. Repo creation, registration, removal, git push, and PR creation remain HITL-gated through the single allowed Telegram chat.
+rationale: The registry workflow requires broader GitHub API access than the sandbox-only PAT; HITL and active-registry checks are the compensating controls until GitHub App auth replaces the PAT.
 
 ---
 

@@ -80,8 +80,8 @@ content: Exactly one process may own the Telegram long-poll at any time. `uab-te
 
 source: docs/ingest/PLAN.md §LOCKED-L17
 type: nfr
-title: Phase 1 target repo allowlist = caiobellizzi/test-workshop-sandbox ONLY
-content: Workshop may only push branches and open PRs against `caiobellizzi/test-workshop-sandbox`. GitHub auth is a fine-grained PAT scoped to this repo only (`repo:write`). Multi-repo support is Phase 2+. All task branches follow naming `workshop/<short-id>-<slug>`. Never touch `main` directly.
+title: Repo targeting is registry-gated after Phase 6 unlock
+content: Phase 1 may only push branches and open PRs against `caiobellizzi/test-workshop-sandbox`. Owner amendment L17-A unlocks Phase 6 multi-repo support only for repos listed as `active: true` in `/srv/second-brain/_system/workshop-repos.json`; unknown or inactive repos are rejected. Owner amendment L18-A permits expanded `GITHUB_PAT` access for registered repos with minimum required permissions. All task branches follow naming `workshop/<short-id>-<slug>`. Never touch `main` directly.
 
 ---
 

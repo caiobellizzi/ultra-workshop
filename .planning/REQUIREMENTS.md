@@ -79,11 +79,15 @@ Acceptance: Validation via `model_validate_json()` in `run_specialist()`; `Runti
 
 **REQ-ws-007** — workshop-build skill
 `workshop-build` Hermes skill orchestrates 5-role specialist pipeline via `run_specialist()` subprocess calls (Architecture B).
-Acceptance: Pipeline runs triage → planner → coder → reviewer → pr_opener; reviewer→coder retry max 2; Pydantic schemas validated; end-to-end `/build <task>` → PR URL in Telegram within ~5 min (V8)
+Acceptance: Phase 4 baseline pipeline runs triage → planner → coder → reviewer → pr_opener; reviewer→coder retry max 2; Pydantic schemas validated; end-to-end `/build <task>` → PR URL in Telegram within ~5 min (V8). After REQ-ws-029 ships, repo-targeted builds use `/build --repo <repo> <task>` and missing `--repo` shows usage plus active repos.
 
 **REQ-ws-008** — workshop-fix skill
 `workshop-fix` Hermes skill for `/fix <github-issue-url>` path; same pipeline, different triage branch; fetches issue first.
 Acceptance: `/fix <issue-url>` → matching PR opened linking the issue (V9)
+
+**REQ-ws-029** — Telegram repo selection and repo-targeted builds
+Workshop exposes `/repo list`, `/repo add <repo>`, `/repo create <repo>`, and `/repo remove <repo>` backed by `/srv/second-brain/_system/workshop-repos.json`; `/build --repo <repo> <task>` targets an active registry repo; `/fix <issue-url>` derives `owner/name` from the issue URL and rejects unknown or inactive repos.
+Acceptance: Registry auto-seeds `caiobellizzi/test-workshop-sandbox`; add/create/remove mutations require Telegram approval; `/repo create` creates private repos with README; `/repo add` verifies WRITE, MAINTAIN, or ADMIN access; `/repo remove` only marks inactive; final PR approval shows repo, base branch, feature branch, changed files, and diff summary; live smoke confirms a PR targets a throwaway registered repo.
 
 ---
 
@@ -167,6 +171,7 @@ Acceptance: File exists and matches vocabulary table in PLAN.md (V23)
 | REQ-ws-028 | Phase 4 | Pending |
 | REQ-ws-007 | Phase 4 | Complete |
 | REQ-ws-008 | Phase 4 | Complete |
+| REQ-ws-029 | Phase 6 | Pending |
 | REQ-ws-009 | Phase 4 | Pending |
 | REQ-ws-010 | Phase 4 | Complete |
 | REQ-ws-011 | Phase 4 | Pending |
@@ -180,4 +185,4 @@ Acceptance: File exists and matches vocabulary table in PLAN.md (V23)
 | REQ-ws-022 | Phase 5 | Pending |
 | REQ-ws-023 | Phase 5 | Pending |
 
-**Coverage:** 28/28 requirements mapped. No orphans.
+**Coverage:** 29/29 requirements mapped. No orphans.

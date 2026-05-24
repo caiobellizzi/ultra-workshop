@@ -216,6 +216,6 @@ Explicit Phase 1 exclusions:
 - MoA / Self-MoA inside reviewer
 - Auto-merge / auto-deploy
 - Auto-merge of nightly-tests failures (HITL required)
-- Multi-repo support beyond allowlist
+- Multi-repo support beyond allowlist (Phase 1 exclusion; promoted to owner-approved Phase 6 by L17-A on 2026-05-24)
 - Plugin skill clusters (gsd-*, superpowers:*, dotnet-skills:*) — too claude-tool-coupled
 - Vault-level structured search endpoint on Brain

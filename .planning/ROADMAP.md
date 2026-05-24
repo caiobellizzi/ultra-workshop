@@ -2,7 +2,7 @@
 
 ## Overview
 
-Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same VPS. Five phases deliver the system in dependency order: vault sync first (everything reads from vault), then deploy infrastructure (Hermes + Telegram live), then skills (the tools the pipeline calls), then the core pipeline itself (build/fix/HITL/ledger), then autonomous routines and Brain↔Workshop integration loops. Phase 1 is fully linear; LangGraph is reserved for Phase 2 as an opt-in upgrade per L22.
+Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same VPS. Six phases deliver the system in dependency order: vault sync first (everything reads from vault), then deploy infrastructure (Hermes + Telegram live), then skills (the tools the pipeline calls), then the core pipeline itself (build/fix/HITL/ledger), then autonomous routines and Brain↔Workshop integration loops, then owner-approved repo selection for multi-repo builds. Phase 1 is fully linear; LangGraph is reserved for Phase 2 as an opt-in upgrade per L22.
 
 ---
 
@@ -13,6 +13,7 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 - [x] **Phase 3: Skill Toolkit** - Build and smoke-test all skills the pipeline needs: audit, Tier-1 ports, brain-bridge, Aider (completed 2026-05-21)
 - [x] **Phase 4: Build/Fix Pipeline** - Implement 5-role specialist pipeline with HITL, ledgers, cost circuit breaker, and PR output (completed 2026-05-23)
 - [ ] **Phase 5: Autonomous Routines & Integration Loops** - Ship 3 cron routines plus Brain↔Workshop vault signaling flows
+- [ ] **Phase 6: Repo Selection & Multi-Repo Builds** - Add a Brain-backed repo registry so Telegram builds and fixes can target active repos beyond the sandbox
 
 ---
 
@@ -91,21 +92,22 @@ Plans:
 **Requirements**: REQ-ws-028, REQ-ws-007, REQ-ws-008, REQ-ws-009, REQ-ws-010, REQ-ws-011, REQ-ws-012
 **Success Criteria** (what must be TRUE):
 
-  1. `/build <task>` runs the full triage → planner → coder → reviewer → pr_opener pipeline and produces a PR on `caiobellizzi/test-workshop-sandbox` within ~5 minutes
+  1. Phase 4 baseline: `/build <task>` runs the full triage → planner → coder → reviewer → pr_opener pipeline and produces a PR on `caiobellizzi/test-workshop-sandbox` within ~5 minutes; Phase 6 supersedes targeting semantics with `/build --repo <repo> <task>`
   2. Flow pauses at pr_opener with Telegram inline buttons; [Approve] pushes and opens PR; [Reject] aborts without touching any remote
   3. `~/.ultra-workshop/tasks/<id>/task_ledger.md` and `progress_log.jsonl` both exist after every completed build
   4. An ADR appears at `vault/_system/workshop-adrs/<task-id>.md` with correct frontmatter after PR creation
   5. At $20/day spend the system refuses new LLM calls with "budget exhausted"; at $18 cron routines self-cancel with a single Telegram warning
 
-**Plans**: 4 plans
+**Plans**: 7 plans
 Plans:
 
 - [x] 04-00-PLAN.md — Wave 0 prerequisites: GITHUB_PAT, gh CLI, test-workshop-sandbox repo
 - [x] 04-01-PLAN.md — workshop/ Python package: types, subprocess orchestrator, ledger, cost
 - [x] 04-02-PLAN.md — Five specialist SKILL.md files + workshop_push.py
 - [x] 04-03-PLAN.md — Entry-point scripts, SKILL.md wrappers, VPS deploy, smoke tests
-- [x] 04-05-PLAN.md — Async /build & /fix via background terminal (lift 600s cap)
 - [x] 04-04-PLAN.md — Specialist model matrix: NIM upgrade for planner/reviewer/architect (imported 2026-05-22)
+- [x] 04-05-PLAN.md — Async /build & /fix via background terminal (lift 600s cap)
+- [x] 04-06-PLAN.md — Make coder-specialist envelope deterministic (gap closure)
 
 **UI hint**: yes
 
@@ -123,17 +125,34 @@ Plans:
   5. `readlink /opt/ultra-workshop/workshop/trust_shared.py` returns the Brain trust module path; `trust_shared.classify_action('git push')` returns the expected risk tier
   6. `vault/_system/integration-contract.md` exists and matches the frontmatter vocabulary spec
 
-**Plans**: 2 plans
+**Plans**: TBD
 Plans:
 
-- [ ] 01-01-PLAN.md — GitHub remote, VPS deploy key, VPS cron, env vars on both systems
-- [ ] 01-02-PLAN.md — Mac vault remote, Obsidian-Git install+config, end-to-end smoke test
+- [ ] Phase 5 plans not generated yet
+
+### Phase 6: Repo Selection & Multi-Repo Builds
+
+**Goal**: Telegram can create, register, list, disable, and target active repos through a Brain-backed registry while preserving HITL before repo mutations, pushes, and PR creation
+**Depends on**: Phase 4
+**Requirements**: REQ-ws-029
+**Success Criteria** (what must be TRUE):
+
+  1. `/repo list` auto-seeds and displays `caiobellizzi/test-workshop-sandbox` when the registry is missing
+  2. `/repo add`, `/repo create`, and `/repo remove` validate permissions and require Telegram approval before mutating registry or GitHub state
+  3. `/build --repo <repo> <task>` validates an active registry repo before launching the background pipeline and opens the PR against that repo's default branch
+  4. `/fix <issue-url>` derives the repo from the GitHub issue URL and rejects unknown or inactive repos with a `/repo add` hint
+  5. Final PR approval shows repo, base branch, feature branch, changed files, and diff summary
+
+**Plans**: 1 plan
+Plans:
+
+- [ ] 06-01-PLAN.md — Telegram repo registry and repo-targeted builds
 
 ---
 
 ## Progress
 
-**Execution Order:** 1 → 2 → 3 → 4 → 5
+**Execution Order:** 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -142,6 +161,7 @@ Plans:
 | 3. Skill Toolkit | 5/5 | Complete   | 2026-05-21 |
 | 4. Build/Fix Pipeline | 7/7 | Complete   | 2026-05-23 |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
+| 6. Repo Selection & Multi-Repo Builds | 0/1 | Not started | - |
 
 ---
 

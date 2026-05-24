@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
-stopped_at: Phase 04 complete (7/7) — ready to discuss Phase 5
-last_updated: 2026-05-23T22:01:56.255Z
-last_activity: 2026-05-22
+stopped_at: Phase 04 complete (7/7); Phase 5 ready; Phase 6 repo-selection follow-up approved for planning
+last_updated: 2026-05-24T00:00:00-03:00
+last_activity: 2026-05-24
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 4
-  total_plans: 16
+  total_plans: 17
   completed_plans: 19
-  percent: 80
+  percent: 67
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-05-23
 
-Progress: [████████░░] 81%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -53,7 +53,7 @@ Progress: [████████░░] 81%
 
 ### Decisions
 
-Full decision log in PROJECT.md (L1–L30 + D1–D10 all LOCKED).
+Full decision log in PROJECT.md (L1–L30 + D1–D10 all LOCKED, plus owner amendments).
 Key decisions affecting first plans:
 
 - L27: Vault sync is Day 1 prerequisite — activate BEFORE skill audit and workshop deploy
@@ -66,10 +66,12 @@ Key decisions affecting first plans:
 - Phase 4 Wave 1: workshop/ package built with TDD (18 tests pass); run_specialist() uses subprocess.run(shell=False) targeting hermes-skill-run.sh
 - Phase 4 Wave 1: 5 specialist SKILL.md files created (triage/planner/coder/reviewer/pr-opener) + workshop_push.py
 - Phase 4 Wave 2: workshop_build.py + workshop_fix.py entry points deployed to VPS /opt/ultra-workshop/; 5 bats smoke tests pass; HITL exit-code-2 gate confirmed working
+- L17-A: Phase 6 unlocks multi-repo targeting via active registry entries in /srv/second-brain/_system/workshop-repos.json
+- L18-A: Phase 6 expands GitHub auth to registered repos while keeping repo mutations, pushes, and PR creation HITL-gated
 
 ### Pending Todos
 
-None yet.
+- Phase 6 06-01 is a follow-up plan for repo selection and can be scheduled after the current Phase 5 work or explicitly prioritized by owner direction.
 
 ### Blockers/Concerns
 
@@ -85,7 +87,7 @@ None yet.
 | Phase 2 | LangGraph StateGraph + SqliteSaver | Reserved | L22 |
 | Phase 2 | OpenHands V1 behind Coder ABC | Reserved | L10 |
 | Phase 2 | Broadcast review board (P3) | Reserved | L22 |
-| Phase 2 | Multi-repo allowlist expansion | Reserved | L17 |
+| Phase 6 | Multi-repo allowlist expansion | Promoted to follow-up plan | L17-A |
 
 ## Session Continuity
 
