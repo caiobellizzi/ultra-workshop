@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
-stopped_at: Phase 04 complete (7/7); Phase 5 ready; Phase 6 repo-selection follow-up approved for planning
+stopped_at: Phase 6 06-01 code complete; VPS live acceptance pending; Phase 5 remains not started
 last_updated: 2026-05-24T00:00:00-03:00
 last_activity: 2026-05-24
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 17
-  completed_plans: 19
-  percent: 67
+  completed_phases: 5
+  total_plans: 20
+  completed_plans: 20
+  percent: 83
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-05-23
 
-Progress: [███████░░░] 67%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -68,10 +68,12 @@ Key decisions affecting first plans:
 - Phase 4 Wave 2: workshop_build.py + workshop_fix.py entry points deployed to VPS /opt/ultra-workshop/; 5 bats smoke tests pass; HITL exit-code-2 gate confirmed working
 - L17-A: Phase 6 unlocks multi-repo targeting via active registry entries in /srv/second-brain/_system/workshop-repos.json
 - L18-A: Phase 6 expands GitHub auth to registered repos while keeping repo mutations, pushes, and PR creation HITL-gated
+- Phase 6 Wave 1: repo registry, /repo command backend, repo-aware /build and /fix, repo-aware coder clone, and selected-repo PR creation implemented locally
 
 ### Pending Todos
 
-- Phase 6 06-01 is a follow-up plan for repo selection and can be scheduled after the current Phase 5 work or explicitly prioritized by owner direction.
+- Phase 6 VPS deployment and live Telegram acceptance remain pending.
+- Phase 5 is still not started in roadmap order.
 
 ### Blockers/Concerns
 

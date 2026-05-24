@@ -13,7 +13,7 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 - [x] **Phase 3: Skill Toolkit** - Build and smoke-test all skills the pipeline needs: audit, Tier-1 ports, brain-bridge, Aider (completed 2026-05-21)
 - [x] **Phase 4: Build/Fix Pipeline** - Implement 5-role specialist pipeline with HITL, ledgers, cost circuit breaker, and PR output (completed 2026-05-23)
 - [ ] **Phase 5: Autonomous Routines & Integration Loops** - Ship 3 cron routines plus Brain↔Workshop vault signaling flows
-- [ ] **Phase 6: Repo Selection & Multi-Repo Builds** - Add a Brain-backed repo registry so Telegram builds and fixes can target active repos beyond the sandbox
+- [x] **Phase 6: Repo Selection & Multi-Repo Builds** - Add a Brain-backed repo registry so Telegram builds and fixes can target active repos beyond the sandbox (code complete 2026-05-24; VPS live acceptance pending)
 
 ---
 
@@ -146,7 +146,7 @@ Plans:
 **Plans**: 1 plan
 Plans:
 
-- [ ] 06-01-PLAN.md — Telegram repo registry and repo-targeted builds
+- [x] 06-01-PLAN.md — Telegram repo registry and repo-targeted builds
 
 ---
 
@@ -161,7 +161,7 @@ Plans:
 | 3. Skill Toolkit | 5/5 | Complete   | 2026-05-21 |
 | 4. Build/Fix Pipeline | 7/7 | Complete   | 2026-05-23 |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
-| 6. Repo Selection & Multi-Repo Builds | 0/1 | Not started | - |
+| 6. Repo Selection & Multi-Repo Builds | 1/1 | Code complete (live acceptance pending) | 2026-05-24 |
 
 ---
 
