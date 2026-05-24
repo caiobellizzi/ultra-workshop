@@ -1,6 +1,6 @@
 ---
 name: workshop-build
-description: "Build a coding task: /build <task> runs the 5-role pipeline (triage→planner→coder→reviewer→HITL) and opens a PR after human approval."
+description: "Build a coding task: /build --repo <repo> <task> runs the 5-role pipeline and opens a PR after human approval."
 version: 1.0.0
 author: ultra-workshop (local impl)
 license: MIT
@@ -18,14 +18,14 @@ Runs the full 5-role workshop pipeline for a coding task and opens a PR on human
 
 The skill body handles two kinds of turns: the initial `/build` trigger turn, and the background-job notification turn that fires when the pipeline subprocess finishes.
 
-### A. Initial `/build <task>` turn
+### A. Initial `/build --repo <repo> <task>` turn
 
-1. Extract the task description from the user trigger (everything after `/build`)
+1. Extract `--repo <repo>` and the task description from the user trigger. If `--repo` is missing, run the backend dry usage path and return its output.
 2. Extract `session_id` and `chat_id` from context if available (defaults: session_id="", chat_id="7113965359")
-3. If `--dry-run` appears in the trigger: print dry-run message and stop without calling terminal
+3. If `--dry-run` appears in the trigger, run `workshop_build.py --dry-run` with any parsed `--repo` and `--task`, return stdout, and stop. No LLM calls are made.
 4. Fire the pipeline as a **background job** (the foreground `terminal` tool hard-caps at 600s; the pipeline runs 12–20 min):
    ```
-   terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_build.py --task \"<task>\" --session-id \"<session_id>\" --chat-id \"<chat_id>\"",
+   terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_build.py --repo \"<repo>\" --task \"<task>\" --session-id \"<session_id>\" --chat-id \"<chat_id>\"",
             background=true, notify_on_complete=true)
    ```
 5. Reply: `"🔧 Workshop pipeline started in background. I'll ping you when it's ready for approval."` and end the turn.
@@ -38,11 +38,11 @@ When the background job completes, Hermes opens a fresh agent turn carrying the 
 - `exit 1`: pipeline failed — reply with the last 500 chars of stderr.
 - `exit 2` (needs_approval):
   - Parse the JSON from the last stdout line emitted by `workshop_build.py`.
-  - The JSON contains: `task_id`, `branch`, `workspace_dir`, `plan_goal`, `diff_summary`, `summary`.
+  - The JSON contains: `task_id`, `branch`, `workspace_dir`, `repo_full_name`, `default_branch`, `plan_goal`, `diff_summary`, `summary`.
   - Call `clarify` with the value of `summary` (e.g. "Review passed. Push branch 'workshop/abc-def' and open PR for: add hello endpoint?").
   - If approved, run the push step in **foreground** (no `background` flag — push is <30s):
     ```
-    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_push.py --task-id \"<task_id>\" --branch \"<branch>\" --workspace-dir \"<workspace_dir>\" --plan-goal \"<plan_goal>\" --diff-summary \"<diff_summary>\"")
+    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_push.py --task-id \"<task_id>\" --branch \"<branch>\" --workspace-dir \"<workspace_dir>\" --repo-full-name \"<repo_full_name>\" --base \"<default_branch>\" --plan-goal \"<plan_goal>\" --diff-summary \"<diff_summary>\"")
     ```
     Return the final stdout (PR URL line from `workshop_push.py`).
   - If rejected, reply: `"PR creation rejected for task <task_id>."`
@@ -68,9 +68,11 @@ triage-specialist
   "task_id": "<task-id>",
   "branch": "<branch>",
   "workspace_dir": "<path>",
+  "repo_full_name": "<owner/name>",
+  "default_branch": "<branch>",
   "plan_goal": "<goal>",
   "diff_summary": "<summary>",
-  "summary": "Review passed. Push branch '<branch>' and open PR for: <goal>?"
+  "summary": "Review passed for <owner/name> (<base>). Push branch '<branch>' and open PR for: <goal>?"
 }
 ```
 

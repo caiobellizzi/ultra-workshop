@@ -30,7 +30,7 @@ The skill body handles two kinds of turns: the initial `/fix` trigger turn, and 
    ```
 5. Reply: `"🔧 Workshop pipeline started in background. I'll ping you when it's ready for approval."` and end the turn.
 
-`workshop_fix.py` internally fetches the issue title, body, and number via `gh issue view`, composes a task string `"Fix issue #<N>: <title>\n\n<body[:500]>"`, then delegates to `workshop_build.py` and propagates its exit code.
+`workshop_fix.py` derives `owner/name` from the issue URL, validates that repo against the active registry, fetches the issue title, body, and number via `gh issue view --repo <owner/name>`, composes a task string `"Fix issue #<N>: <title>\n\n<body[:500]>"`, then delegates to `workshop_build.py --repo <owner/name>` and propagates its exit code.
 
 ### B. Background-job completion notification turn
 
@@ -43,7 +43,7 @@ Branch on the exit code from the captured terminal result:
   - Call `clarify` with the value of `summary` from the JSON.
   - If approved, run the push step in **foreground** (no `background` flag — push is <30s):
     ```
-    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_push.py --task-id \"<task_id>\" --branch \"<branch>\" --workspace-dir \"<workspace_dir>\" --plan-goal \"<plan_goal>\" --diff-summary \"<diff_summary>\"")
+    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_push.py --task-id \"<task_id>\" --branch \"<branch>\" --workspace-dir \"<workspace_dir>\" --repo-full-name \"<repo_full_name>\" --base \"<default_branch>\" --plan-goal \"<plan_goal>\" --diff-summary \"<diff_summary>\"")
     ```
     Return the final stdout (PR URL line from `workshop_push.py`).
   - If rejected, reply: `"PR creation rejected for task <task_id>."`

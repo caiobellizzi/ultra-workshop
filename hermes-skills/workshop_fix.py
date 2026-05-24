@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 def main() -> None:
@@ -16,16 +19,30 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Print dry-run message and exit 0")
     args = parser.parse_args()
 
+    from workshop.repo_registry import RepoRegistryError, parse_issue_repo, validate_active_repo
+
+    try:
+        repo_full_name, issue_number = parse_issue_repo(args.issue_url)
+    except RepoRegistryError as exc:
+        print(f"[workshop_fix] ERROR: {exc}", flush=True)
+        sys.exit(1)
+
     if args.dry_run:
         print("[dry-run] would fetch issue and run workshop pipeline", flush=True)
         print(f"[dry-run] issue-url: {args.issue_url!r}", flush=True)
+        print(f"[dry-run] repo: {repo_full_name!r}", flush=True)
+        print(f"[dry-run] issue: {issue_number}", flush=True)
         sys.exit(0)
 
-    # Fetch issue body via gh CLI
-    import os
+    try:
+        validate_active_repo(repo_full_name)
+    except RepoRegistryError as exc:
+        print(f"[workshop_fix] ERROR: {exc}", flush=True)
+        sys.exit(1)
 
+    # Fetch issue body via gh CLI
     result = subprocess.run(
-        ["gh", "issue", "view", args.issue_url, "--json", "title,body,number"],
+        ["gh", "issue", "view", str(issue_number), "--repo", repo_full_name, "--json", "title,body,number"],
         capture_output=True,
         text=True,
         shell=False,
@@ -43,6 +60,7 @@ def main() -> None:
         [
             sys.executable,
             str(Path(__file__).parent / "workshop_build.py"),
+            "--repo", repo_full_name,
             "--task", task,
             "--session-id", args.session_id,
             "--chat-id", args.chat_id,

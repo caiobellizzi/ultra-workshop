@@ -2,7 +2,7 @@
 """Deterministic envelope producer for the coder-specialist stage.
 
 Replaces the LLM-driven JSON assembly in skills/coder-specialist/SKILL.md.
-Clones the sandbox repo, creates the task branch, runs aider_runner.py, and
+Clones the selected active repo, creates the task branch, runs aider_runner.py, and
 emits the Diff JSON envelope to stdout.
 
 SECURITY: subprocess.run([...], shell=False) throughout — no shell-injection
@@ -17,16 +17,21 @@ import subprocess
 import sys
 from pathlib import Path
 
-SANDBOX_REPO = "https://github.com/caiobellizzi/test-workshop-sandbox.git"
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from workshop.repo_registry import DEFAULT_REPO, canonicalize_repo  # noqa: E402
+
 AIDER_RUNNER = Path(__file__).parent / "aider_runner.py"
 
 
-def _emit_dry_run() -> None:
+def _emit_dry_run(repo_full_name: str = DEFAULT_REPO, default_branch: str = "main") -> None:
     payload = {
         "summary": "dry-run coder",
         "changes": [],
         "branch": "workshop/dry-run",
         "workspace_dir": "/tmp/uws-sandbox-dry-run",
+        "repo_full_name": repo_full_name,
+        "default_branch": default_branch,
     }
     print(json.dumps(payload), flush=True)
     sys.exit(0)
@@ -38,14 +43,18 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Emit hardcoded dry-run envelope and exit 0")
     args = parser.parse_args()
 
-    if args.dry_run:
-        _emit_dry_run()
-
     try:
         query = json.loads(args.query)
     except json.JSONDecodeError as exc:
         print(f"[workshop_coder] ERROR: --query is not valid JSON: {exc}", file=sys.stderr, flush=True)
         sys.exit(1)
+
+    repo = query.get("repo") or {}
+    repo_full_name = canonicalize_repo(str(repo.get("full_name") or query.get("repo_full_name") or DEFAULT_REPO))
+    default_branch = str(repo.get("default_branch") or query.get("default_branch") or "main")
+
+    if args.dry_run:
+        _emit_dry_run(repo_full_name, default_branch)
 
     task_id = query.get("task_id", "")
     plan = query.get("plan", {}) or {}
@@ -77,19 +86,27 @@ def main() -> None:
     workspace = Path(workspace_dir)
     workspace.mkdir(parents=True, exist_ok=True)
 
-    # 1. Clone sandbox if .git absent
+    # 1. Clone target repo if .git absent
     if not (workspace / ".git").exists():
         clone = subprocess.run(
-            ["git", "clone", SANDBOX_REPO, str(workspace)],
+            ["gh", "repo", "clone", repo_full_name, str(workspace)],
             capture_output=True,
             text=True,
             shell=False,
+            env={**os.environ, "GH_TOKEN": os.environ.get("GITHUB_PAT", "")},
         )
         if clone.returncode != 0:
-            print(f"[workshop_coder] ERROR: git clone failed: {clone.stderr}", file=sys.stderr, flush=True)
+            print(f"[workshop_coder] ERROR: gh repo clone failed: {clone.stderr}", file=sys.stderr, flush=True)
             sys.exit(1)
 
     branch = f"workshop/{task_id}"
+
+    subprocess.run(
+        ["git", "-C", str(workspace), "checkout", default_branch],
+        capture_output=True,
+        text=True,
+        shell=False,
+    )
 
     # 2. Create task branch (ignore failure if branch already exists — checkout instead)
     checkout = subprocess.run(
@@ -179,6 +196,8 @@ def main() -> None:
         "changes": changes,
         "branch": branch,
         "workspace_dir": str(workspace),
+        "repo_full_name": repo_full_name,
+        "default_branch": default_branch,
     }
     print(json.dumps(payload), flush=True)
     sys.exit(0)

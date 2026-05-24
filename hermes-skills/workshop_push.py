@@ -35,16 +35,15 @@ try:
 except Exception as _exc:
     print(f"[workshop_push] WARNING: brain_http not loaded: {_exc}", file=sys.stderr, flush=True)
 
-REPO = "caiobellizzi/test-workshop-sandbox"
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Post-approval: git push + gh pr create + ADR write-back.",
     )
     parser.add_argument("--task-id", required=True, help="Workshop task ID")
     parser.add_argument("--branch", required=True, help="Git branch to push (e.g. workshop/<task-id>)")
-    parser.add_argument("--workspace-dir", required=True, help="Absolute path to the cloned sandbox workspace")
+    parser.add_argument("--workspace-dir", required=True, help="Absolute path to the cloned target repo workspace")
+    parser.add_argument("--repo-full-name", default="caiobellizzi/test-workshop-sandbox", help="GitHub owner/name for PR creation")
+    parser.add_argument("--base", default="main", help="Base branch for PR creation")
     parser.add_argument("--plan-goal", default="", help="Original task goal (used in PR title and ADR)")
     parser.add_argument("--diff-summary", default="", help="Aider diff summary (used in PR body and ADR)")
     args = parser.parse_args()
@@ -52,6 +51,8 @@ def main() -> None:
     task_id = args.task_id
     branch = args.branch
     workspace_dir = args.workspace_dir
+    repo_full_name = args.repo_full_name
+    base_branch = args.base
 
     # STEP 1 — git push
     push_result = subprocess.run(
@@ -76,8 +77,8 @@ def main() -> None:
     pr_result = subprocess.run(
         [
             "gh", "pr", "create",
-            "--repo", REPO,
-            "--base", "main",
+            "--repo", repo_full_name,
+            "--base", base_branch,
             "--head", branch,
             "--title", pr_title,
             "--body", pr_body,
@@ -99,6 +100,8 @@ def main() -> None:
     adr_content = (
         f"---\n"
         f"workshop.task_id: {task_id}\n"
+        f"workshop.repo: {repo_full_name}\n"
+        f"workshop.base_branch: {base_branch}\n"
         f"workshop.status: done\n"
         f"workshop.pr_url: {pr_url}\n"
         f"system.created_by: workshop\n"
