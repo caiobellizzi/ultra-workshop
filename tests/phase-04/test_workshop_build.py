@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from workshop.orchestrator import ClarificationNeeded
+from workshop.orchestrator import ClarificationNeeded, SpecialistFailed
 from workshop.requirements_gate import RequirementsDecision
 from workshop.types import ClarificationRequest, Diff, Plan, Review
 
@@ -36,6 +36,14 @@ class _TriageResult:
             "summary": self.summary,
             "complexity": self.complexity,
         }
+
+
+@pytest.fixture(autouse=True)
+def isolated_ledger(tmp_path, monkeypatch) -> Path:
+    import workshop.ledger as ledger_mod
+
+    monkeypatch.setattr(ledger_mod, "LEDGER_BASE", tmp_path)
+    return tmp_path
 
 
 def test_workshop_build_emits_clarification_payload(monkeypatch, capsys) -> None:
@@ -92,6 +100,12 @@ def test_workshop_build_emits_clarification_payload(monkeypatch, capsys) -> None
     assert payload["hitl_type"] == "clarification"
     assert payload["task_id"] == "ws-fixed"
     assert payload["source_stage"] == "requirements"
+
+    from workshop.state import load_task_state
+
+    state = load_task_state("ws-fixed")
+    assert state["status"] == "needs_clarification"
+    assert state["next_stage"] == "requirements"
 
 
 def test_workshop_build_resume_preserves_task_id_and_clarifications(tmp_path, monkeypatch, capsys) -> None:
@@ -168,3 +182,78 @@ def test_workshop_build_resume_preserves_task_id_and_clarifications(tmp_path, mo
     assert seen_queries["planner-specialist"]["clarifications"] == [
         "Meaning: Use the 12-factor app methodology"
     ]
+
+    from workshop.state import load_task_state
+
+    state = load_task_state("ws-fixed")
+    assert state["status"] == "needs_approval"
+    assert state["next_stage"] == "approval"
+    assert state["approval_payload"]["task_id"] == "ws-fixed"
+
+
+def test_workshop_build_stops_for_coder_timeout_recovery(monkeypatch, capsys) -> None:
+    import workshop.cost as cost_mod
+    import workshop.ledger as ledger_mod
+    import workshop.orchestrator as orchestrator_mod
+    import workshop.repo_registry as repo_mod
+
+    monkeypatch.setattr(cost_mod, "check_circuit_breaker", lambda: None)
+    monkeypatch.setattr(
+        repo_mod,
+        "mark_last_used",
+        lambda repo: {"full_name": "caiobellizzi/test-workshop-sandbox", "default_branch": "main"},
+    )
+    monkeypatch.setattr(ledger_mod, "write_task_ledger", lambda *a, **kw: None)
+    monkeypatch.setattr(ledger_mod, "append_progress", lambda *a, **kw: None)
+
+    def fake_run_specialist(skill_name, query_json, output_schema, dry_run=False, timeout=1200):
+        payload = json.loads(query_json)
+        if skill_name == "triage-specialist":
+            return _TriageResult()
+        if skill_name == "requirements-specialist":
+            return RequirementsDecision(goal=payload["goal"], clarifications=[])
+        if skill_name == "planner-specialist":
+            return Plan(
+                goal=payload["goal"],
+                steps=[{"id": "1", "description": "Implement", "files": ["README.md"]}],
+                affected_files=["README.md"],
+            )
+        if skill_name == "coder-specialist":
+            assert payload["stage_policy"]["tool_timeout"] == 900
+            raise SpecialistFailed(
+                "coder-specialist",
+                124,
+                "[workshop_coder] ERROR: aider_runner timed out after 900s",
+            )
+        raise AssertionError(skill_name)
+
+    monkeypatch.setattr(orchestrator_mod, "run_specialist", fake_run_specialist)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "workshop_build.py",
+            "--repo",
+            "test-workshop-sandbox",
+            "--task",
+            "create a multi agent orchestration",
+            "--task-id",
+            "ws-timeout",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        workshop_build.main()
+
+    assert exc_info.value.code == 2
+    payload = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert payload["hitl_type"] == "timeout_recovery"
+    assert payload["task_id"] == "ws-timeout"
+    assert payload["stage"] == "coder"
+
+    from workshop.state import load_task_state
+
+    state = load_task_state("ws-timeout")
+    assert state["status"] == "needs_timeout_recovery"
+    assert state["next_stage"] == "coder"
+    assert state["attempts"]["coder"] == 1

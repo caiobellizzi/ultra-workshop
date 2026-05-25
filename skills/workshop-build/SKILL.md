@@ -42,27 +42,41 @@ When the background job completes, Hermes opens a fresh agent turn carrying the 
   - Branch on `hitl_type`.
   - `hitl_type="clarification"`:
     - Ask the user the batched clarification questions from `questions[]`, show any `options[]`, and allow free text when `allow_free_text=true`.
-    - Write the answers to a temp JSON file and re-launch `workshop_build.py` in the background with the same `--task-id` plus `--clarifications-file <path>`.
-    - Resume always restarts from the requirements/planner path so the human answer becomes part of the plan context.
+    - Write the answers to a temp JSON file and re-launch through the single deterministic continuation command. Do not call `workshop_build.py` directly for HITL continuations.
+    ```
+    terminal(command="RESP_FILE=\"$(mktemp /tmp/uws-hitl-response.XXXXXX)\"\ncat > \"$RESP_FILE\" <<'__UWS_HITL_RESPONSE__'\n<clarification_response_json>\n__UWS_HITL_RESPONSE__\npython3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type clarification --response-file \"$RESP_FILE\"",
+             background=true, notify_on_complete=true)
+    ```
+    - Resume restarts from persisted `state.json` so the original task directory and task ID are preserved.
+  - `hitl_type="timeout_recovery"`:
+    - Ask the user to choose a recovery path from `options[]`, or provide free text when `allow_free_text=true`.
+    - Write the answer to a temp JSON file and re-launch through `workshop_continue.py`.
+    ```
+    terminal(command="RESP_FILE=\"$(mktemp /tmp/uws-hitl-response.XXXXXX)\"\ncat > \"$RESP_FILE\" <<'__UWS_HITL_RESPONSE__'\n<timeout_recovery_response_json>\n__UWS_HITL_RESPONSE__\npython3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type timeout_recovery --response-file \"$RESP_FILE\"",
+             background=true, notify_on_complete=true)
+    ```
+    - If the user selects decomposition, the backend re-enters planning with the human-approved scope instruction. Do not ask coder to "try smaller" directly.
   - `hitl_type="approval"`:
     - The JSON contains: `task_id`, `branch`, `workspace_dir`, `repo_full_name`, `default_branch`, `plan_goal`, `diff_summary`, `summary`.
     - Call `clarify` with the value of `summary` (e.g. "Review passed. Push branch 'workshop/abc-def' and open PR for: add hello endpoint?").
-    - If approved, run the push step in **foreground** (no `background` flag — push is <30s). Do not inline `plan_goal` or `diff_summary` in shell arguments; write them to files with quoted heredocs and pass the file paths.
+    - Write the approval/rejection response to a temp JSON file and run the deterministic continuation command in **foreground** (no `background` flag — push is <30s).
     ```
-    terminal(command="PLAN_FILE=\"$(mktemp /tmp/uws-plan-goal.XXXXXX)\"\nDIFF_FILE=\"$(mktemp /tmp/uws-diff-summary.XXXXXX)\"\ncat > \"$PLAN_FILE\" <<'__UWS_PLAN_GOAL__'\n<plan_goal>\n__UWS_PLAN_GOAL__\ncat > \"$DIFF_FILE\" <<'__UWS_DIFF_SUMMARY__'\n<diff_summary>\n__UWS_DIFF_SUMMARY__\npython3 /opt/ultra-workshop/hermes-skills/workshop_push.py --task-id \"<task_id>\" --branch \"<branch>\" --workspace-dir \"<workspace_dir>\" --repo-full-name \"<repo_full_name>\" --base \"<default_branch>\" --plan-goal-file \"$PLAN_FILE\" --diff-summary-file \"$DIFF_FILE\"")
+    terminal(command="RESP_FILE=\"$(mktemp /tmp/uws-hitl-response.XXXXXX)\"\ncat > \"$RESP_FILE\" <<'__UWS_HITL_RESPONSE__'\n<approval_response_json>\n__UWS_HITL_RESPONSE__\npython3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type approval --response-file \"$RESP_FILE\"")
     ```
-    Return the final stdout (PR URL line from `workshop_push.py`).
-    - If rejected, reply: `"PR creation rejected for task <task_id>."`
+    Return the final stdout from `workshop_continue.py`.
 
 ## Pipeline Flow
 
 ```
 triage-specialist
+  → requirements-specialist
   → planner-specialist
   → coder-specialist
   → reviewer-specialist  (retry up to 2 times if review.passed is False)
   → [exit 2 + clarification HITL if intent is ambiguous]
+  → [exit 2 + timeout recovery HITL if an expensive stage times out]
   → [exit 2 + HITL clarify gate]
+  → workshop_continue.py (all HITL continuations)
   → workshop_push.py     (on approval: git push + gh pr create + ADR write-back)
 ```
 
@@ -86,8 +100,8 @@ triage-specialist
 
 The skill body catches exit code 2, issues a `clarify` with `summary`, and waits for the Telegram inline button response.
 
-- On approval: `workshop_push.py` performs `git push` + `gh pr create` + ADR write-back.
-- On rejection: no git operations are performed.
+- On approval: `workshop_continue.py --hitl-type approval` calls `workshop_push.py` for `git push` + `gh pr create` + ADR write-back.
+- On rejection: `workshop_continue.py` records `approval_rejected`; no git operations are performed.
 
 ## Dry-run Behavior
 

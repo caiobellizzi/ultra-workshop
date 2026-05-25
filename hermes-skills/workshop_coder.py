@@ -21,10 +21,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from workshop.requirements_gate import maybe_clarification_request  # noqa: E402
 from workshop.repo_registry import DEFAULT_REPO, canonicalize_repo  # noqa: E402
+from workshop.stage_policy import stage_tool_timeout  # noqa: E402
 from workshop.types import ClarificationQuestion, ClarificationRequest  # noqa: E402
 
 AIDER_RUNNER = Path(__file__).parent / "aider_runner.py"
-AIDER_RUN_TIMEOUT = int(os.environ.get("AIDER_RUN_TIMEOUT", "900"))
+DEFAULT_AIDER_RUN_TIMEOUT = int(os.environ.get("AIDER_RUN_TIMEOUT", str(stage_tool_timeout("coder") or 900)))
 
 
 def _emit_dry_run(repo_full_name: str = DEFAULT_REPO, default_branch: str = "main") -> None:
@@ -125,6 +126,8 @@ def main() -> None:
     workspace_dir = query.get("workspace_dir") or f"/tmp/uws-sandbox-{task_id}/"
     goal = plan.get("goal", "")
     previous_review = query.get("previous_review") or {}
+    stage_policy_payload = query.get("stage_policy") or {}
+    aider_run_timeout = int(stage_policy_payload.get("tool_timeout") or DEFAULT_AIDER_RUN_TIMEOUT)
 
     if not task_id or not goal:
         print("[workshop_coder] ERROR: query missing task_id or plan.goal", file=sys.stderr, flush=True)
@@ -214,11 +217,11 @@ def main() -> None:
             text=True,
             shell=False,
             env=os.environ.copy(),
-            timeout=AIDER_RUN_TIMEOUT,
+            timeout=aider_run_timeout,
         )
     except subprocess.TimeoutExpired:
         print(
-            f"[workshop_coder] ERROR: aider_runner timed out after {AIDER_RUN_TIMEOUT}s",
+            f"[workshop_coder] ERROR: aider_runner timed out after {aider_run_timeout}s",
             file=sys.stderr,
             flush=True,
         )

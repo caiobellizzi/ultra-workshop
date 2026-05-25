@@ -28,6 +28,16 @@ class ClarificationNeeded(RuntimeError):
         )
 
 
+class SpecialistFailed(RuntimeError):
+    def __init__(self, skill_name: str, returncode: int, stderr: str):
+        self.skill_name = skill_name
+        self.returncode = returncode
+        self.stderr = stderr
+        super().__init__(
+            f"Specialist {skill_name!r} exited {returncode}: {stderr[:500]}"
+        )
+
+
 def _extract_json(text: str, *, skill_name: str | None = None) -> str:
     """Find and return the first complete JSON object in text.
 
@@ -69,7 +79,7 @@ def run_specialist(
     Default timeout is 1200s (20 min) to accommodate reasoning models with
     thinking-mode enabled (e.g. NIM DeepSeek V4 Pro). Override per-call as needed.
 
-    Raises RuntimeError if subprocess exits non-zero.
+    Raises SpecialistFailed if subprocess exits non-zero.
     Raises subprocess.TimeoutExpired if specialist exceeds timeout.
     Raises ValidationError if stdout is not valid schema JSON.
     """
@@ -87,9 +97,7 @@ def run_specialist(
     )
 
     if result.returncode != 0:
-        raise RuntimeError(
-            f"Specialist {skill_name!r} exited {result.returncode}: {result.stderr[:500]}"
-        )
+        raise SpecialistFailed(skill_name, result.returncode, result.stderr)
 
     raw_json = _extract_json(result.stdout, skill_name=skill_name)
     payload = json.loads(raw_json)

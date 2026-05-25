@@ -29,6 +29,8 @@ def normalize_clarifications(raw: object) -> list[str]:
     if isinstance(raw, dict):
         if "answers" in raw:
             return normalize_clarifications(raw.get("answers"))
+        if "user_responses" in raw:
+            return normalize_clarifications(raw.get("user_responses"))
         question = str(raw.get("question") or raw.get("prompt") or "").strip()
         answer = str(raw.get("answer") or raw.get("response") or raw.get("value") or "").strip()
         if question and answer:
