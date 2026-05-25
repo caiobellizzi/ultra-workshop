@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import json
 import secrets
 import subprocess
@@ -84,6 +86,14 @@ def _load_clarifications(path: str) -> list[str]:
     return [normalized] if normalized else []
 
 
+def _decode_b64_arg(value: str, label: str) -> str:
+    try:
+        return base64.b64decode(value.encode("ascii"), validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError) as exc:
+        print(f"[workshop] invalid {label}: {exc}", flush=True)
+        sys.exit(1)
+
+
 def _merge_unique(existing: list[str], new_items: list[str]) -> list[str]:
     merged = list(existing)
     seen = set(merged)
@@ -152,6 +162,7 @@ def main() -> None:
     parser.add_argument("--repo", type=str, default="", help="Target repo, shorthand allowed (e.g. my-app)")
     parser.add_argument("--task", type=str, default="", help="Task description")
     parser.add_argument("--task-file", type=str, default="", help="Path containing the task description")
+    parser.add_argument("--task-b64", type=str, default="", help="Base64-encoded UTF-8 task description")
     parser.add_argument("--task-id", type=str, default="", help="Existing task ID to resume")
     parser.add_argument("--clarifications-file", type=str, default="", help="Path containing human clarification answers")
     parser.add_argument("--resume", action="store_true", help="Resume an existing task from state.json")
@@ -160,13 +171,16 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Print dry-run message and exit 0")
     args = parser.parse_args()
 
-    task = args.task
     if args.task_file:
         try:
             task = Path(args.task_file).read_text(encoding="utf-8").rstrip("\n")
         except OSError as exc:
             print(f"[workshop] task file error: {exc}", flush=True)
             sys.exit(1)
+    elif args.task_b64:
+        task = _decode_b64_arg(args.task_b64, "--task-b64").rstrip("\n")
+    else:
+        task = args.task
 
     if args.dry_run:
         if not args.repo:

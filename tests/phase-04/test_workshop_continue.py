@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import importlib.util
 import json
 import sys
@@ -197,3 +198,59 @@ def test_continue_timeout_recovery_choice_increases_coder_timeout(monkeypatch) -
         "tool_timeout": 1800,
     }
     assert updated["hitl_responses"][-1]["response"] == "2"
+
+
+def test_continue_clarification_accepts_response_b64(monkeypatch) -> None:
+    from workshop.state import load_task_state, new_task_state, save_task_state
+
+    state = new_task_state(
+        "ws-b64",
+        goal="use the best 12 factory practices",
+        repo="test-workshop-sandbox",
+    )
+    state["repo_entry"] = {"full_name": "caiobellizzi/test-workshop-sandbox", "default_branch": "main"}
+    save_task_state(state)
+
+    response = {
+        "user_responses": [
+            {
+                "question": "What did you mean?",
+                "answer": "12-factor app methodology",
+            }
+        ]
+    }
+    encoded = base64.b64encode(json.dumps(response).encode("utf-8")).decode("ascii")
+
+    captured: dict[str, object] = {}
+
+    class Result:
+        returncode = 0
+
+    def fake_run(argv, shell):
+        captured["argv"] = argv
+        captured["shell"] = shell
+        return Result()
+
+    monkeypatch.setattr(workshop_continue.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "workshop_continue.py",
+            "--task-id",
+            "ws-b64",
+            "--hitl-type",
+            "clarification",
+            "--response-b64",
+            encoded,
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        workshop_continue.main()
+
+    assert exc_info.value.code == 0
+    assert captured["shell"] is False
+    updated = load_task_state("ws-b64")
+    assert updated["next_stage"] == "requirements"
+    assert updated["clarifications"] == ["What did you mean?: 12-factor app methodology"]

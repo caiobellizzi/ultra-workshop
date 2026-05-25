@@ -24,9 +24,9 @@ The skill body handles two kinds of turns: the initial `/build` trigger turn, an
 2. Extract `session_id` and `chat_id` from context if available (defaults: session_id="", chat_id="7113965359")
 3. If `--dry-run` appears in the trigger, run `workshop_build.py --dry-run` with any parsed `--repo` and `--task`, return stdout, and stop. No LLM calls are made.
 4. Fire the pipeline as a **background job** (the foreground `terminal` tool hard-caps at 600s; the pipeline runs 12–20 min).
-   Never put raw task text directly inside a shell argument. Telegram link previews can contain quotes and break bash parsing. Put the task in a temp file with a quoted heredoc and pass `--task-file`.
+   Never use a multiline shell command, heredoc, or literal `\n` escape in this skill. Encode the exact UTF-8 task text as base64 with no trailing newline and pass it through `--task-b64`.
    ```
-   terminal(command="TASK_FILE=\"$(mktemp /tmp/uws-build-task.XXXXXX)\"\ncat > \"$TASK_FILE\" <<'__UWS_TASK__'\n<task>\n__UWS_TASK__\npython3 /opt/ultra-workshop/hermes-skills/workshop_build.py --repo \"<repo>\" --task-file \"$TASK_FILE\" --session-id \"<session_id>\" --chat-id \"<chat_id>\"",
+   terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_build.py --repo \"<repo>\" --task-b64 \"<base64_utf8_task>\" --session-id \"<session_id>\" --chat-id \"<chat_id>\"",
             background=true, notify_on_complete=true)
    ```
 5. Reply: `"🔧 Workshop pipeline started in background. I'll ping you when it's ready for approval."` and end the turn.
@@ -42,9 +42,9 @@ When the background job completes, Hermes opens a fresh agent turn carrying the 
   - Branch on `hitl_type`.
   - `hitl_type="clarification"`:
     - Ask the user the batched clarification questions from `questions[]`, show any `options[]`, and allow free text when `allow_free_text=true`.
-    - Write the answers to a temp JSON file and re-launch through the single deterministic continuation command. Do not call `workshop_build.py` directly for HITL continuations.
+    - Encode the clarification response JSON as UTF-8 base64 and re-launch through the single deterministic continuation command. Do not call `workshop_build.py` directly for HITL continuations. Do not use a temp-file heredoc for clarification responses.
     ```
-    terminal(command="RESP_FILE=\"$(mktemp /tmp/uws-hitl-response.XXXXXX)\"\ncat > \"$RESP_FILE\" <<'__UWS_HITL_RESPONSE__'\n<clarification_response_json>\n__UWS_HITL_RESPONSE__\npython3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type clarification --response-file \"$RESP_FILE\"",
+    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type clarification --response-b64 \"<base64_utf8_clarification_response_json>\"",
              background=true, notify_on_complete=true)
     ```
     - Resume restarts from persisted `state.json` so the original task directory and task ID are preserved.

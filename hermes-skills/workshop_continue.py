@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import json
 import subprocess
 import sys
@@ -19,6 +21,22 @@ def _read_response(path: str) -> Any:
     if not path:
         return ""
     text = Path(path).read_text(encoding="utf-8").strip()
+    if not text:
+        return ""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text
+
+
+def _read_response_b64(value: str) -> Any:
+    if not value:
+        return ""
+    try:
+        text = base64.b64decode(value.encode("ascii"), validate=True).decode("utf-8").strip()
+    except (binascii.Error, UnicodeDecodeError) as exc:
+        print(f"[workshop_continue] invalid --response-b64: {exc}", flush=True)
+        sys.exit(1)
     if not text:
         return ""
     try:
@@ -195,6 +213,7 @@ def main() -> None:
         help="Type of human input being applied",
     )
     parser.add_argument("--response-file", default="", help="Path containing the human response")
+    parser.add_argument("--response-b64", default="", help="Base64-encoded UTF-8 human response")
     parser.add_argument(
         "--choice",
         default="",
@@ -208,7 +227,12 @@ def main() -> None:
         print(f"[workshop_continue] {exc}", flush=True)
         sys.exit(1)
 
-    response = args.choice.strip() if args.choice else _read_response(args.response_file)
+    if args.choice:
+        response = args.choice.strip()
+    elif args.response_b64:
+        response = _read_response_b64(args.response_b64)
+    else:
+        response = _read_response(args.response_file)
     append_state_item(
         state,
         "hitl_responses",
