@@ -114,6 +114,35 @@ def test_run_specialist_raises_on_nonzero(monkeypatch):
         orchestrator.run_specialist("planner-specialist", "{}", Plan)
 
 
+def test_run_specialist_raises_clarification_needed(monkeypatch):
+    from workshop import orchestrator
+    from workshop.types import Plan
+
+    payload = {
+        "needs_clarification": True,
+        "task_id": "ws-123",
+        "source_stage": "requirements",
+        "reason": "Ambiguous phrase",
+        "questions": [{"question": "What did you mean?", "options": ["A", "B"], "context": "task"}],
+        "options": ["A", "B"],
+        "allow_free_text": True,
+        "evidence": ["phrase detected"],
+        "summary": "Clarification needed",
+    }
+
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *a, **kw: _make_completed_process(stdout=json.dumps(payload), returncode=0),
+    )
+
+    with pytest.raises(orchestrator.ClarificationNeeded) as exc_info:
+        orchestrator.run_specialist("requirements-specialist", "{}", Plan)
+
+    assert exc_info.value.request.task_id == "ws-123"
+    assert exc_info.value.request.source_stage == "requirements"
+
+
 # ---------------------------------------------------------------------------
 # Test 6: _extract_json with clean JSON
 # ---------------------------------------------------------------------------
@@ -179,6 +208,8 @@ def test_extract_json_strips_think_block_case_insensitive():
 
 def test_all_types_export_schema():
     from workshop.types import (
+        ClarificationQuestion,
+        ClarificationRequest,
         Diff,
         FileChange,
         IngestResult,
@@ -188,6 +219,16 @@ def test_all_types_export_schema():
         Review,
     )
 
-    for model_cls in (Plan, PlanStep, Diff, FileChange, Review, Issue, IngestResult):
+    for model_cls in (
+        Plan,
+        PlanStep,
+        Diff,
+        FileChange,
+        Review,
+        ClarificationQuestion,
+        ClarificationRequest,
+        Issue,
+        IngestResult,
+    ):
         schema = model_cls.model_json_schema()
         assert isinstance(schema, dict), f"{model_cls.__name__}.model_json_schema() did not return a dict"

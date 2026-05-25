@@ -2,6 +2,7 @@
 # scripts/hermes-skill-run.sh
 # Usage: hermes-skill-run.sh <skill-name> [--dry-run] [--key value ...]
 # Wraps `hermes chat --skills <name> --query <q> -Q --max-turns <N> --yolo`.
+# Some JSON-only specialists may short-circuit to deterministic local scripts.
 # Per-skill --max-turns defaults below; override with MAX_TURNS env var.
 # Note: --dry-run is signalled at the SKILL.md body level via this guard only;
 # the Hermes binary itself does not understand --dry-run.
@@ -17,16 +18,16 @@ SKILL="$1"
 shift
 QUERY="$*"
 
-# Per-skill --max-turns budget AND per-skill HERMES_HOME selection (one home per
-# model alias — see plan 04-04). Triage stays on private-worker (V17 local-token
-# contract); planner and coder use NIM `orchestrator` (DSv4 Pro) — coder was
-# routed to private-worker originally but Gemma-4-e4b could not reliably drive
-# the SKILL.md tool-use + JSON contract (UAT 04 / 2026-05-22). Reviewer uses
-# NIM `research-worker`. Override turns with MAX_TURNS, home with
+# Per-skill --max-turns budget AND per-skill HERMES_HOME selection. Planner,
+# coder, and reviewer are short-circuited to deterministic Python scripts below,
+# so their model settings are retained only to keep this routing table exhaustive.
+# Triage stays on private-worker (V17 local-token contract). Reviewer uses NIM
+# `research-worker`. Override turns with MAX_TURNS, home with
 # SPECIALIST_HOME_OVERRIDE.
 if [ -z "${MAX_TURNS:-}" ]; then
   case "$SKILL" in
     triage-specialist)   MAX_TURNS=3;  HOME_DIR=specialist-home-private ;;
+    requirements-specialist) MAX_TURNS=6; HOME_DIR=specialist-home-orchestrator ;;
     planner-specialist)  MAX_TURNS=8;  HOME_DIR=specialist-home-orchestrator ;;
     reviewer-specialist) MAX_TURNS=10; HOME_DIR=specialist-home-research ;;
     coder-specialist)    MAX_TURNS=15; HOME_DIR=specialist-home-orchestrator ;;
@@ -35,6 +36,7 @@ if [ -z "${MAX_TURNS:-}" ]; then
 else
   case "$SKILL" in
     triage-specialist)   HOME_DIR=specialist-home-private ;;
+    requirements-specialist) HOME_DIR=specialist-home-orchestrator ;;
     planner-specialist)  HOME_DIR=specialist-home-orchestrator ;;
     reviewer-specialist) HOME_DIR=specialist-home-research ;;
     coder-specialist)    HOME_DIR=specialist-home-orchestrator ;;
@@ -45,8 +47,22 @@ fi
 # Dry-run short-circuit: print what would run and exit 0. Includes the resolved
 # HERMES_HOME so per-skill model routing can be asserted in bats smoke tests.
 if echo "$QUERY" | grep -q -- "--dry-run"; then
-  echo "[dry-run] would run: hermes chat --skills ${SKILL} --query '${QUERY}' -Q --max-turns ${MAX_TURNS} --yolo"
-  echo "[dry-run] HERMES_HOME=/opt/ultra-workshop/${HOME_DIR}"
+  if [ "$SKILL" = "planner-specialist" ]; then
+    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_planner.py ${QUERY}"
+    echo "[dry-run] planner-specialist is deterministic; no HERMES_HOME"
+  elif [ "$SKILL" = "requirements-specialist" ]; then
+    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_requirements.py ${QUERY}"
+    echo "[dry-run] requirements-specialist is deterministic; no HERMES_HOME"
+  elif [ "$SKILL" = "reviewer-specialist" ]; then
+    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_reviewer.py ${QUERY}"
+    echo "[dry-run] reviewer-specialist is deterministic; no HERMES_HOME"
+  elif [ "$SKILL" = "coder-specialist" ]; then
+    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_coder.py ${QUERY}"
+    echo "[dry-run] coder-specialist is deterministic; no HERMES_HOME"
+  else
+    echo "[dry-run] would run: hermes chat --skills ${SKILL} --query '${QUERY}' -Q --max-turns ${MAX_TURNS} --yolo"
+    echo "[dry-run] HERMES_HOME=/opt/ultra-workshop/${HOME_DIR}"
+  fi
   exit 0
 fi
 
@@ -59,13 +75,31 @@ HERMES_BIN="/opt/ultra-workshop/hermes/venv/bin/hermes"
 SPECIALIST_HOME="${SPECIALIST_HOME_OVERRIDE:-/opt/ultra-workshop/${HOME_DIR}}"
 UWS_HOME=$(getent passwd uws 2>/dev/null | cut -d: -f6 || echo "/home/uws")
 cd "$UWS_HOME" 2>/dev/null || cd /tmp
+UWS_UID=$(id -u uws 2>/dev/null || echo "")
+
+if [ "$SKILL" = "requirements-specialist" ] || [ "$SKILL" = "planner-specialist" ] || [ "$SKILL" = "reviewer-specialist" ] || [ "$SKILL" = "coder-specialist" ]; then
+  PYTHON_BIN="/opt/ultra-workshop/hermes/venv/bin/python3"
+  if [ ! -x "$PYTHON_BIN" ]; then
+    PYTHON_BIN="python3"
+  fi
+  case "$SKILL" in
+    requirements-specialist) SCRIPT_PATH="/opt/ultra-workshop/hermes-skills/workshop_requirements.py" ;;
+    planner-specialist)  SCRIPT_PATH="/opt/ultra-workshop/hermes-skills/workshop_planner.py" ;;
+    reviewer-specialist) SCRIPT_PATH="/opt/ultra-workshop/hermes-skills/workshop_reviewer.py" ;;
+    coder-specialist)    SCRIPT_PATH="/opt/ultra-workshop/hermes-skills/workshop_coder.py" ;;
+  esac
+  if [ -n "$UWS_UID" ] && [ "$(id -u)" = "$UWS_UID" ]; then
+    exec "$PYTHON_BIN" "$SCRIPT_PATH" "$@"
+  else
+    exec sudo -u uws "$PYTHON_BIN" "$SCRIPT_PATH" "$@"
+  fi
+fi
 
 # Hermes terminal-tool default cmd timeout is 180s. Coder runs aider which
 # can take several minutes; bump to 900s (15 min) so legitimate long runs
 # don't get killed mid-stream. Override per-call with TERMINAL_TIMEOUT.
 SPECIALIST_TERMINAL_TIMEOUT="${TERMINAL_TIMEOUT:-900}"
 
-UWS_UID=$(id -u uws 2>/dev/null || echo "")
 if [ -n "$UWS_UID" ] && [ "$(id -u)" = "$UWS_UID" ]; then
   exec env HERMES_HOME="$SPECIALIST_HOME" \
     TERMINAL_TIMEOUT="$SPECIALIST_TERMINAL_TIMEOUT" \

@@ -1,6 +1,8 @@
 # Deploy location: /opt/ultra-workshop/workshop/types.py
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import AliasChoices, BaseModel, Field
 
 
@@ -34,6 +36,24 @@ class Review(BaseModel):
     passed: bool
     feedback: str
     blocking_issues: list[str] = Field(default_factory=list)
+
+
+class ClarificationQuestion(BaseModel):
+    question: str
+    options: list[str] = Field(default_factory=list)
+    context: str = ""
+
+
+class ClarificationRequest(BaseModel):
+    needs_clarification: Literal[True] = True
+    task_id: str
+    source_stage: str
+    reason: str
+    questions: list[ClarificationQuestion] = Field(default_factory=list)
+    options: list[str] = Field(default_factory=list)
+    allow_free_text: bool = True
+    evidence: list[str] = Field(default_factory=list)
+    summary: str = ""
 
 
 class Issue(BaseModel):

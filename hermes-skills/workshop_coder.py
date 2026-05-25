@@ -19,9 +19,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from workshop.requirements_gate import maybe_clarification_request  # noqa: E402
 from workshop.repo_registry import DEFAULT_REPO, canonicalize_repo  # noqa: E402
+from workshop.types import ClarificationQuestion, ClarificationRequest  # noqa: E402
 
 AIDER_RUNNER = Path(__file__).parent / "aider_runner.py"
+AIDER_RUN_TIMEOUT = int(os.environ.get("AIDER_RUN_TIMEOUT", "900"))
 
 
 def _emit_dry_run(repo_full_name: str = DEFAULT_REPO, default_branch: str = "main") -> None:
@@ -35,6 +38,67 @@ def _emit_dry_run(repo_full_name: str = DEFAULT_REPO, default_branch: str = "mai
     }
     print(json.dumps(payload), flush=True)
     sys.exit(0)
+
+
+def _build_aider_task(goal: str, previous_review: dict) -> str:
+    batch_contract = [
+        "You are running inside a non-interactive batch pipeline.",
+        "Implement the approved plan and any concrete reviewer defects only.",
+        "Do not ask the reviewer for clarification.",
+        "Keep edits focused to the provided files and include tests for Python source changes.",
+    ]
+
+    parts = ["\n".join(batch_contract)]
+    if previous_review:
+        feedback = (previous_review.get("feedback") or "").strip()
+        blocking = previous_review.get("blocking_issues") or []
+        retry_parts = [
+            "RETRY: the previous attempt was rejected by the reviewer.",
+            "You MUST address the following before producing new code:",
+        ]
+        if feedback:
+            retry_parts.append(f"Reviewer feedback: {feedback}")
+        if blocking:
+            bullets = "\n".join(f"- {item}" for item in blocking)
+            retry_parts.append(f"Blocking issues that MUST be fixed:\n{bullets}")
+        parts.append("\n\n".join(retry_parts))
+    parts.append(f"Original goal: {goal}")
+    return "\n\n".join(parts)
+
+
+def _looks_like_ambiguity(text: str) -> bool:
+    lowered = text.lower()
+    phrases = (
+        "need more information",
+        "need more info",
+        "please clarify",
+        "which one",
+        "unclear",
+        "ambiguous",
+        "not enough context",
+    )
+    return any(phrase in lowered for phrase in phrases)
+
+
+def _clarification_request_for_no_diff(task_id: str, goal: str, summary: str) -> ClarificationRequest:
+    request = maybe_clarification_request(task_id, goal, source_stage="coder")
+    if request is not None:
+        return request
+    return ClarificationRequest(
+        task_id=task_id,
+        source_stage="coder",
+        reason="Coder completed without producing a file diff.",
+        questions=[
+            ClarificationQuestion(
+                question="The coder did not produce a diff. What behavior should be implemented?",
+                options=[],
+                context=goal,
+            )
+        ],
+        allow_free_text=True,
+        evidence=[summary[:200] or "Aider returned no diff and no concrete file changes."],
+        summary="Clarification needed because the coder produced no concrete change.",
+    )
 
 
 def main() -> None:
@@ -66,22 +130,7 @@ def main() -> None:
         print("[workshop_coder] ERROR: query missing task_id or plan.goal", file=sys.stderr, flush=True)
         sys.exit(1)
 
-    # On retry, prepend reviewer feedback so aider knows what to fix.
-    aider_task = goal
-    if previous_review:
-        feedback = (previous_review.get("feedback") or "").strip()
-        blocking = previous_review.get("blocking_issues") or []
-        retry_prefix_parts = [
-            "RETRY: the previous attempt was rejected by the reviewer.",
-            "You MUST address the following before producing new code:",
-        ]
-        if feedback:
-            retry_prefix_parts.append(f"Reviewer feedback: {feedback}")
-        if blocking:
-            bullets = "\n".join(f"- {item}" for item in blocking)
-            retry_prefix_parts.append(f"Blocking issues that MUST be fixed:\n{bullets}")
-        retry_prefix_parts.append(f"Original goal: {goal}")
-        aider_task = "\n\n".join(retry_prefix_parts)
+    aider_task = _build_aider_task(goal, previous_review)
 
     workspace = Path(workspace_dir)
     workspace.mkdir(parents=True, exist_ok=True)
@@ -108,20 +157,17 @@ def main() -> None:
         shell=False,
     )
 
-    # 2. Create task branch (ignore failure if branch already exists — checkout instead)
+    # 2. Reset the task branch from the base branch on every attempt. A retry
+    # must not inherit rejected files from a previous coder attempt.
     checkout = subprocess.run(
-        ["git", "-C", str(workspace), "checkout", "-b", branch],
+        ["git", "-C", str(workspace), "checkout", "-B", branch, default_branch],
         capture_output=True,
         text=True,
         shell=False,
     )
     if checkout.returncode != 0:
-        subprocess.run(
-            ["git", "-C", str(workspace), "checkout", branch],
-            capture_output=True,
-            text=True,
-            shell=False,
-        )
+        print(f"[workshop_coder] ERROR: git checkout failed: {checkout.stderr}", file=sys.stderr, flush=True)
+        sys.exit(1)
 
     # 3. Run aider on the goal, targeting the files the plan says will be modified.
     #    Fallback to README.md if affected_files is empty (preserves prior behaviour).
@@ -161,19 +207,29 @@ def main() -> None:
         capture_output=True, text=True, shell=False, check=False,
     ).stdout.strip()
 
-    aider = subprocess.run(
-        [sys.executable, str(AIDER_RUNNER), "--task", aider_task, "--workspace-file", *target_files],
-        capture_output=True,
-        text=True,
-        shell=False,
-        env=os.environ.copy(),
-    )
+    try:
+        aider = subprocess.run(
+            [sys.executable, str(AIDER_RUNNER), "--task", aider_task, "--workspace-file", *target_files],
+            capture_output=True,
+            text=True,
+            shell=False,
+            env=os.environ.copy(),
+            timeout=AIDER_RUN_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        print(
+            f"[workshop_coder] ERROR: aider_runner timed out after {AIDER_RUN_TIMEOUT}s",
+            file=sys.stderr,
+            flush=True,
+        )
+        sys.exit(124)
 
     if aider.returncode != 0:
         print(f"[workshop_coder] ERROR: aider_runner exited {aider.returncode}: {aider.stderr[:500]}", file=sys.stderr, flush=True)
         sys.exit(aider.returncode)
 
     summary = (aider.stdout or "")[:500]
+    combined_output = "\n".join(part for part in (aider.stdout, aider.stderr) if part)
 
     # Walk the diff aider produced (committed + working-tree). Per-file diff
     # is capped at 4000 chars to keep the Diff envelope JSON small — large
@@ -190,6 +246,11 @@ def main() -> None:
                 capture_output=True, text=True, shell=False, check=False,
             )
             changes.append({"path": file_path, "diff": per_file.stdout[:4000]})
+
+    if not changes or _looks_like_ambiguity(combined_output):
+        request = _clarification_request_for_no_diff(task_id, goal, summary or combined_output)
+        print(request.model_dump_json(), flush=True)
+        sys.exit(0)
 
     payload = {
         "summary": summary,

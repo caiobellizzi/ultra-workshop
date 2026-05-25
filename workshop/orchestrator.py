@@ -10,12 +10,22 @@ from typing import Type, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from workshop.types import ClarificationRequest
+
 HERMES_SKILL_RUN = Path("/opt/ultra-workshop/scripts/hermes-skill-run.sh")
 
 T = TypeVar("T", bound=BaseModel)
 
 _THINK_RE = re.compile(r"<think\b[^>]*>.*?</think>", re.DOTALL | re.IGNORECASE)
 _FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?```", re.DOTALL | re.IGNORECASE)
+
+
+class ClarificationNeeded(RuntimeError):
+    def __init__(self, request: ClarificationRequest):
+        self.request = request
+        super().__init__(
+            f"Specialist requested clarification at {request.source_stage}: {request.reason}"
+        )
 
 
 def _extract_json(text: str, *, skill_name: str | None = None) -> str:
@@ -82,4 +92,7 @@ def run_specialist(
         )
 
     raw_json = _extract_json(result.stdout, skill_name=skill_name)
-    return output_schema.model_validate_json(raw_json)
+    payload = json.loads(raw_json)
+    if isinstance(payload, dict) and payload.get("needs_clarification") is True:
+        raise ClarificationNeeded(ClarificationRequest.model_validate(payload))
+    return output_schema.model_validate(payload)

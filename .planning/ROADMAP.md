@@ -108,7 +108,7 @@ Plans:
 - [x] 04-04-PLAN.md — Specialist model matrix: NIM upgrade for planner/reviewer/architect (imported 2026-05-22)
 - [x] 04-05-PLAN.md — Async /build & /fix via background terminal (lift 600s cap)
 - [x] 04-06-PLAN.md — Make coder-specialist envelope deterministic (gap closure)
-- [ ] 04-07-PLAN.md — HITL-first ambiguity handling for workshop agents
+- [x] 04-07-PLAN.md — HITL-first ambiguity handling for workshop agents
 
 **UI hint**: yes
 
@@ -160,7 +160,7 @@ Plans:
 | 1. Vault Sync | 2/2 | ✓ Complete | 2026-05-20 |
 | 2. Hermes Deploy | 5/5 | ✓ Complete (REQ-ws-015 deferred) | 2026-05-21 |
 | 3. Skill Toolkit | 5/5 | Complete   | 2026-05-21 |
-| 4. Build/Fix Pipeline | 7/8 | Follow-up pending | 2026-05-23 |
+| 4. Build/Fix Pipeline | 8/8 | Complete | 2026-05-25 |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
 
