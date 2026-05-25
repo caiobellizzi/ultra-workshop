@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -100,6 +101,39 @@ def _clarification_request_for_no_diff(task_id: str, goal: str, summary: str) ->
         evidence=[summary[:200] or "Aider returned no diff and no concrete file changes."],
         summary="Clarification needed because the coder produced no concrete change.",
     )
+
+
+def _terminate_process_group(process: subprocess.Popen) -> None:
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            return
+        process.wait(timeout=5)
+
+
+def _run_aider_runner(argv: list[str], *, env: dict[str, str], timeout: int) -> subprocess.CompletedProcess:
+    process = subprocess.Popen(
+        argv,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        shell=False,
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _terminate_process_group(process)
+        raise
+    return subprocess.CompletedProcess(argv, process.returncode, stdout, stderr)
 
 
 def main() -> None:
@@ -211,11 +245,8 @@ def main() -> None:
     ).stdout.strip()
 
     try:
-        aider = subprocess.run(
+        aider = _run_aider_runner(
             [sys.executable, str(AIDER_RUNNER), "--task", aider_task, "--workspace-file", *target_files],
-            capture_output=True,
-            text=True,
-            shell=False,
             env=os.environ.copy(),
             timeout=aider_run_timeout,
         )
