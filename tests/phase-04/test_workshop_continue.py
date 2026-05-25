@@ -147,3 +147,53 @@ def test_continue_timeout_recovery_reenters_planning(monkeypatch, tmp_path) -> N
     assert "planner" not in updated["stages"]
     assert "diff" not in updated["stages"]
     assert "smallest first vertical slice" in updated["scope_instruction"]
+
+
+def test_continue_timeout_recovery_choice_increases_coder_timeout(monkeypatch) -> None:
+    from workshop.state import load_task_state, new_task_state, save_task_state
+
+    state = new_task_state(
+        "ws-choice",
+        goal="create a multi agent orchestration",
+        repo="test-workshop-sandbox",
+    )
+    state["next_stage"] = "coder"
+    save_task_state(state)
+
+    captured: dict[str, object] = {}
+
+    class Result:
+        returncode = 0
+
+    def fake_run(argv, shell):
+        captured["argv"] = argv
+        captured["shell"] = shell
+        return Result()
+
+    monkeypatch.setattr(workshop_continue.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "workshop_continue.py",
+            "--task-id",
+            "ws-choice",
+            "--hitl-type",
+            "timeout_recovery",
+            "--choice",
+            "2",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        workshop_continue.main()
+
+    assert exc_info.value.code == 0
+    assert captured["shell"] is False
+    updated = load_task_state("ws-choice")
+    assert updated["next_stage"] == "coder"
+    assert updated["stage_overrides"]["coder"] == {
+        "timeout": 1920,
+        "tool_timeout": 1800,
+    }
+    assert updated["hitl_responses"][-1]["response"] == "2"

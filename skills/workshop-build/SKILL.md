@@ -50,18 +50,19 @@ When the background job completes, Hermes opens a fresh agent turn carrying the 
     - Resume restarts from persisted `state.json` so the original task directory and task ID are preserved.
   - `hitl_type="timeout_recovery"`:
     - Ask the user to choose a recovery path from `options[]`, or provide free text when `allow_free_text=true`.
-    - Write the answer to a temp JSON file and re-launch through `workshop_continue.py`.
+    - For a numbered button selection, do not write a temp file. Re-launch through `workshop_continue.py --choice <number>` so shell quoting cannot break on human-visible option text.
     ```
-    terminal(command="RESP_FILE=\"$(mktemp /tmp/uws-hitl-response.XXXXXX)\"\ncat > \"$RESP_FILE\" <<'__UWS_HITL_RESPONSE__'\n<timeout_recovery_response_json>\n__UWS_HITL_RESPONSE__\npython3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type timeout_recovery --response-file \"$RESP_FILE\"",
+    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type timeout_recovery --choice \"<selected_number>\"",
              background=true, notify_on_complete=true)
     ```
+    - Only use `--response-file` for free-text answers that do not correspond to a numbered option.
     - If the user selects decomposition, the backend re-enters planning with the human-approved scope instruction. Do not ask coder to "try smaller" directly.
   - `hitl_type="approval"`:
     - The JSON contains: `task_id`, `branch`, `workspace_dir`, `repo_full_name`, `default_branch`, `plan_goal`, `diff_summary`, `summary`.
     - Call `clarify` with the value of `summary` (e.g. "Review passed. Push branch 'workshop/abc-def' and open PR for: add hello endpoint?").
-    - Write the approval/rejection response to a temp JSON file and run the deterministic continuation command in **foreground** (no `background` flag — push is <30s).
+    - For approval/rejection button selections, do not write a temp file. Run the deterministic continuation command in **foreground** (no `background` flag — push is <30s).
     ```
-    terminal(command="RESP_FILE=\"$(mktemp /tmp/uws-hitl-response.XXXXXX)\"\ncat > \"$RESP_FILE\" <<'__UWS_HITL_RESPONSE__'\n<approval_response_json>\n__UWS_HITL_RESPONSE__\npython3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type approval --response-file \"$RESP_FILE\"")
+    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type approval --choice \"<approved_or_rejected>\"")
     ```
     Return the final stdout from `workshop_continue.py`.
 

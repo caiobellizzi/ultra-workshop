@@ -195,6 +195,11 @@ def main() -> None:
         help="Type of human input being applied",
     )
     parser.add_argument("--response-file", default="", help="Path containing the human response")
+    parser.add_argument(
+        "--choice",
+        default="",
+        help="Shell-safe HITL button choice or approval token; avoids temp files for simple selections",
+    )
     args = parser.parse_args()
 
     try:
@@ -203,7 +208,7 @@ def main() -> None:
         print(f"[workshop_continue] {exc}", flush=True)
         sys.exit(1)
 
-    response = _read_response(args.response_file)
+    response = args.choice.strip() if args.choice else _read_response(args.response_file)
     append_state_item(
         state,
         "hitl_responses",
