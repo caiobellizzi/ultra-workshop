@@ -34,15 +34,17 @@ def test_reviewer_rejects_command_artifact_paths(tmp_path: Path) -> None:
             tmp_path,
             [
                 {"path": "README.md", "diff": "+Using HKUDS/OpenHarness"},
-                {"path": "pytest", "diff": ""},
-                {"path": "python app.py", "diff": "+bad"},
+                {"path": "pytest tests", "diff": ""},
+                {"path": "python openharness_orchestration.py", "diff": "+bad"},
+                {"path": "\"print(f\\\"{name}: {result.output}\\\")\"", "diff": "+bad"},
             ],
         )
     )
 
     assert isinstance(result, Review)
     assert result.passed is False
-    assert any("shell command artifact" in issue for issue in result.blocking_issues)
+    assert any("whitespace makes it look like a shell command" in issue for issue in result.blocking_issues)
+    assert any("quotes/control characters" in issue for issue in result.blocking_issues)
     assert any("outside the plan" in issue for issue in result.blocking_issues)
 
 

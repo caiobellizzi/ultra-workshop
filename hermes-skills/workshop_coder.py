@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -27,6 +28,135 @@ from workshop.types import ClarificationQuestion, ClarificationRequest  # noqa: 
 
 AIDER_RUNNER = Path(__file__).parent / "aider_runner.py"
 DEFAULT_AIDER_RUN_TIMEOUT = int(os.environ.get("AIDER_RUN_TIMEOUT", str(stage_tool_timeout("coder") or 900)))
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _git_env() -> dict[str, str]:
+    return {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "uws",
+        "GIT_AUTHOR_EMAIL": "uws@localhost",
+        "GIT_COMMITTER_NAME": "uws",
+        "GIT_COMMITTER_EMAIL": "uws@localhost",
+    }
+
+
+def _changed_paths_since(workspace: Path, base_ref: str) -> list[str]:
+    result = subprocess.run(
+        ["git", "-C", str(workspace), "diff", "--name-only", "-z", base_ref],
+        capture_output=True,
+        shell=False,
+        check=False,
+    )
+    if result.returncode != 0:
+        return []
+    return [item.decode("utf-8", errors="replace") for item in result.stdout.split(b"\0") if item]
+
+
+def _path_exists_at_ref(workspace: Path, ref: str, rel_path: str) -> bool:
+    result = subprocess.run(
+        ["git", "-C", str(workspace), "cat-file", "-e", f"{ref}:{rel_path}"],
+        capture_output=True,
+        text=True,
+        shell=False,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def _safe_workspace_child(workspace: Path, rel_path: str) -> Path | None:
+    try:
+        child = (workspace / rel_path).resolve()
+        child.relative_to(workspace.resolve())
+    except (OSError, ValueError):
+        return None
+    return child
+
+
+def _valid_reviewable_path(rel_path: str) -> bool:
+    if not rel_path or rel_path.strip() != rel_path:
+        return False
+    path = Path(rel_path)
+    if path.is_absolute() or ".." in path.parts:
+        return False
+    if _CONTROL_CHARS_RE.search(rel_path) or any(ch in rel_path for ch in {'"', "'", "`"}):
+        return False
+    if any(ch.isspace() for ch in rel_path):
+        return False
+    if rel_path in {"pytest", "python", "pip"}:
+        return False
+    if rel_path.startswith(("bash ", "curl ", "pip ", "pytest", "python ", "sh ")):
+        return False
+    return True
+
+
+def _sanitize_unreviewable_changes(workspace: Path, base_ref: str, allowed_paths: set[str]) -> list[str]:
+    """Remove committed Aider artifacts that reviewer will reject.
+
+    Aider can occasionally create files from command snippets in its own output,
+    such as ``pytest tests`` or ``python app.py``. Those files should never reach
+    review or a pushed PR. Cleanup is committed so the branch diff is safe too.
+    """
+    changed_paths = _changed_paths_since(workspace, base_ref)
+    unreviewable = [
+        path
+        for path in changed_paths
+        if path not in allowed_paths or not _valid_reviewable_path(path)
+    ]
+    if not unreviewable:
+        return []
+
+    for rel_path in unreviewable:
+        if _path_exists_at_ref(workspace, base_ref, rel_path):
+            subprocess.run(
+                ["git", "-C", str(workspace), "checkout", base_ref, "--", rel_path],
+                capture_output=True,
+                text=True,
+                shell=False,
+                check=False,
+            )
+        else:
+            child = _safe_workspace_child(workspace, rel_path)
+            if child is not None and child.exists():
+                child.unlink()
+        subprocess.run(
+            ["git", "-C", str(workspace), "add", "-A", "--", rel_path],
+            capture_output=True,
+            text=True,
+            shell=False,
+            check=False,
+        )
+
+    staged = subprocess.run(
+        ["git", "-C", str(workspace), "diff", "--cached", "--quiet"],
+        capture_output=True,
+        text=True,
+        shell=False,
+        check=False,
+    )
+    if staged.returncode == 1:
+        subprocess.run(
+            [
+                "git", "-C", str(workspace), "commit",
+                "-m", "remove unreviewable aider artifacts",
+                "--no-gpg-sign",
+            ],
+            capture_output=True,
+            text=True,
+            shell=False,
+            env=_git_env(),
+            check=False,
+        )
+
+    return unreviewable
+
+
+def _planned_reviewable_paths(plan: dict, fallback_files: list[str]) -> set[str]:
+    paths = set(fallback_files)
+    for step in plan.get("steps") or []:
+        if isinstance(step, dict):
+            paths.update(step.get("files") or [])
+    return {str(Path(path)) for path in paths if _valid_reviewable_path(str(Path(path)))}
 
 
 def _emit_dry_run(repo_full_name: str = DEFAULT_REPO, default_branch: str = "main") -> None:
@@ -232,9 +362,7 @@ def main() -> None:
              "-m", f"scaffold for aider: {task_id}",
              "--allow-empty", "--no-gpg-sign"],
             capture_output=True, text=True, shell=False,
-            env={**os.environ,
-                 "GIT_AUTHOR_NAME": "uws", "GIT_AUTHOR_EMAIL": "uws@localhost",
-                 "GIT_COMMITTER_NAME": "uws", "GIT_COMMITTER_EMAIL": "uws@localhost"},
+            env=_git_env(),
         )
 
     # Capture HEAD SHA before aider runs so the post-run diff captures only
@@ -264,17 +392,22 @@ def main() -> None:
 
     summary = (aider.stdout or "")[:500]
     combined_output = "\n".join(part for part in (aider.stdout, aider.stderr) if part)
+    allowed_paths = _planned_reviewable_paths(plan, affected)
+    sanitized = _sanitize_unreviewable_changes(workspace, head_before_aider, allowed_paths)
+    if sanitized:
+        print(
+            "[workshop_coder] removed unreviewable aider artifacts: "
+            + ", ".join(sanitized[:10]),
+            file=sys.stderr,
+            flush=True,
+        )
 
     # Walk the diff aider produced (committed + working-tree). Per-file diff
     # is capped at 4000 chars to keep the Diff envelope JSON small — large
     # files imply the reviewer should flag scope anyway.
     changes: list[dict] = []
     if head_before_aider:
-        name_only = subprocess.run(
-            ["git", "-C", str(workspace), "diff", "--name-only", head_before_aider],
-            capture_output=True, text=True, shell=False, check=False,
-        )
-        for file_path in [p for p in name_only.stdout.splitlines() if p.strip()]:
+        for file_path in _changed_paths_since(workspace, head_before_aider):
             per_file = subprocess.run(
                 ["git", "-C", str(workspace), "diff", head_before_aider, "--", file_path],
                 capture_output=True, text=True, shell=False, check=False,

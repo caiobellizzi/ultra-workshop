@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -74,3 +76,72 @@ def test_run_aider_runner_kills_process_group_on_timeout(monkeypatch) -> None:
         workshop_coder._run_aider_runner(["aider"], env={}, timeout=1)
 
     assert killed == [(12345, workshop_coder.signal.SIGTERM)]
+
+
+def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        check=True,
+        capture_output=True,
+        text=True,
+        shell=False,
+        env={
+            **os.environ,
+            "GIT_AUTHOR_NAME": "tester",
+            "GIT_AUTHOR_EMAIL": "tester@example.com",
+            "GIT_COMMITTER_NAME": "tester",
+            "GIT_COMMITTER_EMAIL": "tester@example.com",
+        },
+    )
+
+
+def test_sanitize_unreviewable_changes_removes_command_artifacts(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    (repo / "README.md").write_text("base\n", encoding="utf-8")
+    _git(repo, "add", "README.md")
+    _git(repo, "commit", "-m", "base", "--no-gpg-sign")
+    base_ref = _git(repo, "rev-parse", "HEAD").stdout.strip()
+
+    (repo / "README.md").write_text("base\nupdated\n", encoding="utf-8")
+    (repo / "pytest tests").write_text("", encoding="utf-8")
+    (repo / "python openharness_orchestration.py").write_text("## Testing\n", encoding="utf-8")
+    (repo / "notes.md").write_text("outside plan\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "aider output", "--no-gpg-sign")
+
+    sanitized = workshop_coder._sanitize_unreviewable_changes(
+        repo,
+        base_ref,
+        {"README.md"},
+    )
+
+    assert sanitized == [
+        "notes.md",
+        "pytest tests",
+        "python openharness_orchestration.py",
+    ]
+    assert not (repo / "pytest tests").exists()
+    assert not (repo / "python openharness_orchestration.py").exists()
+    assert not (repo / "notes.md").exists()
+    assert workshop_coder._changed_paths_since(repo, base_ref) == ["README.md"]
+
+    log = _git(repo, "log", "--oneline", "-1").stdout
+    assert "remove unreviewable aider artifacts" in log
+
+
+def test_planned_reviewable_paths_includes_step_files() -> None:
+    plan = {
+        "affected_files": ["README.md"],
+        "steps": [
+            {"id": "1", "description": "implement", "files": ["app.py", "tests/test_app.py"]},
+            {"id": "2", "description": "bad", "files": ["pytest tests"]},
+        ],
+    }
+
+    assert workshop_coder._planned_reviewable_paths(plan, plan["affected_files"]) == {
+        "README.md",
+        "app.py",
+        "tests/test_app.py",
+    }
