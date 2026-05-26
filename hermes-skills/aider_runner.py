@@ -25,12 +25,19 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 from typing import Optional
+
+# Scrub common secret patterns from verification output before persisting.
+_OUTPUT_SECRET_RE = re.compile(
+    r"(api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{16,}",
+    re.IGNORECASE,
+)
 
 # ---------------------------------------------------------------------------
 # Load brain_http.py for cost ledger call (importlib — no hyphen in filename)
@@ -116,6 +123,7 @@ def _run_verification_command(
         shell=False,
         timeout=timeout,
         check=False,
+        env={**os.environ, "TERM": "dumb", "CI": "1", "NO_COLOR": "1"},
     )
     output = (
         f"$ {shlex.join(command)}\n"
@@ -156,7 +164,7 @@ def verify_workspace(workspace_dir: Path | str, *, timeout: int = 120) -> dict[s
     return {
         "build_passed": build_passed,
         "test_passed": test_passed,
-        "output_tail": _tail_lines("\n".join(outputs)),
+        "output_tail": _tail_lines(_OUTPUT_SECRET_RE.sub("[REDACTED]", "\n".join(outputs))),
     }
 
 
