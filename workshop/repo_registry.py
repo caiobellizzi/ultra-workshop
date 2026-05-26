@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -11,6 +14,10 @@ from urllib.parse import urlparse
 DEFAULT_OWNER = "caiobellizzi"
 DEFAULT_REPO = f"{DEFAULT_OWNER}/test-workshop-sandbox"
 REGISTRY_ENV = "WORKSHOP_REPO_REGISTRY"
+# When set, registry *writes* to the real registry path are routed to the Brain's
+# privileged localhost endpoint instead of written directly. The Brain owns the
+# vault _system/ dir; the Workshop user cannot write there. Reads stay local.
+REMOTE_ENV = "WORKSHOP_REGISTRY_REMOTE"
 DEFAULT_REGISTRY_PATH = Path("/srv/second-brain/_system/workshop-repos.json")
 ALLOWED_WRITE_PERMISSIONS = {"WRITE", "MAINTAIN", "ADMIN"}
 
@@ -136,8 +143,30 @@ def normalize_registry(data: Any) -> dict[str, Any]:
     return normalized
 
 
+def _put_registry_remote(url: str, data: dict[str, Any]) -> None:
+    """PUT the full registry document to the Brain's privileged persist route."""
+    body = json.dumps(data).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=body, method="PUT", headers={"Content-Type": "application/json"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            status = getattr(resp, "status", None) or resp.getcode()
+            if status not in (200, 201):
+                raise RepoRegistryError(f"registry service returned HTTP {status}")
+    except urllib.error.URLError as exc:
+        raise RepoRegistryError(f"registry service unavailable: {exc.reason}") from exc
+
+
 def atomic_write_registry(data: dict[str, Any], path: str | Path | None = None) -> None:
     target = registry_path(path)
+    # Route real-registry writes through the Brain when configured. Explicit
+    # override paths (tests, --registry) always write locally so they stay
+    # hermetic.
+    remote = os.environ.get(REMOTE_ENV)
+    if remote and target == registry_path(None):
+        _put_registry_remote(remote, data)
+        return
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_name(f".{target.name}.tmp")
     tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -200,7 +229,12 @@ def mark_last_used(repo: str, path: str | Path | None = None) -> dict[str, Any]:
         raise InactiveRepoError(repo_hint(full_name))
     entry["last_used_at"] = utc_now()
     entry["updated_at"] = entry["last_used_at"]
-    atomic_write_registry(data, target)
+    # Best-effort: a last-used timestamp must never fail a build if the registry
+    # writer (Brain) is briefly unavailable. add/remove still surface failures.
+    try:
+        atomic_write_registry(data, target)
+    except RepoRegistryError as exc:
+        print(f"[repo_registry] WARNING: could not record last_used: {exc}", file=sys.stderr)
     return entry
 
 

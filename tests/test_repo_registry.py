@@ -130,3 +130,108 @@ def test_mark_last_used_persists_timestamp(tmp_path) -> None:
 
     assert entry["last_used_at"] is not None
     assert reloaded["last_used_at"] == entry["last_used_at"]
+
+
+# --- Remote write routing (Brain-persisted registry) ---------------------------
+
+import urllib.error
+from unittest.mock import MagicMock, patch
+
+
+class _FakeResp:
+    status = 200
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def test_remote_routing_puts_to_brain_when_targeting_real_path(tmp_path, monkeypatch):
+    real = tmp_path / "workshop-repos.json"
+    monkeypatch.setenv(registry.REGISTRY_ENV, str(real))
+    monkeypatch.setenv(registry.REMOTE_ENV, "http://127.0.0.1:7000/workshop/repos")
+    data = registry.empty_registry()
+
+    captured = {}
+
+    def fake_urlopen(req, timeout=None):
+        captured["url"] = req.full_url
+        captured["method"] = req.get_method()
+        captured["body"] = req.data
+        return _FakeResp()
+
+    with patch.object(registry.urllib.request, "urlopen", side_effect=fake_urlopen):
+        registry.atomic_write_registry(data)  # path=None -> resolves to real path
+
+    assert captured["url"] == "http://127.0.0.1:7000/workshop/repos"
+    assert captured["method"] == "PUT"
+    assert json.loads(captured["body"]) == data
+    assert not real.exists()  # nothing written locally
+
+
+def test_remote_env_set_but_explicit_path_writes_locally(tmp_path, monkeypatch):
+    real = tmp_path / "workshop-repos.json"
+    other = tmp_path / "override.json"
+    monkeypatch.setenv(registry.REGISTRY_ENV, str(real))
+    monkeypatch.setenv(registry.REMOTE_ENV, "http://127.0.0.1:7000/workshop/repos")
+
+    with patch.object(registry.urllib.request, "urlopen", side_effect=AssertionError("should not call remote")):
+        registry.atomic_write_registry(registry.empty_registry(), other)
+
+    assert other.exists()  # explicit path stays hermetic
+
+
+def test_remote_failure_raises_repo_registry_error(tmp_path, monkeypatch):
+    real = tmp_path / "workshop-repos.json"
+    monkeypatch.setenv(registry.REGISTRY_ENV, str(real))
+    monkeypatch.setenv(registry.REMOTE_ENV, "http://127.0.0.1:7000/workshop/repos")
+
+    def boom(req, timeout=None):
+        raise urllib.error.URLError("connection refused")
+
+    with patch.object(registry.urllib.request, "urlopen", side_effect=boom):
+        with pytest.raises(registry.RepoRegistryError):
+            registry.atomic_write_registry(registry.empty_registry())
+
+
+def test_upsert_repo_routes_through_remote(tmp_path, monkeypatch):
+    real = tmp_path / "workshop-repos.json"
+    # Seed locally WITH the sandbox so load_registry won't fire a bootstrap
+    # write; only the upsert write should route remote.
+    registry.atomic_write_registry({"version": 1, "repos": [registry.seed_entry()]}, real)
+    monkeypatch.setenv(registry.REGISTRY_ENV, str(real))
+    monkeypatch.setenv(registry.REMOTE_ENV, "http://127.0.0.1:7000/workshop/repos")
+
+    entry = registry.entry_from_gh_metadata(
+        {"nameWithOwner": "caiobellizzi/new-test", "viewerPermission": "ADMIN", "visibility": "public"},
+        source="add",
+    )
+    calls = []
+    with patch.object(registry.urllib.request, "urlopen", side_effect=lambda req, timeout=None: calls.append(req) or _FakeResp()):
+        registry.upsert_repo(entry)
+
+    assert len(calls) == 1
+    body = json.loads(calls[0].data)
+    assert any(r["full_name"] == "caiobellizzi/new-test" for r in body["repos"])
+
+
+def test_mark_last_used_is_best_effort_on_remote_failure(tmp_path, monkeypatch):
+    real = tmp_path / "workshop-repos.json"
+    entry = registry.entry_from_gh_metadata(
+        {"nameWithOwner": "caiobellizzi/new-test", "viewerPermission": "ADMIN", "visibility": "public"},
+        source="add",
+    )
+    data = {"version": 1, "repos": [registry.seed_entry(), entry]}
+    registry.atomic_write_registry(data, real)
+    monkeypatch.setenv(registry.REGISTRY_ENV, str(real))
+    monkeypatch.setenv(registry.REMOTE_ENV, "http://127.0.0.1:7000/workshop/repos")
+
+    def boom(req, timeout=None):
+        raise urllib.error.URLError("down")
+
+    with patch.object(registry.urllib.request, "urlopen", side_effect=boom):
+        # must not raise — last_used is best-effort
+        result = registry.mark_last_used("caiobellizzi/new-test")
+    assert result["last_used_at"] is not None
