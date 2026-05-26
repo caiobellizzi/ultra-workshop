@@ -108,7 +108,7 @@ def infer_affected_files(goal: str, triage_result: dict[str, Any] | None = None)
     if wants_tests:
         files.extend(_missing_test_files(files))
 
-    return _dedupe_preserve(files)[:6]
+    return _dedupe_preserve(files)
 
 
 def _extract_file_paths(text: str) -> list[str]:
