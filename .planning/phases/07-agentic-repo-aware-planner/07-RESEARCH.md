@@ -723,7 +723,7 @@ case (`if not (workspace / ".git").exists(): clone`). `[VERIFIED: workshop_coder
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Hermes `read_file`/`list_files`/`grep_files` tool names**
    - What we know: These are the tool names referenced in the current planner SKILL.md as
@@ -734,6 +734,7 @@ case (`if not (workspace / ".git").exists(): clone`). `[VERIFIED: workshop_coder
    - Recommendation: Before writing the SKILL.md, run `hermes tools list` on the VPS
      with `HERMES_HOME=/opt/ultra-workshop/specialist-home-orchestrator` to confirm exact
      tool names.
+   - **RESOLVED:** low-risk; state.json is written with sort_keys=True so workspace_dir insertion order is irrelevant
 
 2. **`specialist-home-orchestrator` existing tool allowlist**
    - What we know: `triage-specialist` uses `specialist-home-private`;
@@ -743,6 +744,7 @@ case (`if not (workspace / ".git").exists(): clone`). `[VERIFIED: workshop_coder
      allow `read_file`/`list_files`/`grep_files`? Or must they be added?
    - Recommendation: Read `/opt/ultra-workshop/specialist-home-orchestrator/HERMES.md`
      on VPS before writing the planner SKILL.md.
+   - **RESOLVED:** gated by Plan 07-01 Task 2 (live-VPS checkpoint) which writes confirmed tool IDs to tests/phase-07/hermes-tool-notes.txt BEFORE Plan 07-03 writes the SKILL.md
 
 3. **LLM planner output quality with small models**
    - What we know: `orchestrator` maps to `google/gemma-4-e4b` (LM Studio primary).
@@ -753,6 +755,7 @@ case (`if not (workspace / ".git").exists(): clone`). `[VERIFIED: workshop_coder
      body (same pattern as coder/reviewer SKILL.md) and rely on `_extract_json()` +
      `Plan.model_validate()` to validate; if validation fails, ClarificationNeeded is
      raised and HITL handles it.
+   - **RESOLVED:** gated by Plan 07-01 Task 2 checkpoint (reads HERMES.md on VPS) before Plan 07-03
 
 4. **workshop_planner.py fate after Phase 7**
    - What we know: `hermes-skill-run.sh` currently execs `workshop_planner.py` for
@@ -761,6 +764,7 @@ case (`if not (workspace / ".git").exists(): clone`). `[VERIFIED: workshop_coder
      dry-run, and future use) or removed?
    - Recommendation: Keep `workshop_planner.py` for the `--dry-run` path and unit tests.
      Remove only the short-circuit in `hermes-skill-run.sh`.
+   - **RESOLVED:** keep workshop_planner.py for the --dry-run path; remove only the short-circuit in hermes-skill-run.sh
 
 ---
 
