@@ -174,7 +174,7 @@ Plans:
 
 **Wave 1**
 
-- [ ] 07-01-PLAN.md — Wave 0: test scaffold + VPS Hermes tool verification checkpoint
+- [x] 07-01-PLAN.md — Wave 0: test scaffold + VPS Hermes tool verification checkpoint
 - [ ] 07-02-PLAN.md — Wave 1: workspace_dir in state.py, stage_policy timeout 480s, doc_resolver.py
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -203,7 +203,7 @@ Plans:
 | 4. Build/Fix Pipeline | 8/8 | Complete | 2026-05-25 |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
-| 7. Agentic Repo-Aware Planner | 0/TBD | Not started | - |
+| 7. Agentic Repo-Aware Planner | 1/5 | In Progress|  |
 | 8. Specialist Quality Uplift | 0/1 | Not started | - |
 | 9. Advanced Agent Architecture | 0/TBD | Planning only (blocked on Ph 8) | - |
 
