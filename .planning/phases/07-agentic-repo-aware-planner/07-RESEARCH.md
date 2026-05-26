@@ -734,7 +734,7 @@ case (`if not (workspace / ".git").exists(): clone`). `[VERIFIED: workshop_coder
    - Recommendation: Before writing the SKILL.md, run `hermes tools list` on the VPS
      with `HERMES_HOME=/opt/ultra-workshop/specialist-home-orchestrator` to confirm exact
      tool names.
-   - **RESOLVED:** low-risk; state.json is written with sort_keys=True so workspace_dir insertion order is irrelevant
+   - **RESOLVED:** the exact tool IDs are confirmed by Plan 07-01 Task 2 (live-VPS `hermes tools list`), written to tests/phase-07/hermes-tool-notes.txt and consumed by Plan 07-03 before the SKILL.md tool declarations are written
 
 2. **`specialist-home-orchestrator` existing tool allowlist**
    - What we know: `triage-specialist` uses `specialist-home-private`;
@@ -755,7 +755,7 @@ case (`if not (workspace / ".git").exists(): clone`). `[VERIFIED: workshop_coder
      body (same pattern as coder/reviewer SKILL.md) and rely on `_extract_json()` +
      `Plan.model_validate()` to validate; if validation fails, ClarificationNeeded is
      raised and HITL handles it.
-   - **RESOLVED:** gated by Plan 07-01 Task 2 checkpoint (reads HERMES.md on VPS) before Plan 07-03
+   - **RESOLVED:** mitigated by including an explicit fenced JSON schema example in the SKILL.md (Plan 07-03 Task 2, mirroring the coder-specialist pattern); `_extract_json()` + `Plan.model_validate()` validate the output, and ClarificationNeeded → HITL is the recovery path on validation failure
 
 4. **workshop_planner.py fate after Phase 7**
    - What we know: `hermes-skill-run.sh` currently execs `workshop_planner.py` for

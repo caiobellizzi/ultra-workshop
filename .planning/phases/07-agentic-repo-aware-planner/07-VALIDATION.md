@@ -47,7 +47,7 @@ created: 2026-05-25
 | 07-03-T1 | 03 | 2 | REQ-ws-031, REQ-ws-034 | T-07-03-01 | planner routes hermes chat; bats regression green | bats | `bats tests/phase-04/model-matrix-smoke.bats && bats tests/phase-07/planner-smoke.bats` | Phase-04 exists; phase-07 W0 creates | ⬜ pending |
 | 07-03-T2 | 03 | 2 | REQ-ws-031, REQ-ws-033 | T-07-03-02 | reference_doc injected as context not instructions | unit | `python -m pytest tests/phase-07/test_planner_llm.py::test_plan_schema_valid -xvs` | ❌ W0 creates | ⬜ pending |
 | 07-04-T1 | 04 | 3 | REQ-ws-030, REQ-ws-033 | T-07-04-01, T-07-04-02 | clone-before-planner; workspace_dir in state | unit | `python -m pytest tests/phase-07/test_workspace.py -xvs` | ❌ W0 creates | ⬜ pending |
-| 07-05-T1 | 05 | 3 | REQ-ws-033, REQ-ws-034 | — | full regression suite green | mixed | `python -m pytest tests/phase-07/ -q && python -m pytest tests/phase-06/ tests/test_repo_registry.py -q && bats tests/phase-04/model-matrix-smoke.bats` | Phase-06, phase-04 exist | ⬜ pending |
+| 07-05-T1 | 05 | 4 | REQ-ws-033, REQ-ws-034 | — | full regression suite green | mixed | `python -m pytest tests/phase-07/ -q && python -m pytest tests/phase-06/ tests/test_repo_registry.py -q && bats tests/phase-04/model-matrix-smoke.bats` | Phase-06, phase-04 exist | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
