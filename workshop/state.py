@@ -41,6 +41,7 @@ def new_task_state(
         "default_branch": "",
         "session_id": session_id,
         "chat_id": chat_id,
+        "workspace_dir": "",
         "status": "running",
         "next_stage": "triage",
         "attempts": {},

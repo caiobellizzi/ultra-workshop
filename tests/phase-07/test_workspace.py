@@ -16,12 +16,12 @@ def _skip_if_missing() -> None:
         pytest.xfail("workshop.state.new_task_state not yet updated with workspace_dir")
 
 
-@pytest.mark.xfail(reason="workspace_dir key not yet added to new_task_state", strict=False)
 def test_new_task_state_has_workspace_dir() -> None:
     """new_task_state() result contains a 'workspace_dir' key."""
     _skip_if_missing()
-    state = new_task_state(task_id="ws-test-001", goal="add hello.txt")
+    state = new_task_state(task_id="ws-test-001", goal="add hello.txt", repo="owner/repo")
     assert "workspace_dir" in state
+    assert state["workspace_dir"] == ""
 
 
 @pytest.mark.xfail(reason="clone step not yet implemented in workshop.state", strict=False)

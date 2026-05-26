@@ -14,7 +14,7 @@ class StagePolicy:
 STAGE_POLICIES: dict[str, StagePolicy] = {
     "triage": StagePolicy(timeout=180, auto_retries=1),
     "requirements": StagePolicy(timeout=180, auto_retries=1),
-    "planner": StagePolicy(timeout=300, auto_retries=1),
+    "planner": StagePolicy(timeout=480, auto_retries=1),
     "coder": StagePolicy(timeout=960, tool_timeout=900, auto_retries=0, hitl_on_timeout=True),
     "reviewer": StagePolicy(timeout=300, auto_retries=1),
 }
