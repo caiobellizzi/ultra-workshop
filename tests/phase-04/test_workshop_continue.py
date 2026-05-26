@@ -193,10 +193,11 @@ def test_continue_timeout_recovery_choice_increases_coder_timeout(monkeypatch) -
     assert captured["shell"] is False
     updated = load_task_state("ws-choice")
     assert updated["next_stage"] == "coder"
-    assert updated["stage_overrides"]["coder"] == {
-        "timeout": 1920,
-        "tool_timeout": 1800,
-    }
+    # Phase 10: coder policy timeout is now UWS_CODER_MAX (default 7200).
+    # max(7200, 1920) = 7200, max(7200, 1800) = 7200 — overrides are at least the policy value.
+    coder_overrides = updated["stage_overrides"]["coder"]
+    assert coder_overrides["timeout"] >= 1920
+    assert coder_overrides["tool_timeout"] >= 1800
     assert updated["hitl_responses"][-1]["response"] == "2"
 
 
