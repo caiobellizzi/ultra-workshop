@@ -15,6 +15,8 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 - [ ] **Phase 5: Autonomous Routines & Integration Loops** - Ship 3 cron routines plus Brain↔Workshop vault signaling flows
 - [x] **Phase 6: Repo Selection & Multi-Repo Builds** - Add a Brain-backed repo registry so Telegram builds and fixes can target active repos beyond the sandbox (VPS dry-run verified 2026-05-24; live Telegram acceptance pending)
 - [ ] **Phase 7: Agentic Repo-Aware Planner** - Replace the blind keyword-heuristic planner with an LLM planner that reads a pre-cloned repo and resolved reference docs (prd.md), keeping the subprocess transport and deterministic state machine (no delegate_task)
+- [ ] **Phase 8: Specialist Quality Uplift** - In-place soul/discipline/context uplift of all five specialists: lean behavioral souls, build/test verification gate, structured retry feedback, brain reads at planner+reviewer, fix two workshop-fix inconsistencies (imported from grill-me session)
+- [ ] **Phase 9: Advanced Agent Architecture** - Structural redesign adding conception/brainstorm stage, Paperclip-style agent personas+budgets+audit-log, parallel six-scope review wave, AgentTool/SkillTool isolation discipline, and git-worktree parallelism (depends on Phase 8)
 
 ---
 
@@ -202,6 +204,52 @@ Plans:
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
 | 7. Agentic Repo-Aware Planner | 0/TBD | Not started | - |
+| 8. Specialist Quality Uplift | 0/1 | Not started | - |
+| 9. Advanced Agent Architecture | 0/TBD | Planning only (blocked on Ph 8) | - |
+
+---
+
+### Phase 8: Specialist Quality Uplift
+
+**Goal**: All five specialist SKILL.md souls rewritten with lean/behavioral discipline; pipeline has a real build/test verification gate; reviewer emits structured `{file,problem,required_fix}` failures fed back into coder retries; planner and reviewer read the brain for repo conventions/ADRs; two workshop-fix inconsistencies fixed; existing bats suite stays green
+**Depends on**: Phase 4 (pipeline), Phase 6 (repo registry)
+**Requirements**: REQ-ws-035 through REQ-ws-042 (to be minted during execution)
+**Success Criteria** (what must be TRUE):
+
+  1. All five `skills/*-specialist/SKILL.md` files use lean/behavioral discipline with explicit decision-rules and escalation behavior — no persona flavor
+  2. `aider_runner.py` runs the repo's build/test command after applying the diff; Diff JSON includes `build_passed`, `test_passed`, `output_tail`
+  3. `workshop_reviewer.py` evaluates build/test result before static checks; two-pass review implemented; all FAIL output is `[{file, problem, required_fix}]`
+  4. `workshop_build.py` exits with code 2 (HITL) after 2nd failed retry instead of emitting a broken diff
+  5. `planner-specialist` always calls `brain-query` for repo conventions + ADRs; `reviewer-specialist` queries brain before both review passes
+  6. `workshop-fix/SKILL.md` uses `workshop_continue.py` push path and documents the requirements stage
+
+**Plans**: 1 plan
+Plans:
+
+- [ ] 08-01-PLAN.md — In-place soul/discipline/context uplift + verify gate + structured retry + brain reads + bug fixes
+
+---
+
+### Phase 9: Advanced Agent Architecture
+
+**Goal**: Pipeline extended with a conception/brainstorm HITL stage; agents have job descriptions, monthly token budgets, and auto-pause; every pipeline action is logged to an immutable per-ticket audit trail; single reviewer replaced by a parallel six-scope review wave (correctness/security/perf/tests/docs/config) with a dedup+autofix merge agent; AgentTool/SkillTool isolation policy enforced
+**Depends on**: Phase 8
+**Requirements**: REQ-ws-043 through REQ-ws-050 (to be minted during planning)
+**Success Criteria** (what must be TRUE):
+
+  1. A brainstorm/conception stage runs as a pre-triage HITL conversational loop (≤5 turns) and produces a scoped goal statement
+  2. Each specialist has a documented job description, monthly token budget tracked in brain ledger, and auto-pauses at 100%
+  3. Every pipeline event is appended to `vault/_system/workshop-audit/{task_id}.jsonl` via brain ingest
+  4. Six parallel AgentTool-isolated reviewers run in wave 2; a merge agent deduplicates and auto-fixes `severity: low` items in wave 3
+  5. AgentTool/SkillTool isolation policy is documented and all code+review agents use isolated context
+  6. `requirements-specialist` queries brain for prior clarifications before triggering HITL
+
+**Status**: PLANNING ONLY — requires pre-planning checklist completion (see 09-01-PLAN.md) and explicit owner unlock of L12 (5-role topology)
+
+**Plans**: TBD (requires discuss-phase + plan-phase before sub-plans are created)
+Plans:
+
+- [ ] 09-01-PLAN.md — Design intent document (PLANNING ONLY, not yet executable)
 
 ---
 
