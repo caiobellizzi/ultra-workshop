@@ -14,7 +14,7 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 - [x] **Phase 4: Build/Fix Pipeline** - Implement 5-role specialist pipeline with HITL, ledgers, cost circuit breaker, and PR output (completed 2026-05-23)
 - [ ] **Phase 5: Autonomous Routines & Integration Loops** - Ship 3 cron routines plus Brain↔Workshop vault signaling flows
 - [x] **Phase 6: Repo Selection & Multi-Repo Builds** - Add a Brain-backed repo registry so Telegram builds and fixes can target active repos beyond the sandbox (VPS dry-run verified 2026-05-24; live Telegram acceptance pending)
-- [ ] **Phase 7: Agentic Repo-Aware Planner** - Replace the blind keyword-heuristic planner with an LLM planner that reads a pre-cloned repo and resolved reference docs (prd.md), keeping the subprocess transport and deterministic state machine (no delegate_task)
+- [x] **Phase 7: Agentic Repo-Aware Planner** - Replace the blind keyword-heuristic planner with an LLM planner that reads a pre-cloned repo and resolved reference docs (prd.md), keeping the subprocess transport and deterministic state machine (no delegate_task) (completed 2026-05-26)
 - [ ] **Phase 8: Specialist Quality Uplift** - In-place soul/discipline/context uplift of all five specialists: lean behavioral souls, build/test verification gate, structured retry feedback, brain reads at planner+reviewer, fix two workshop-fix inconsistencies (imported from grill-me session)
 - [ ] **Phase 9: Advanced Agent Architecture** - Structural redesign adding conception/brainstorm stage, Paperclip-style agent personas+budgets+audit-log, parallel six-scope review wave, AgentTool/SkillTool isolation discipline, and git-worktree parallelism (depends on Phase 8)
 
@@ -187,7 +187,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 07-05-PLAN.md — Wave 3: phase gate — activate all tests, full regression suite green
+- [x] 07-05-PLAN.md — Wave 3: phase gate — activate all tests, full regression suite green
 
 ---
 
@@ -203,7 +203,7 @@ Plans:
 | 4. Build/Fix Pipeline | 8/8 | Complete | 2026-05-25 |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
-| 7. Agentic Repo-Aware Planner | 4/5 | In Progress|  |
+| 7. Agentic Repo-Aware Planner | 5/5 | Complete   | 2026-05-26 |
 | 8. Specialist Quality Uplift | 0/1 | Not started | - |
 | 9. Advanced Agent Architecture | 0/TBD | Planning only (blocked on Ph 8) | - |
 
