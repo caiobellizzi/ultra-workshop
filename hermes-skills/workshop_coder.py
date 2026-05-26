@@ -2,8 +2,12 @@
 """Deterministic envelope producer for the coder-specialist stage.
 
 Replaces the LLM-driven JSON assembly in skills/coder-specialist/SKILL.md.
-Clones the selected active repo, creates the task branch, runs aider_runner.py, and
-emits the Diff JSON envelope to stdout.
+Clones the selected active repo, creates the task branch, runs aider_runner.py
+per step, and emits the Diff JSON envelope to stdout.
+
+Phase 10: Each PlanStep is a separate Aider call with its own commit.
+Idle watchdog kills hung Aider processes at UWS_IDLE_TIMEOUT (default 120s).
+Step cursor is persisted after each commit for --resume support.
 
 SECURITY: subprocess.run([...], shell=False) throughout — no shell-injection
 surface. The query JSON is parsed with json.loads, not eval.
@@ -14,10 +18,13 @@ import argparse
 import json
 import os
 import re
+import select
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
@@ -30,7 +37,22 @@ from workshop.types import ClarificationQuestion, ClarificationRequest  # noqa: 
 
 AIDER_RUNNER = Path(__file__).parent / "aider_runner.py"
 DEFAULT_AIDER_RUN_TIMEOUT = int(os.environ.get("AIDER_RUN_TIMEOUT", str(stage_tool_timeout("coder") or 900)))
+
+# Per-step timeouts (Phase 10 constants)
+IDLE_TIMEOUT = int(os.environ.get("UWS_IDLE_TIMEOUT", "120"))
+STEP_MAX_TIMEOUT = int(os.environ.get("UWS_STEP_MAX_TIMEOUT", "600"))
+MAX_STEP_RETRIES = 2
+
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
+
+
+class StepRetryExhausted(RuntimeError):
+    """Raised when a single step exhausts all build/test retries."""
+    def __init__(self, step_idx: int, step_id: str, output: str):
+        self.step_idx = step_idx
+        self.step_id = step_id
+        self.output = output
+        super().__init__(f"Step {step_id} (idx={step_idx}) exhausted retries. output_tail={output[-300:]!r}")
 
 
 def _git_env() -> dict[str, str]:
@@ -93,12 +115,7 @@ def _valid_reviewable_path(rel_path: str) -> bool:
 
 
 def _sanitize_unreviewable_changes(workspace: Path, base_ref: str, allowed_paths: set[str]) -> list[str]:
-    """Remove committed Aider artifacts that reviewer will reject.
-
-    Aider can occasionally create files from command snippets in its own output,
-    such as ``pytest tests`` or ``python app.py``. Those files should never reach
-    review or a pushed PR. Cleanup is committed so the branch diff is safe too.
-    """
+    """Remove committed Aider artifacts that reviewer will reject."""
     changed_paths = _changed_paths_since(workspace, base_ref)
     unreviewable = [
         path
@@ -267,7 +284,19 @@ def _terminate_process_group(process: subprocess.Popen) -> None:
         process.wait(timeout=5)
 
 
-def _run_aider_runner(argv: list[str], *, env: dict[str, str], timeout: int) -> subprocess.CompletedProcess:
+def _run_aider_runner(
+    argv: list[str],
+    *,
+    env: dict[str, str],
+    idle_timeout: int = IDLE_TIMEOUT,
+    step_max_timeout: int = STEP_MAX_TIMEOUT,
+) -> subprocess.CompletedProcess:
+    """Run aider with idle watchdog.
+
+    Kills the process if no output is produced for *idle_timeout* seconds,
+    or if total elapsed time exceeds *step_max_timeout* seconds.
+    The old blind process.communicate(timeout=900) is replaced by this.
+    """
     process = subprocess.Popen(
         argv,
         stdout=subprocess.PIPE,
@@ -277,12 +306,100 @@ def _run_aider_runner(argv: list[str], *, env: dict[str, str], timeout: int) -> 
         env=env,
         start_new_session=True,
     )
-    try:
-        stdout, stderr = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        _terminate_process_group(process)
-        raise
-    return subprocess.CompletedProcess(argv, process.returncode, stdout, stderr)
+
+    stdout_chunks: list[str] = []
+    stderr_chunks: list[str] = []
+    last_output_at = time.monotonic()
+    start_at = time.monotonic()
+
+    while True:
+        elapsed = time.monotonic() - start_at
+        idle_secs = time.monotonic() - last_output_at
+
+        # Absolute backstop
+        if elapsed >= step_max_timeout:
+            print(
+                f"[workshop_coder] step_max_timeout={step_max_timeout}s exceeded — killing aider",
+                file=sys.stderr,
+                flush=True,
+            )
+            _terminate_process_group(process)
+            raise subprocess.TimeoutExpired(argv, step_max_timeout)
+
+        # Idle watchdog
+        if idle_secs >= idle_timeout:
+            print(
+                f"[workshop_coder] idle_timeout={idle_timeout}s exceeded (no output) — killing aider",
+                file=sys.stderr,
+                flush=True,
+            )
+            _terminate_process_group(process)
+            raise subprocess.TimeoutExpired(argv, idle_timeout)
+
+        # Non-blocking read with select — 1s poll interval
+        readable, _, _ = select.select(
+            [process.stdout, process.stderr], [], [], 1.0
+        )
+        for stream in readable:
+            data = stream.read(4096)
+            if data:
+                last_output_at = time.monotonic()
+                if stream is process.stdout:
+                    stdout_chunks.append(data)
+                else:
+                    stderr_chunks.append(data)
+
+        # Check if process has exited
+        if process.poll() is not None:
+            # Drain any remaining output
+            try:
+                remaining_out, remaining_err = process.communicate(timeout=5)
+                if remaining_out:
+                    stdout_chunks.append(remaining_out)
+                if remaining_err:
+                    stderr_chunks.append(remaining_err)
+            except subprocess.TimeoutExpired:
+                pass
+            break
+
+    return subprocess.CompletedProcess(
+        argv,
+        process.returncode,
+        "".join(stdout_chunks),
+        "".join(stderr_chunks),
+    )
+
+
+def _run_build_test_gate(workspace: Path) -> tuple[bool, str]:
+    """Run verify_workspace and return (passed, output_tail)."""
+    result = verify_workspace(workspace)
+    passed = bool(result["build_passed"]) and bool(result["test_passed"])
+    return passed, str(result["output_tail"])
+
+
+def _commit_step(workspace: Path, task_id: str, step_idx: int, step_description: str) -> bool:
+    """Stage all changes and commit for this step. Returns True if commit was made."""
+    # Stage all changes
+    subprocess.run(
+        ["git", "-C", str(workspace), "add", "-A"],
+        capture_output=True, text=True, shell=False, check=False,
+    )
+    # Check if there is anything to commit
+    staged = subprocess.run(
+        ["git", "-C", str(workspace), "diff", "--cached", "--quiet"],
+        capture_output=True, text=True, shell=False, check=False,
+    )
+    if staged.returncode == 0:
+        # Nothing staged
+        return False
+
+    short_desc = step_description[:60]
+    commit_msg = f"step {step_idx + 1}: {short_desc}"
+    result = subprocess.run(
+        ["git", "-C", str(workspace), "commit", "-m", commit_msg, "--no-gpg-sign"],
+        capture_output=True, text=True, shell=False, env=_git_env(), check=False,
+    )
+    return result.returncode == 0
 
 
 def main() -> None:
@@ -309,14 +426,14 @@ def main() -> None:
     workspace_dir = query.get("workspace_dir") or f"/tmp/uws-sandbox-{task_id}/"
     goal = plan.get("goal", "")
     previous_review = query.get("previous_review") or {}
-    stage_policy_payload = query.get("stage_policy") or {}
-    aider_run_timeout = int(stage_policy_payload.get("tool_timeout") or DEFAULT_AIDER_RUN_TIMEOUT)
+    # model_alias for coder stage — injected by stage_policy.MODEL_ALIASES
+    model_alias = str(query.get("model_alias") or "coder-worker")
+    # Resume cursor: which step index to start from
+    start_step = int(query.get("current_step") or 0)
 
     if not task_id or not goal:
         print("[workshop_coder] ERROR: query missing task_id or plan.goal", file=sys.stderr, flush=True)
         sys.exit(1)
-
-    aider_task = _build_aider_task(goal, previous_review)
 
     workspace = Path(workspace_dir)
     workspace.mkdir(parents=True, exist_ok=True)
@@ -336,29 +453,23 @@ def main() -> None:
 
     branch = f"workshop/{task_id}"
 
+    # 2. Reset task branch from base ONCE at task start — never between steps.
+    # Prior steps' commits must survive on the workshop/<task_id> branch.
     subprocess.run(
         ["git", "-C", str(workspace), "checkout", default_branch],
-        capture_output=True,
-        text=True,
-        shell=False,
+        capture_output=True, text=True, shell=False,
     )
-
-    # 2. Reset the task branch from the base branch on every attempt. A retry
-    # must not inherit rejected files from a previous coder attempt.
     checkout = subprocess.run(
         ["git", "-C", str(workspace), "checkout", "-B", branch, default_branch],
-        capture_output=True,
-        text=True,
-        shell=False,
+        capture_output=True, text=True, shell=False,
     )
     if checkout.returncode != 0:
         print(f"[workshop_coder] ERROR: git checkout failed: {checkout.stderr}", file=sys.stderr, flush=True)
         sys.exit(1)
 
-    # 3. Run aider on the goal, targeting the files the plan says will be modified.
-    #    Fallback to README.md if affected_files is empty (preserves prior behaviour).
+    # 3. Scaffold all affected files so aider can edit them
     affected = plan.get("affected_files") or ["README.md"]
-    target_files: list[str] = []
+    all_target_files: list[str] = []
     scaffolded_any = False
     for rel_path in affected:
         abs_path = workspace / rel_path
@@ -366,82 +477,181 @@ def main() -> None:
         if not abs_path.exists():
             abs_path.touch()
             scaffolded_any = True
-        target_files.append(str(abs_path))
+        all_target_files.append(str(abs_path))
 
-    # Commit the scaffold so aider can apply edits against a clean tracked
-    # state. Aider's "commit before applying edits" step silently no-ops on
-    # untracked files and then skips writing the edits to disk.
     if scaffolded_any:
         subprocess.run(
-            ["git", "-C", str(workspace), "add", "--", *target_files],
+            ["git", "-C", str(workspace), "add", "--", *all_target_files],
             capture_output=True, text=True, shell=False,
         )
         subprocess.run(
             ["git", "-C", str(workspace), "commit",
              "-m", f"scaffold for aider: {task_id}",
              "--allow-empty", "--no-gpg-sign"],
-            capture_output=True, text=True, shell=False,
-            env=_git_env(),
+            capture_output=True, text=True, shell=False, env=_git_env(),
         )
 
-    # Capture HEAD SHA before aider runs so the post-run diff captures only
-    # aider's edits (and not the scaffold commit we just made above).
+    # Capture HEAD SHA before any aider step runs (after scaffold commit if any)
     head_before_aider = subprocess.run(
         ["git", "-C", str(workspace), "rev-parse", "HEAD"],
         capture_output=True, text=True, shell=False, check=False,
     ).stdout.strip()
 
-    try:
-        aider = _run_aider_runner(
-            [sys.executable, str(AIDER_RUNNER), "--task", aider_task, "--workspace-file", *target_files],
-            env=os.environ.copy(),
-            timeout=aider_run_timeout,
-        )
-    except subprocess.TimeoutExpired:
-        print(
-            f"[workshop_coder] ERROR: aider_runner timed out after {aider_run_timeout}s",
-            file=sys.stderr,
-            flush=True,
-        )
-        sys.exit(124)
+    litellm_api_key = os.environ.get("LITELLM_API_KEY", "")
+    if not litellm_api_key:
+        print("[workshop_coder] ERROR: LITELLM_API_KEY not set in environment", file=sys.stderr, flush=True)
+        sys.exit(1)
 
-    if aider.returncode != 0:
-        print(f"[workshop_coder] ERROR: aider_runner exited {aider.returncode}: {aider.stderr[:500]}", file=sys.stderr, flush=True)
-        sys.exit(aider.returncode)
-
-    summary = (aider.stdout or "")[:500]
-    combined_output = "\n".join(part for part in (aider.stdout, aider.stderr) if part)
+    steps = plan.get("steps") or []
     allowed_paths = _planned_reviewable_paths(plan, affected)
-    sanitized = _sanitize_unreviewable_changes(workspace, head_before_aider, allowed_paths)
-    if sanitized:
-        print(
-            "[workshop_coder] removed unreviewable aider artifacts: "
-            + ", ".join(sanitized[:10]),
-            file=sys.stderr,
-            flush=True,
-        )
+    all_changes: list[dict] = []
+    all_summary_parts: list[str] = []
 
-    # Walk the diff aider produced (committed + working-tree). Per-file diff
-    # is capped at 4000 chars to keep the Diff envelope JSON small — large
-    # files imply the reviewer should flag scope anyway.
-    changes: list[dict] = []
-    if head_before_aider:
-        for file_path in _changed_paths_since(workspace, head_before_aider):
+    # 4. Per-step execution loop
+    for step_idx, step in enumerate(steps):
+        if isinstance(step, dict):
+            step_id = str(step.get("id") or str(step_idx + 1))
+            step_description = str(step.get("description") or "")
+            step_files = [str(workspace / f) for f in (step.get("files") or []) if f]
+        else:
+            # PlanStep model object (if deserialized)
+            step_id = str(getattr(step, "id", str(step_idx + 1)))
+            step_description = str(getattr(step, "description", ""))
+            step_files = [str(workspace / f) for f in (getattr(step, "files", None) or []) if f]
+
+        # Resume: skip already-committed steps
+        if step_idx < start_step:
+            print(f"[workshop_coder] skipping step {step_idx + 1} (already committed, resume from {start_step})", flush=True)
+            continue
+
+        if not step_files:
+            step_files = all_target_files
+
+        # Scaffold any step-specific files that don't exist
+        for abs_path_str in step_files:
+            abs_p = Path(abs_path_str)
+            if not abs_p.exists():
+                abs_p.parent.mkdir(parents=True, exist_ok=True)
+                abs_p.touch()
+
+        step_head_before = subprocess.run(
+            ["git", "-C", str(workspace), "rev-parse", "HEAD"],
+            capture_output=True, text=True, shell=False, check=False,
+        ).stdout.strip()
+
+        # Build the aider task message for this step
+        batch_contract = "\n".join([
+            "You are running inside a non-interactive batch pipeline.",
+            "Implement only the described step. Do not ask for clarification.",
+            "Keep edits focused to the provided files.",
+        ])
+        step_msg = f"{batch_contract}\n\nGoal: {goal}\n\nStep {step_idx + 1}: {step_description}"
+
+        if previous_review:
+            step_msg += "\n\n" + _build_aider_task("", previous_review).split("Original goal:")[0].strip()
+
+        aider_argv = [
+            sys.executable, str(AIDER_RUNNER),
+            "--task", step_msg,
+            "--workspace-file", *step_files,
+        ]
+
+        gate_passed = False
+        gate_output = ""
+
+        for retry in range(MAX_STEP_RETRIES + 1):
+            if retry > 0:
+                step_msg_retry = (
+                    f"{step_msg}\n\nPrevious attempt {retry} failed build/test gate:\n{gate_output[-500:]}"
+                )
+                aider_argv = [
+                    sys.executable, str(AIDER_RUNNER),
+                    "--task", step_msg_retry,
+                    "--workspace-file", *step_files,
+                ]
+
+            print(f"[workshop_coder] step {step_idx + 1}/{len(steps)} '{step_id}' attempt {retry + 1}", flush=True)
+
+            try:
+                aider = _run_aider_runner(
+                    aider_argv,
+                    env={**os.environ.copy(), "LITELLM_API_KEY": litellm_api_key},
+                    idle_timeout=IDLE_TIMEOUT,
+                    step_max_timeout=STEP_MAX_TIMEOUT,
+                )
+            except subprocess.TimeoutExpired as exc:
+                print(
+                    f"[workshop_coder] step {step_idx + 1} timed out: {exc}",
+                    file=sys.stderr, flush=True,
+                )
+                if retry >= MAX_STEP_RETRIES:
+                    raise StepRetryExhausted(step_idx, step_id, f"timeout after {exc.timeout}s")
+                continue
+
+            if aider.returncode != 0:
+                print(
+                    f"[workshop_coder] step {step_idx + 1} aider exited {aider.returncode}: {aider.stderr[:300]}",
+                    file=sys.stderr, flush=True,
+                )
+                gate_output = aider.stderr[:500]
+                if retry >= MAX_STEP_RETRIES:
+                    raise StepRetryExhausted(step_idx, step_id, gate_output)
+                continue
+
+            # Run per-step build/test gate
+            gate_passed, gate_output = _run_build_test_gate(workspace)
+            if gate_passed:
+                break
+
+            print(
+                f"[workshop_coder] step {step_idx + 1} build/test gate failed (retry {retry + 1}/{MAX_STEP_RETRIES + 1})",
+                file=sys.stderr, flush=True,
+            )
+            if retry >= MAX_STEP_RETRIES:
+                raise StepRetryExhausted(step_idx, step_id, gate_output)
+
+        # Sanitize unreviewable artifacts before committing
+        sanitized = _sanitize_unreviewable_changes(workspace, step_head_before, allowed_paths)
+        if sanitized:
+            print(
+                "[workshop_coder] removed unreviewable artifacts: " + ", ".join(sanitized[:10]),
+                file=sys.stderr, flush=True,
+            )
+
+        # Commit this step's changes
+        committed = _commit_step(workspace, task_id, step_idx, step_description)
+        if committed:
+            print(f"[workshop_coder] step {step_idx + 1} committed", flush=True)
+        else:
+            print(f"[workshop_coder] step {step_idx + 1} no changes to commit", flush=True)
+
+        # Collect diff for this step
+        for file_path in _changed_paths_since(workspace, step_head_before):
             per_file = subprocess.run(
-                ["git", "-C", str(workspace), "diff", head_before_aider, "--", file_path],
+                ["git", "-C", str(workspace), "diff", step_head_before, "--", file_path],
                 capture_output=True, text=True, shell=False, check=False,
             )
-            changes.append({"path": file_path, "diff": per_file.stdout[:4000]})
+            all_changes.append({"path": file_path, "diff": per_file.stdout[:4000]})
 
-    if not changes or _looks_like_ambiguity(combined_output):
-        request = _clarification_request_for_no_diff(task_id, goal, summary or combined_output)
+        all_summary_parts.append(f"Step {step_idx + 1}: {step_description[:80]}")
+
+        # Persist step cursor for resume support
+        # Write current_step marker alongside state if state file available
+        _persist_step_cursor(task_id, step_idx + 1)
+
+    # 5. Final diff over all steps
+    combined_summary = "; ".join(all_summary_parts) or goal
+    combined_output = combined_summary  # used for ambiguity check
+
+    if not all_changes or _looks_like_ambiguity(combined_output):
+        request = _clarification_request_for_no_diff(task_id, goal, combined_summary)
         print(request.model_dump_json(), flush=True)
         sys.exit(0)
 
     verification = verify_workspace(workspace)
     payload = {
-        "summary": summary,
-        "changes": changes,
+        "summary": combined_summary[:500],
+        "changes": all_changes,
         "branch": branch,
         "workspace_dir": str(workspace),
         "repo_full_name": repo_full_name,
@@ -452,6 +662,21 @@ def main() -> None:
     }
     print(json.dumps(payload), flush=True)
     sys.exit(0)
+
+
+def _persist_step_cursor(task_id: str, current_step: int) -> None:
+    """Persist the current_step cursor to the task state file if it exists."""
+    try:
+        from workshop.ledger import task_dir
+        from workshop.state import load_task_state, save_task_state
+        state_file = task_dir(task_id) / "state.json"
+        if state_file.exists():
+            state = load_task_state(task_id)
+            state["current_step"] = current_step
+            save_task_state(state)
+    except Exception as exc:
+        # Non-blocking — cursor persistence failure does not abort the step
+        print(f"[workshop_coder] WARNING: failed to persist step cursor: {exc}", file=sys.stderr, flush=True)
 
 
 if __name__ == "__main__":
