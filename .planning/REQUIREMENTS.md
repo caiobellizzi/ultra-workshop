@@ -191,7 +191,14 @@ Acceptance: File exists and matches vocabulary table in PLAN.md (V23)
 | REQ-ws-033 | Phase 7 | Complete |
 | REQ-ws-034 | Phase 7 | Complete |
 
-**Coverage:** 34/34 requirements mapped. No orphans.
+| REQ-ws-051 | Phase 10 | Pending |
+| REQ-ws-052 | Phase 10 | Pending |
+| REQ-ws-053 | Phase 10 | Pending |
+| REQ-ws-054 | Phase 10 | Pending |
+| REQ-ws-055 | Phase 10 | Pending |
+| REQ-ws-056 | Phase 10 | Pending |
+
+**Coverage:** 40/40 requirements mapped. No orphans.
 
 ---
 
@@ -216,4 +223,32 @@ Acceptance: `python -m pytest tests/phase-07/test_planner_llm.py -x` passes (sch
 **REQ-ws-034** — Regression safety: Phase 4 + Phase 6 suites stay green
 `tests/phase-04/model-matrix-smoke.bats` planner assertion updated to match new dry-run output format (`hermes chat`, `HERMES_HOME`). All other Phase 4 and Phase 6 bats + pytest assertions remain green. Phase 7 test directory `tests/phase-07/` created with `__init__.py` plus unit test stubs before any implementation tasks run (Wave 0).
 Acceptance: `python -m pytest tests/phase-06/ tests/test_repo_registry.py -q` exits 0; `bats tests/phase-04/model-matrix-smoke.bats` exits 0 after bats update; `python -m pytest tests/phase-07/ -q` exits 0 (SC-5, SC-6)
+
+---
+
+### Autonomous Step-by-Step Build Execution (Phase 10)
+
+**REQ-ws-051** — Per-stage model map + NVIDIA NIM provider
+`deploy/litellm/config.yaml` adds NIM as primary provider (`api_base: https://integrate.api.nvidia.com/v1`, key from `NVIDIA_API_KEY`) with 4 per-stage aliases: `planner-reasoner` (NIM frontier reasoner → cloud-sonnet fallback), `coder-worker` (NIM strong coder → cloud-sonnet fallback), `reviewer-model` (NIM strong → cloud-sonnet fallback), `cheap-fast` (small NIM → cheap-worker fallback). Per-model `request_timeout: 90` and `max_retries: 1`. `hermes-skills/aider_runner.py` `_build_aider_argv` accepts `model_alias` parameter, emits single `--model <alias>`, removes `--editor-model`, `--architect`, `--no-stream`. `workshop/stage_policy.py` injects correct alias per stage.
+Acceptance: dry-run of each stage logs correct alias; `grep --architect hermes-skills/aider_runner.py` → 0 matches; `grep --no-stream hermes-skills/aider_runner.py` → 0 matches; litellm config syntax valid (SC-2)
+
+**REQ-ws-052** — Step-by-step execution loop with per-step build/test gate and commit
+`hermes-skills/workshop_coder.py` replaces single `_run_aider_runner` call with a loop over `plan["steps"]`; each step builds one Aider `--message` from `step.description`, targets only `step.files`, runs one single-model call. After each step: build/test gate runs; on failure → up to 2× retry with failure output injected. On success: `git commit` on `workshop/<task_id>` branch (one commit per step). Branch reset (`checkout default_branch`) only at task start — never between steps. `save_task_state(current_step=step_idx+1)` persists cursor after each commit. End-of-plan reviewer runs once after all steps complete.
+Acceptance: 3-step test plan produces 3 commits on `workshop/<task_id>`; build/test gate log visible per step; `git log` shows prior steps intact after a later step's retry (SC-3, SC-4)
+
+**REQ-ws-053** — Idle watchdog timeout replacing blind wall-clock
+`hermes-skills/workshop_coder.py` `_run_aider_runner` replaces `process.communicate(timeout=...)` with incremental stdout/stderr reads tracking `last_output_at`. Process group killed via `_terminate_process_group` if `time.monotonic() - last_output_at > IDLE_TIMEOUT` (default 120s, env-configurable `UWS_IDLE_TIMEOUT`). Absolute backstop `UWS_STEP_MAX_TIMEOUT` (default 600s) remains. Old 900s wall-clock gone. `--no-stream` removed from aider_runner.py so Aider streams output incrementally.
+Acceptance: mock slow model endpoint causes process kill at ~120s (not 900s); `grep "communicate(timeout=900" hermes-skills/workshop_coder.py` → 0 matches (SC-4)
+
+**REQ-ws-054** — Auto-recovery ladder: bounded retry → auto-decompose → HITL
+`hermes-skills/workshop_build.py` implements per-step failure ladder after in-step retries exhausted: (1) auto-decompose once — call planner (`planner-reasoner`) to split failing step into sub-steps; run sub-steps through coder loop; track `decompose_depth` per step (max 1) in state; (2) if still failing, or hard caps trip (global step count > 20, total wall-clock > `UWS_TASK_BUDGET`, `decompose_depth` already 1) → escalate via existing `StageTimeoutForHITL` / Telegram path with step-level context in HITL payload. `workshop/stage_policy.py` HITL-on-timeout only fires after recovery ladder exhausted.
+Acceptance: forced step build failure walks retry → decompose → HITL path; `decompose_depth` capped at 1; global step cap and wall-clock budget trip before runaway (SC-5)
+
+**REQ-ws-055** — Planner contract: many small ordered steps, cap removal
+`workshop/planner.py` removes `[:6]` `affected_files` cap in `infer_affected_files()` / `build_plan()`; per-step `files` are the unit. `skills/planner-specialist/SKILL.md` replaces "2–5 steps" guidance with: emit as many small, ordered, independently build/testable steps as the PRD needs; global cap ≤ 20 steps with "PRD too large — split it" signal if exceeded. No guidance that a single Aider call covers all `affected_files`.
+Acceptance: `grep "\[:6\]" workshop/planner.py` → 0 matches; `grep "2.5 step\|2-5 step" skills/planner-specialist/SKILL.md` → 0 matches; SKILL.md contains global cap statement and "PRD too large" signal (SC-6)
+
+**REQ-ws-056** — State cursor + mid-plan resume + orchestrator timeout adjustment
+`workshop/state.py` `new_task_state()` includes `current_step: int = 0` and `decompose_depth: dict = {}`. `save_task_state()` persists both fields. Resume path reads `current_step` and starts the coder loop from that index. `workshop/orchestrator.py` coder-stage wall-clock (previously 960s) replaced by per-step idle timeout + `UWS_TASK_BUDGET` total budget; coarse 960s removed. `tests/phase-04/model-matrix-smoke.bats` updated for new per-stage alias assertions; all 45 pytest + 14 bats tests pass.
+Acceptance: kill coder mid-plan after step 2 of 5; `--resume` continues from step 3 (not step 0); `python -m pytest tests/ -q` exits 0; `bats tests/phase-04/ tests/phase-07/` exits 0 (SC-1, SC-6)
 
