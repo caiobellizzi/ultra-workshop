@@ -2,14 +2,25 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
 LEDGER_BASE = Path("/home/uws/.ultra-workshop/tasks")
+_TASK_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+
+
+def validate_task_id(task_id: str) -> None:
+    """Reject task IDs that could escape filesystem roots or shell-adjacent names."""
+    if not _TASK_ID_RE.fullmatch(task_id):
+        raise ValueError(
+            "invalid task_id: expected 1-64 letters, numbers, hyphens, or underscores"
+        )
 
 
 def task_dir(task_id: str) -> Path:
     """Return (and create) the task directory for the given task ID."""
+    validate_task_id(task_id)
     p = LEDGER_BASE / task_id
     p.mkdir(parents=True, exist_ok=True)
     return p

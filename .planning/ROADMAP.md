@@ -204,7 +204,7 @@ Plans:
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
 | 7. Agentic Repo-Aware Planner | 5/5 | Complete   | 2026-05-26 |
-| 8. Specialist Quality Uplift | 0/1 | Not started | - |
+| 8. Specialist Quality Uplift | 1/1 | Implemented/deployed (live E2E timeout caveat) | 2026-05-26 |
 | 9. Advanced Agent Architecture | 0/TBD | Planning only (blocked on Ph 8) | - |
 
 ---
@@ -226,7 +226,7 @@ Plans:
 **Plans**: 1 plan
 Plans:
 
-- [ ] 08-01-PLAN.md — In-place soul/discipline/context uplift + verify gate + structured retry + brain reads + bug fixes
+- [x] 08-01-PLAN.md — In-place soul/discipline/context uplift + verify gate + structured retry + brain reads + bug fixes
 
 ---
 

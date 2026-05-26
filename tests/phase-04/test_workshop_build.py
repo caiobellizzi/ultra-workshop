@@ -41,8 +41,17 @@ class _TriageResult:
 @pytest.fixture(autouse=True)
 def isolated_ledger(tmp_path, monkeypatch) -> Path:
     import workshop.ledger as ledger_mod
+    import workshop.state as state_mod
 
     monkeypatch.setattr(ledger_mod, "LEDGER_BASE", tmp_path)
+
+    def fake_clone_repo_to_workspace(state, *, repo, clone_root=None):
+        workspace = tmp_path / "workspace" / repo.split("/")[-1]
+        (workspace / ".git").mkdir(parents=True, exist_ok=True)
+        state["workspace_dir"] = str(workspace)
+        return state
+
+    monkeypatch.setattr(state_mod, "clone_repo_to_workspace", fake_clone_repo_to_workspace)
     return tmp_path
 
 

@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: completed
 stopped_at: Phase 5 context gathered
-last_updated: "2026-05-26T14:26:38.252Z"
-last_activity: 2026-05-26 -- Phase 07 marked complete
+last_updated: "2026-05-26T16:30:00.000Z"
+last_activity: 2026-05-26 -- Phase 08 implemented and deployed with live E2E timeout caveat
 progress:
   total_phases: 9
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 28
-  completed_plans: 26
-  percent: 67
+  completed_plans: 27
+  percent: 78
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-20)
 
 **Core value:** Autonomous coding/PR agent that produces reviewed pull requests with HITL as the only gate before code lands
-**Current focus:** Phase 07 — agentic-repo-aware-planner
+**Current focus:** Phase 08 — specialist-quality-uplift
 
 ## Current Position
 
-Phase: 07 — COMPLETE
-Plan: 2 of 5
-Status: Phase 07 complete
-Last activity: 2026-05-26 -- Phase 07 marked complete
+Phase: 08 — IMPLEMENTED/DEPLOYED
+Plan: 1 of 1
+Status: Phase 08 implemented and deployed; live E2E reached coder timeout recovery after planner SC-4 passed
+Last activity: 2026-05-26 -- Phase 08 implemented and deployed with live E2E timeout caveat
 
-Progress: [████████░░] 79%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -74,11 +74,14 @@ Key decisions affecting first plans:
 - L18-A: Phase 6 expands GitHub auth to registered repos while keeping repo mutations, pushes, and PR creation HITL-gated
 - Phase 6 Wave 1: repo registry, /repo command backend, repo-aware /build and /fix, repo-aware coder clone, and selected-repo PR creation implemented locally
 - Phase 6 deployment: Phase 6 files deployed to VPS, existing `GITHUB_PAT` verified with `ADMIN` permission on `caiobellizzi/test-workshop-sandbox`, and `tests/phase-06/repo-smoke.bats` passed 5/5 against the VPS
+- Phase 7 post-review hardening: task_id traversal guard, doc resolver symlink confinement, ADR YAML escaping, GH token checks, resume re-clone, and dry-run quoting deployed to VPS.
+- Phase 8 deployment: specialist discipline specs, build/test verification fields, structured reviewer failures, review retry HITL recovery, and planner/reviewer Brain read hooks deployed to VPS; targeted Python tests passed 45/45 and deployed smoke passed 11/11.
 
 ### Pending Todos
 
 - Phase 6 live Telegram acceptance remains pending.
 - Phase 5 is still not started in roadmap order.
+- Phase 7/8 live `/build` smoke reached planner SC-4 successfully but coder/aider timed out at the configured 900s and entered timeout recovery before reviewer/approval.
 
 ### Blockers/Concerns
 

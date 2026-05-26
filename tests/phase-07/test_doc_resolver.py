@@ -51,3 +51,21 @@ def test_doc_name_traversal_blocked(tmp_path) -> None:
     _skip_if_missing()
     with pytest.raises((ValueError, PermissionError)):
         resolve_doc("../etc/passwd", workspace_dir=tmp_path)
+
+
+def test_symlink_escape_is_skipped(tmp_path) -> None:
+    """resolve_doc ignores matching symlinks whose target resolves outside the root."""
+    _skip_if_missing()
+    workspace_dir = tmp_path / "workspace"
+    workspace_dir.mkdir()
+    outside_doc = tmp_path / "outside.md"
+    outside_doc.write_text("# Secret", encoding="utf-8")
+    (workspace_dir / "prd.md").symlink_to(outside_doc)
+
+    vault_dir = tmp_path / "vault"
+    vault_dir.mkdir()
+    (vault_dir / "prd.md").write_text("# Safe", encoding="utf-8")
+
+    result = resolve_doc("prd.md", workspace_dir=workspace_dir, vault_dir=vault_dir, brain_error=True)
+
+    assert result == "# Safe"

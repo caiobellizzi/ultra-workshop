@@ -21,7 +21,11 @@ STAGE_POLICIES: dict[str, StagePolicy] = {
 
 
 def stage_policy(stage: str) -> StagePolicy:
-    return STAGE_POLICIES[stage]
+    try:
+        return STAGE_POLICIES[stage]
+    except KeyError as exc:
+        known_stages = ", ".join(sorted(STAGE_POLICIES))
+        raise KeyError(f"no policy defined for stage {stage!r}; known stages: {known_stages}") from exc
 
 
 def stage_timeout(stage: str) -> int:

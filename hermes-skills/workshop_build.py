@@ -159,6 +159,46 @@ def _timeout_recovery_payload(task_id: str, stage: str, attempt: int, reason: st
     }
 
 
+def _review_retry_exhausted_payload(
+    task_id: str,
+    *,
+    plan_goal: str,
+    repo_full_name: str,
+    default_branch: str,
+    review: Any,
+    diff: Any,
+) -> dict[str, Any]:
+    blocking_issues = []
+    if review is not None:
+        for item in getattr(review, "blocking_issues", []) or []:
+            if hasattr(item, "model_dump"):
+                blocking_issues.append(item.model_dump())
+            else:
+                blocking_issues.append(item)
+    return {
+        "needs_approval": True,
+        "hitl_type": "review_retry_exhausted",
+        "task_id": task_id,
+        "branch": getattr(diff, "branch", ""),
+        "workspace_dir": getattr(diff, "workspace_dir", ""),
+        "repo_full_name": repo_full_name,
+        "default_branch": default_branch,
+        "plan_goal": plan_goal,
+        "diff_summary": getattr(diff, "summary", ""),
+        "blocking_issues": blocking_issues,
+        "summary": (
+            f"Review failed after the allowed retry attempts for {repo_full_name}. "
+            "Choose whether to accept the current diff with notes, provide more guidance, or abort."
+        ),
+        "options": [
+            "1. Accept current diff with notes and proceed to PR approval",
+            "2. Provide guidance and retry from planner",
+            "3. Abort this workflow",
+        ],
+        "allow_free_text": True,
+    }
+
+
 def _extract_doc_reference(text: str) -> str:
     """Return the first *.md filename found in *text*, or empty string."""
     m = re.search(r'\b([\w\-]+\.md)\b', text or "")
@@ -210,7 +250,7 @@ def main() -> None:
             return None
 
     from workshop.cost import BudgetExhausted, check_circuit_breaker
-    from workshop.ledger import append_progress, write_task_ledger
+    from workshop.ledger import append_progress, validate_task_id, write_task_ledger
     from workshop.orchestrator import ClarificationNeeded, SpecialistFailed, run_specialist
     from workshop.requirements_gate import RequirementsDecision, build_planning_context
     from workshop.repo_registry import RepoRegistryError, mark_last_used, validate_active_repo
@@ -257,6 +297,11 @@ def main() -> None:
         sys.exit(1)
 
     task_id = args.task_id or f"ws-{secrets.token_hex(3)}"
+    try:
+        validate_task_id(task_id)
+    except ValueError as exc:
+        print(f"[workshop] {exc}", flush=True)
+        sys.exit(1)
     should_load_state = bool(args.resume or (args.task_id and state_exists(task_id)))
     if should_load_state:
         try:
@@ -319,11 +364,14 @@ def main() -> None:
 
     # Clone the repo before any specialist stage so workspace_dir is available.
     # clone_repo_to_workspace skips re-clone if .git already exists (resume path).
-    if not state.get("workspace_dir"):
+    workspace_dir = str(state.get("workspace_dir") or "")
+    workspace_missing = bool(workspace_dir) and not (Path(workspace_dir) / ".git").exists()
+    if not workspace_dir or workspace_missing:
         clone_repo_to_workspace(state, repo=repo_full_name)
         save_task_state(state)
         from workshop.ledger import append_progress as _ap
-        _ap(task_id, "workspace_cloned", {"workspace_dir": state["workspace_dir"], "repo": repo_full_name})
+        event = "workspace_recloned" if workspace_missing else "workspace_cloned"
+        _ap(task_id, event, {"workspace_dir": state["workspace_dir"], "repo": repo_full_name})
         print(f"[workshop] workspace_cloned: {state['workspace_dir']}", flush=True)
 
     if state.get("next_stage") == "approval" and state.get("approval_payload"):
@@ -391,7 +439,11 @@ def main() -> None:
         _vault_path = os.environ.get("VAULT_VPS_PATH", "/srv/second-brain")
         _reference_doc = ""
         if _doc_name:
-            _reference_doc = _resolve_doc(_doc_name, state.get("workspace_dir") or "", _vault_path) or ""
+            try:
+                _reference_doc = _resolve_doc(_doc_name, state.get("workspace_dir") or "", _vault_path) or ""
+            except Exception as exc:
+                print(f"[workshop] WARNING: doc resolve failed for {_doc_name!r}: {exc}", flush=True)
+                _reference_doc = ""
 
         planning_context = build_planning_context(repo_context, requirements.clarifications)
         if _stage_should_run(state, "planner") or "planner" not in stages:
@@ -427,12 +479,26 @@ def main() -> None:
         while True:
             current_review_attempts = int(state.setdefault("attempts", {}).get("reviewer", 0))
             if current_review_attempts >= max_review_attempts and review is not None and not review.passed:
-                state["status"] = "review_failed"
+                payload = _review_retry_exhausted_payload(
+                    task_id,
+                    plan_goal=plan.goal,
+                    repo_full_name=repo_full_name,
+                    default_branch=default_branch,
+                    review=review,
+                    diff=diff,
+                )
+                state["status"] = "needs_review_recovery"
                 state["next_stage"] = "reviewer"
+                state["review_recovery_payload"] = payload
                 save_task_state(state)
-                write_task_ledger(task_id, goal, status="review_failed")
-                print(f"[workshop] review failed after {max_review_attempts} attempts: {review.feedback}", flush=True)
-                sys.exit(1)
+                write_task_ledger(task_id, goal, status="needs_review_recovery")
+                append_progress(
+                    task_id,
+                    "review_recovery_requested",
+                    {"attempts": current_review_attempts, "issues": len(payload["blocking_issues"])},
+                )
+                print(json.dumps(payload), flush=True)
+                sys.exit(2)
 
             if _stage_should_run(state, "coder") or diff is None:
                 coder_policy = _stage_policy_payload(state, "coder", stage_policy)

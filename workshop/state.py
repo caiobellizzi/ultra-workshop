@@ -98,15 +98,19 @@ def clone_repo_to_workspace(
     the updated state dict.  Raises RuntimeError on clone failure.
     """
     task_id = str(state.get("task_id") or "unknown")
+    ledger.validate_task_id(task_id)
     root = Path(clone_root) if clone_root is not None else Path("/tmp")
     repo_name = repo.split("/")[-1] if "/" in repo else repo
     workspace = root / f"uws-workspace-{task_id}" / repo_name
 
     if not (workspace / ".git").exists():
+        github_token = os.environ.get("GITHUB_PAT") or os.environ.get("GH_TOKEN")
+        if not github_token:
+            raise RuntimeError("[workshop] GITHUB_PAT or GH_TOKEN env var is not set")
         workspace.mkdir(parents=True, exist_ok=True)
         result = subprocess.run(
             ["gh", "repo", "clone", repo, str(workspace)],
-            env={**os.environ, "GH_TOKEN": os.environ.get("GITHUB_PAT", "")},
+            env={**os.environ, "GH_TOKEN": github_token},
             capture_output=True,
             text=True,
             shell=False,

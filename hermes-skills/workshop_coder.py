@@ -20,7 +20,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
+from aider_runner import verify_workspace  # noqa: E402
 from workshop.requirements_gate import maybe_clarification_request  # noqa: E402
 from workshop.repo_registry import DEFAULT_REPO, canonicalize_repo  # noqa: E402
 from workshop.stage_policy import stage_tool_timeout  # noqa: E402
@@ -167,6 +169,9 @@ def _emit_dry_run(repo_full_name: str = DEFAULT_REPO, default_branch: str = "mai
         "workspace_dir": "/tmp/uws-sandbox-dry-run",
         "repo_full_name": repo_full_name,
         "default_branch": default_branch,
+        "build_passed": True,
+        "test_passed": True,
+        "output_tail": "dry-run",
     }
     print(json.dumps(payload), flush=True)
     sys.exit(0)
@@ -191,11 +196,25 @@ def _build_aider_task(goal: str, previous_review: dict) -> str:
         if feedback:
             retry_parts.append(f"Reviewer feedback: {feedback}")
         if blocking:
-            bullets = "\n".join(f"- {item}" for item in blocking)
+            bullets = "\n".join(f"- {_format_blocking_issue(item)}" for item in blocking)
             retry_parts.append(f"Blocking issues that MUST be fixed:\n{bullets}")
         parts.append("\n\n".join(retry_parts))
     parts.append(f"Original goal: {goal}")
     return "\n\n".join(parts)
+
+
+def _format_blocking_issue(item: object) -> str:
+    if isinstance(item, dict):
+        file_name = str(item.get("file") or "*")
+        problem = str(item.get("problem") or "").strip()
+        required_fix = str(item.get("required_fix") or "").strip()
+        pieces = [f"file={file_name}"]
+        if problem:
+            pieces.append(f"problem={problem}")
+        if required_fix:
+            pieces.append(f"required_fix={required_fix}")
+        return "; ".join(pieces)
+    return str(item)
 
 
 def _looks_like_ambiguity(text: str) -> bool:
@@ -419,6 +438,7 @@ def main() -> None:
         print(request.model_dump_json(), flush=True)
         sys.exit(0)
 
+    verification = verify_workspace(workspace)
     payload = {
         "summary": summary,
         "changes": changes,
@@ -426,6 +446,9 @@ def main() -> None:
         "workspace_dir": str(workspace),
         "repo_full_name": repo_full_name,
         "default_branch": default_branch,
+        "build_passed": verification["build_passed"],
+        "test_passed": verification["test_passed"],
+        "output_tail": verification["output_tail"],
     }
     print(json.dumps(payload), flush=True)
     sys.exit(0)

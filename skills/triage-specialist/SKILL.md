@@ -14,6 +14,25 @@ metadata:
 
 Classifies a workshop task goal as BUILD or FIX and assesses its implementation complexity.
 
+## Discipline
+
+Act as a lean classifier, not a planner. Decide only the task type, complexity, and one-sentence summary.
+
+Decision rules:
+- `FIX` when the goal references a GitHub issue URL, bug, regression, failing test, broken behavior, error message, or restoration of expected behavior.
+- `BUILD` when the goal asks for new behavior, new integration, documentation, refactor, or enhancement without a concrete defect.
+- `high` complexity when scope is architectural, cross-system, unclear, security-sensitive, or likely to exceed a single bounded implementation pass.
+- `medium` complexity when multiple files or roles are involved but the target behavior is clear.
+- `low` complexity when the change is a single focused file or obvious documentation/test addition.
+
+Never do:
+- Never invent repo facts, affected files, or implementation steps.
+- Never resolve ambiguous product terms here; classification can mark complexity `high`, but requirements owns clarification.
+- Never emit prose outside the JSON object.
+
+Escalation behavior:
+- If classification is uncertain, choose `BUILD`, set complexity `high`, and make the uncertainty explicit in `summary`.
+
 ## Behavior
 
 1. Parse the `--query` argument (JSON string with keys: `task_id`, `goal`, `context`)

@@ -37,6 +37,24 @@ def _validate_doc_name(doc_name: str) -> None:
         raise ValueError(f"unsafe doc_name: path traversal detected in {doc_name!r}")
 
 
+def _read_first_confined_match(root: Path, doc_name: str) -> str | None:
+    """Return the first matching doc whose resolved path stays under root."""
+    try:
+        root_path = root.resolve()
+        if not root_path.exists():
+            return None
+        for candidate in root_path.rglob(doc_name):
+            try:
+                resolved = candidate.resolve()
+                resolved.relative_to(root_path)
+                return resolved.read_text(encoding="utf-8")
+            except (OSError, PermissionError, ValueError):
+                continue
+    except (OSError, PermissionError):
+        return None
+    return None
+
+
 def resolve_doc(
     doc_name: str,
     workspace_dir: Union[str, Path, None] = None,
@@ -61,19 +79,15 @@ def resolve_doc(
 
     # Tier 1 — workspace (cloned repo)
     if workspace_dir is not None:
-        ws_path = Path(workspace_dir)
-        if ws_path.exists():
-            for candidate in ws_path.rglob(doc_name):
-                return candidate.read_text(encoding="utf-8")
+        result = _read_first_confined_match(Path(workspace_dir), doc_name)
+        if result is not None:
+            return result
 
     # Tier 2 — vault
     effective_vault = Path(vault_dir) if vault_dir is not None else Path(VAULT_VPS_PATH)
-    try:
-        if effective_vault.exists():
-            for f in effective_vault.rglob(doc_name):
-                return f.read_text(encoding="utf-8")
-    except (OSError, PermissionError):
-        pass
+    result = _read_first_confined_match(effective_vault, doc_name)
+    if result is not None:
+        return result
 
     # Tier 3 — Brain HTTP (optional, skipped when brain_error=True or not importable)
     if not brain_error and _BRAIN_AVAILABLE and _call_agent is not None:

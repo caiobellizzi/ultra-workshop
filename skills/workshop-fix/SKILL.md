@@ -40,12 +40,22 @@ Branch on the exit code from the captured terminal result:
 - `exit 1`: pipeline failed — reply with the last 500 chars of stderr.
 - `exit 2` (needs_approval):
   - Parse the JSON from the last stdout line emitted by `workshop_build.py` (forwarded through `workshop_fix.py`).
-  - Call `clarify` with the value of `summary` from the JSON.
-  - If approved, run the push step in **foreground** (no `background` flag — push is <30s). Do not inline `plan_goal` or `diff_summary` in shell arguments; write them to files with quoted heredocs and pass the file paths.
+  - Branch on `hitl_type` using the same continuation path as workshop-build.
+  - For `hitl_type="clarification"`, ask the user the clarification questions, then resume with:
     ```
-    terminal(command="PLAN_FILE=\"$(mktemp /tmp/uws-plan-goal.XXXXXX)\"\nDIFF_FILE=\"$(mktemp /tmp/uws-diff-summary.XXXXXX)\"\ncat > \"$PLAN_FILE\" <<'__UWS_PLAN_GOAL__'\n<plan_goal>\n__UWS_PLAN_GOAL__\ncat > \"$DIFF_FILE\" <<'__UWS_DIFF_SUMMARY__'\n<diff_summary>\n__UWS_DIFF_SUMMARY__\npython3 /opt/ultra-workshop/hermes-skills/workshop_push.py --task-id \"<task_id>\" --branch \"<branch>\" --workspace-dir \"<workspace_dir>\" --repo-full-name \"<repo_full_name>\" --base \"<default_branch>\" --plan-goal-file \"$PLAN_FILE\" --diff-summary-file \"$DIFF_FILE\"")
+    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type clarification --response-b64 \"<base64_utf8_response_json>\"",
+             background=true, notify_on_complete=true)
     ```
-    Return the final stdout (PR URL line from `workshop_push.py`).
+  - For `hitl_type="timeout_recovery"` or `hitl_type="review_retry_exhausted"`, ask the user to choose from `options[]`, then resume with:
+    ```
+    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type \"<hitl_type>\" --choice \"<selected_number_or_text>\"",
+             background=true, notify_on_complete=true)
+    ```
+  - For `hitl_type="approval"`, call `clarify` with the value of `summary`. If approved, run the deterministic continuation in **foreground**:
+    ```
+    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type approval --choice \"approved\"")
+    ```
+    Return the final stdout from `workshop_continue.py`.
   - If rejected, reply: `"PR creation rejected for task <task_id>."`
 
 ## Pipeline Flow
@@ -54,11 +64,13 @@ Branch on the exit code from the captured terminal result:
 gh issue view <url>     (fetch issue title + body)
   → workshop_build.py
     → triage-specialist
+    → requirements-specialist
     → planner-specialist
     → coder-specialist
     → reviewer-specialist  (retry up to 2 times if review.passed is False)
     → [exit 2 + HITL clarify gate]
-    → workshop_push.py   (on approval)
+    → workshop_continue.py
+    → workshop_push.py   (on approval only)
 ```
 
 ## Dry-run Behavior

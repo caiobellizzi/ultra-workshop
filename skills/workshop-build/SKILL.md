@@ -57,6 +57,14 @@ When the background job completes, Hermes opens a fresh agent turn carrying the 
     ```
     - Only use `--response-file` for free-text answers that do not correspond to a numbered option.
     - If the user selects decomposition, the backend re-enters planning with the human-approved scope instruction. Do not ask coder to "try smaller" directly.
+  - `hitl_type="review_retry_exhausted"`:
+    - Ask the user to choose from `options[]`: accept current diff with notes, provide more guidance, or abort.
+    - For a numbered button selection, re-launch through the deterministic continuation command:
+    ```
+    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_continue.py --task-id \"<task_id>\" --hitl-type review_retry_exhausted --choice \"<selected_number>\"",
+             background=true, notify_on_complete=true)
+    ```
+    - If the user provides free-text guidance, encode it as UTF-8 base64 and pass it with `--response-b64`.
   - `hitl_type="approval"`:
     - The JSON contains: `task_id`, `branch`, `workspace_dir`, `repo_full_name`, `default_branch`, `plan_goal`, `diff_summary`, `summary`.
     - Call `clarify` with the value of `summary` (e.g. "Review passed. Push branch 'workshop/abc-def' and open PR for: add hello endpoint?").

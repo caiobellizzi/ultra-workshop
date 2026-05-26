@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 
 class PlanStep(BaseModel):
@@ -30,12 +30,46 @@ class Diff(BaseModel):
     changes: list[FileChange]
     branch: str           # workshop/<id>-<slug>
     workspace_dir: str    # /tmp/uws-sandbox-<task-id>/ — coder sets this, pr_opener uses for git push
+    build_passed: bool = True
+    test_passed: bool = True
+    output_tail: str = ""
+
+
+class ReviewIssue(BaseModel):
+    file: str = "*"
+    problem: str
+    required_fix: str
+
+    def __str__(self) -> str:
+        return f"{self.file}: {self.problem} Required fix: {self.required_fix}"
+
+    def __contains__(self, needle: str) -> bool:
+        return needle in str(self)
 
 
 class Review(BaseModel):
     passed: bool
     feedback: str
-    blocking_issues: list[str] = Field(default_factory=list)
+    blocking_issues: list[ReviewIssue] = Field(default_factory=list)
+
+    @field_validator("blocking_issues", mode="before")
+    @classmethod
+    def _normalize_blocking_issues(cls, value):
+        if not value:
+            return []
+        normalized = []
+        for item in value:
+            if isinstance(item, str):
+                normalized.append(
+                    {
+                        "file": "*",
+                        "problem": item,
+                        "required_fix": "Fix the reported blocking issue and retry.",
+                    }
+                )
+            else:
+                normalized.append(item)
+        return normalized
 
 
 class ClarificationQuestion(BaseModel):

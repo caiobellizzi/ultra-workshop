@@ -51,13 +51,13 @@ if echo "$QUERY" | grep -q -- "--dry-run"; then
     echo "[dry-run] would run: hermes chat --skills planner-specialist --query '${QUERY}' -Q --max-turns ${MAX_TURNS} --yolo"
     echo "[dry-run] HERMES_HOME=/opt/ultra-workshop/specialist-home-orchestrator"
   elif [ "$SKILL" = "requirements-specialist" ]; then
-    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_requirements.py ${QUERY}"
+    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_requirements.py '${QUERY}'"
     echo "[dry-run] requirements-specialist is deterministic; no HERMES_HOME"
   elif [ "$SKILL" = "reviewer-specialist" ]; then
-    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_reviewer.py ${QUERY}"
+    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_reviewer.py '${QUERY}'"
     echo "[dry-run] reviewer-specialist is deterministic; no HERMES_HOME"
   elif [ "$SKILL" = "coder-specialist" ]; then
-    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_coder.py ${QUERY}"
+    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_coder.py '${QUERY}'"
     echo "[dry-run] coder-specialist is deterministic; no HERMES_HOME"
   else
     echo "[dry-run] would run: hermes chat --skills ${SKILL} --query '${QUERY}' -Q --max-turns ${MAX_TURNS} --yolo"

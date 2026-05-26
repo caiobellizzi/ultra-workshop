@@ -23,7 +23,9 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -41,6 +43,121 @@ try:
     _spec.loader.exec_module(_brain_http)
 except Exception as _exc:
     print(f"[aider_runner] WARNING: brain_http not loaded: {_exc}", file=sys.stderr, flush=True)
+
+
+def _tail_lines(text: str, limit: int = 50) -> str:
+    return "\n".join(text.splitlines()[-limit:])
+
+
+def _package_scripts(workspace_dir: Path) -> dict[str, str]:
+    package_json = workspace_dir / "package.json"
+    if not package_json.exists():
+        return {}
+    try:
+        payload = json.loads(package_json.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    scripts = payload.get("scripts")
+    return scripts if isinstance(scripts, dict) else {}
+
+
+def _has_bats_tests(workspace_dir: Path) -> bool:
+    tests_dir = workspace_dir / "tests"
+    return tests_dir.exists() and any(tests_dir.rglob("*.bats"))
+
+
+def _has_pytest_tests(workspace_dir: Path) -> bool:
+    has_pytest_config = any(
+        (workspace_dir / name).exists()
+        for name in ("pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini")
+    )
+    tests_dir = workspace_dir / "tests"
+    has_pytest_files = tests_dir.exists() and any(tests_dir.glob("test_*.py"))
+    return has_pytest_config or has_pytest_files
+
+
+def _detect_verification_commands(workspace_dir: Path) -> tuple[list[str] | None, list[str] | None]:
+    scripts = _package_scripts(workspace_dir)
+    if scripts:
+        build_cmd = ["npm", "run", "build"] if "build" in scripts else None
+        test_cmd = ["npm", "test"] if "test" in scripts else None
+        if build_cmd or test_cmd:
+            return build_cmd, test_cmd
+
+    makefile = workspace_dir / "Makefile"
+    if makefile.exists():
+        try:
+            content = makefile.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            content = ""
+        if "\ntest:" in f"\n{content}":
+            return None, ["make", "test"]
+
+    if _has_pytest_tests(workspace_dir):
+        return None, [sys.executable, "-m", "pytest"]
+
+    if _has_bats_tests(workspace_dir):
+        return None, ["bats", "tests"]
+
+    return None, None
+
+
+def _run_verification_command(
+    workspace_dir: Path,
+    command: list[str],
+    *,
+    timeout: int,
+) -> tuple[bool, str]:
+    result = subprocess.run(
+        command,
+        cwd=str(workspace_dir),
+        capture_output=True,
+        text=True,
+        shell=False,
+        timeout=timeout,
+        check=False,
+    )
+    output = (
+        f"$ {shlex.join(command)}\n"
+        f"exit={result.returncode}\n"
+        f"{result.stdout or ''}"
+        f"{result.stderr or ''}"
+    )
+    return result.returncode == 0, output
+
+
+def verify_workspace(workspace_dir: Path | str, *, timeout: int = 120) -> dict[str, object]:
+    workspace = Path(workspace_dir)
+    build_cmd, test_cmd = _detect_verification_commands(workspace)
+    outputs: list[str] = []
+
+    build_passed = True
+    test_passed = True
+
+    if build_cmd:
+        try:
+            build_passed, output = _run_verification_command(workspace, build_cmd, timeout=timeout)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            build_passed = False
+            output = f"$ {shlex.join(build_cmd)}\nverification command failed: {exc}"
+        outputs.append(output)
+
+    if test_cmd:
+        try:
+            test_passed, output = _run_verification_command(workspace, test_cmd, timeout=timeout)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            test_passed = False
+            output = f"$ {shlex.join(test_cmd)}\nverification command failed: {exc}"
+        outputs.append(output)
+
+    if not build_cmd and not test_cmd:
+        outputs.append("$ echo no-test-command\nexit=0\nno-test-command")
+
+    return {
+        "build_passed": build_passed,
+        "test_passed": test_passed,
+        "output_tail": _tail_lines("\n".join(outputs)),
+    }
 
 
 def _git_root_for(path: Path) -> Path | None:
@@ -174,6 +291,9 @@ def run_aider(task: str, workspace_files: Optional[list[str]] = None) -> None:
         # Post cost-ledger marker even on failure (non-blocking)
         _post_cost_ledger(task, success=False)
         sys.exit(result.returncode)
+
+    verification = verify_workspace(workspace_dir)
+    print(f"[aider_runner] verification: {json.dumps(verification, sort_keys=True)}", flush=True)
 
     # --- Cost ledger (OPTION B — curator liveness only) ---
     _post_cost_ledger(task, success=True)

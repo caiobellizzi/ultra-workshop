@@ -4,10 +4,10 @@
 
 ## Workshop Package (/opt/ultra-workshop/workshop/)
 workshop/__init__.py
-workshop/types.py       — Plan, Diff, Review, TriageResult Pydantic models
+workshop/types.py       — Plan, Diff, Review, ReviewIssue, TriageResult Pydantic models
 workshop/orchestrator.py — run_specialist() subprocess executor
 workshop/planner.py     — deterministic Plan builder for planner-specialist
-workshop/reviewer.py    — deterministic Review builder for reviewer-specialist
+workshop/reviewer.py    — deterministic two-pass Review builder for reviewer-specialist
 workshop/ledger.py      — write_task_ledger(), append_progress()
 workshop/cost.py        — check_circuit_breaker(), BudgetExhausted
 
@@ -17,9 +17,12 @@ hermes-skills/workshop_fix.py   — Thin wrapper: fetches issue → delegates to
 hermes-skills/workshop_planner.py — Deterministic planner CLI used by hermes-skill-run.sh
 hermes-skills/workshop_reviewer.py — Deterministic reviewer CLI used by hermes-skill-run.sh
 hermes-skills/workshop_push.py  — Git push + gh pr create + ADR write-back (on HITL approval)
+hermes-skills/aider_runner.py   — Aider subprocess wrapper + repo build/test verifier
+hermes-skills/workshop_continue.py — HITL continuation handler for clarification, timeout, review recovery, and approval
 
 ## Specialist Skills (/home/uws/.hermes/skills/)
 skills/triage-specialist/SKILL.md
+skills/requirements-specialist/SKILL.md
 skills/planner-specialist/SKILL.md
 skills/coder-specialist/SKILL.md
 skills/reviewer-specialist/SKILL.md
@@ -32,3 +35,17 @@ tests/phase-04/helpers.bash       — VPS SSH helpers
 tests/phase-04/build-smoke.bats   — 3 tests (dry-run, importability, python dry-run)
 tests/phase-04/fix-smoke.bats     — 2 tests (dry-run, python dry-run)
 All 5 tests: PASS
+
+## Phase 8 Quality Uplift Addendum (2026-05-26)
+Runtime files above now include:
+- Diff verification fields: build_passed, test_passed, output_tail
+- Structured ReviewIssue failures: {file, problem, required_fix}
+- Review retry exhaustion HITL path: hitl_type=review_retry_exhausted
+- Planner/reviewer Brain read hooks for repo conventions, ADRs, and review rules
+- Updated specialist discipline specs in both /opt/ultra-workshop/skills and /home/uws/.hermes/skills
+
+Verification:
+- python3 -m pytest targeted Phase 4/6/7/8 suites: PASS (45 tests)
+- bats tests/phase-04/ tests/phase-07/planner-smoke.bats: PASS (14 tests)
+- deployed VPS dry/import smoke after restart: PASS (11 tests)
+- deployed coder/repo smoke after restart: PASS (6 tests)

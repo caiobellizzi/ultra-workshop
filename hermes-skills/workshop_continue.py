@@ -203,13 +203,56 @@ def _apply_timeout_recovery(state: dict[str, Any], response: Any) -> None:
     _invalidate_from(state, "planner")
 
 
+def _approval_payload_from_rejected_review(state: dict[str, Any]) -> dict[str, Any]:
+    payload = state.get("review_recovery_payload") or {}
+    return {
+        "needs_approval": True,
+        "hitl_type": "approval",
+        "task_id": payload.get("task_id") or state.get("task_id"),
+        "branch": payload.get("branch") or "",
+        "workspace_dir": payload.get("workspace_dir") or "",
+        "repo_full_name": payload.get("repo_full_name") or state.get("repo_full_name") or "",
+        "default_branch": payload.get("default_branch") or state.get("default_branch") or "main",
+        "plan_goal": payload.get("plan_goal") or state.get("goal") or "",
+        "diff_summary": payload.get("diff_summary") or "",
+        "summary": (
+            "Review retry limit was exhausted, but a human accepted the current diff with notes. "
+            f"Push branch {payload.get('branch')!r} and open PR?"
+        ),
+    }
+
+
+def _apply_review_retry_recovery(state: dict[str, Any], response: Any) -> None:
+    text = _response_text(response)
+    lowered = text.lower()
+    if lowered.startswith("3") or lowered in {"abort", "stop", "cancel", "cancelled"}:
+        state["status"] = "stopped"
+        state["next_stage"] = "reviewer"
+        return
+
+    if lowered.startswith("1") or "accept" in lowered:
+        state["approval_payload"] = _approval_payload_from_rejected_review(state)
+        state["status"] = "needs_approval"
+        state["next_stage"] = "approval"
+        return
+
+    guidance = text if text and not lowered.startswith("2") else "Human requested another bounded retry after review retry exhaustion."
+    state["scope_instruction"] = (
+        "Human review-recovery guidance: "
+        f"{guidance}. Planner must incorporate the structured reviewer failures and produce a bounded retry plan."
+    )
+    state["status"] = "running"
+    state["next_stage"] = "planner"
+    _invalidate_from(state, "planner")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Resume a workshop task after HITL input")
     parser.add_argument("--task-id", required=True, help="Original workshop task ID")
     parser.add_argument(
         "--hitl-type",
         required=True,
-        choices=["clarification", "timeout_recovery", "approval"],
+        choices=["clarification", "timeout_recovery", "review_retry_exhausted", "approval"],
         help="Type of human input being applied",
     )
     parser.add_argument("--response-file", default="", help="Path containing the human response")
@@ -262,6 +305,26 @@ def main() -> None:
         if state.get("status") == "stopped":
             print(f"[workshop_continue] workflow stopped for task {args.task_id}", flush=True)
             sys.exit(0)
+        sys.exit(_launch_build(args.task_id))
+
+    if args.hitl_type == "review_retry_exhausted":
+        append_state_item(
+            state,
+            "recovery_decisions",
+            {
+                "type": "review_retry_exhausted",
+                "response": response,
+                "received_at": utc_now(),
+            },
+        )
+        _apply_review_retry_recovery(state, response)
+        save_task_state(state)
+        if state.get("status") == "stopped":
+            print(f"[workshop_continue] workflow stopped for task {args.task_id}", flush=True)
+            sys.exit(0)
+        if state.get("status") == "needs_approval":
+            print(json.dumps(state["approval_payload"]), flush=True)
+            sys.exit(2)
         sys.exit(_launch_build(args.task_id))
 
     if args.hitl_type == "approval":
