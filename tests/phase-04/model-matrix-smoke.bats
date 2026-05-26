@@ -15,11 +15,11 @@ SCRIPT="$BATS_TEST_DIRNAME/../../scripts/hermes-skill-run.sh"
   [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-private"* ]]
 }
 
-@test "planner-specialist resolves to deterministic local planner" {
+@test "planner-specialist resolves to hermes chat with specialist-home-orchestrator" {
   run env -u MAX_TURNS bash "$SCRIPT" planner-specialist --dry-run "add hello.txt"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"workshop_planner.py"* ]]
-  [[ "$output" == *"deterministic"* ]]
+  [[ "$output" == *"--max-turns 8"* ]]
+  [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-orchestrator"* ]]
 }
 
 @test "reviewer-specialist resolves to deterministic local reviewer" {
