@@ -48,8 +48,8 @@ fi
 # HERMES_HOME so per-skill model routing can be asserted in bats smoke tests.
 if echo "$QUERY" | grep -q -- "--dry-run"; then
   if [ "$SKILL" = "planner-specialist" ]; then
-    echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_planner.py ${QUERY}"
-    echo "[dry-run] planner-specialist is deterministic; no HERMES_HOME"
+    echo "[dry-run] would run: hermes chat --skills planner-specialist --query '${QUERY}' -Q --max-turns ${MAX_TURNS} --yolo"
+    echo "[dry-run] HERMES_HOME=/opt/ultra-workshop/specialist-home-orchestrator"
   elif [ "$SKILL" = "requirements-specialist" ]; then
     echo "[dry-run] would run: python3 /opt/ultra-workshop/hermes-skills/workshop_requirements.py ${QUERY}"
     echo "[dry-run] requirements-specialist is deterministic; no HERMES_HOME"
@@ -77,14 +77,13 @@ UWS_HOME=$(getent passwd uws 2>/dev/null | cut -d: -f6 || echo "/home/uws")
 cd "$UWS_HOME" 2>/dev/null || cd /tmp
 UWS_UID=$(id -u uws 2>/dev/null || echo "")
 
-if [ "$SKILL" = "requirements-specialist" ] || [ "$SKILL" = "planner-specialist" ] || [ "$SKILL" = "reviewer-specialist" ] || [ "$SKILL" = "coder-specialist" ]; then
+if [ "$SKILL" = "requirements-specialist" ] || [ "$SKILL" = "reviewer-specialist" ] || [ "$SKILL" = "coder-specialist" ]; then
   PYTHON_BIN="/opt/ultra-workshop/hermes/venv/bin/python3"
   if [ ! -x "$PYTHON_BIN" ]; then
     PYTHON_BIN="python3"
   fi
   case "$SKILL" in
     requirements-specialist) SCRIPT_PATH="/opt/ultra-workshop/hermes-skills/workshop_requirements.py" ;;
-    planner-specialist)  SCRIPT_PATH="/opt/ultra-workshop/hermes-skills/workshop_planner.py" ;;
     reviewer-specialist) SCRIPT_PATH="/opt/ultra-workshop/hermes-skills/workshop_reviewer.py" ;;
     coder-specialist)    SCRIPT_PATH="/opt/ultra-workshop/hermes-skills/workshop_coder.py" ;;
   esac
