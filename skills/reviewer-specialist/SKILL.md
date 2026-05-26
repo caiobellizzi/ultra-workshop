@@ -14,6 +14,11 @@ metadata:
 
 Reviews a code diff against the implementation Plan and produces a structured pass/fail Review.
 
+Production routing is deterministic: `scripts/hermes-skill-run.sh` calls
+`/opt/ultra-workshop/hermes-skills/workshop_reviewer.py` directly instead of
+asking Hermes chat to assemble the control JSON. This keeps the pipeline's
+blocking review gate fast, bounded, and parseable.
+
 ## Behavior
 
 1. Parse the `--query` argument (JSON string with keys: `task_id`, `plan`, `diff`, `context`)
@@ -22,6 +27,7 @@ Reviews a code diff against the implementation Plan and produces a structured pa
    - Are the changed files a subset of `plan.affected_files`?
    - Does the diff introduce any obvious regressions or security issues?
    - Is the code quality acceptable (no syntax errors, no hardcoded secrets)?
+   - Do changed paths look like valid files rather than accidental shell command artifacts?
 3. Determine outcome:
    - If all steps are addressed and no blocking issues exist → `passed=true`, `blocking_issues=[]`
    - If any blocking issue is found → `passed=false`, list each issue in `blocking_issues`

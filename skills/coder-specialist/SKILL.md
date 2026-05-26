@@ -17,6 +17,9 @@ Clones the selected active repository into a temporary workspace, runs aider_run
 ## Behavior
 
 Envelope assembly is performed by a deterministic script — the skill body just invokes it and forwards stdout verbatim. No JSON construction by the LLM.
+Production calls are handled directly by `hermes-skill-run.sh`, which executes
+`workshop_coder.py` without starting a Hermes chat. This skill body is retained
+as documentation and as a fallback if invoked directly.
 
 **Call the `terminal` tool with `timeout=900`** — aider runs can take up to ~15 minutes; the Hermes terminal-tool default cap (180s) is far too short. The wrapper sets `TERMINAL_TIMEOUT=900` in the env as a backstop, but pass `timeout=900` explicitly so the per-call kwarg overrides any session default.
 

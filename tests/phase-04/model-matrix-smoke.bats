@@ -15,25 +15,25 @@ SCRIPT="$BATS_TEST_DIRNAME/../../scripts/hermes-skill-run.sh"
   [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-private"* ]]
 }
 
-@test "planner-specialist resolves to MAX_TURNS=8 and specialist-home-orchestrator" {
+@test "planner-specialist resolves to deterministic local planner" {
   run env -u MAX_TURNS bash "$SCRIPT" planner-specialist --dry-run "add hello.txt"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"--max-turns 8"* ]]
-  [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-orchestrator"* ]]
+  [[ "$output" == *"workshop_planner.py"* ]]
+  [[ "$output" == *"deterministic"* ]]
 }
 
-@test "reviewer-specialist resolves to MAX_TURNS=10 and specialist-home-research" {
+@test "reviewer-specialist resolves to deterministic local reviewer" {
   run env -u MAX_TURNS bash "$SCRIPT" reviewer-specialist --dry-run "noop"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"--max-turns 10"* ]]
-  [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-research"* ]]
+  [[ "$output" == *"workshop_reviewer.py"* ]]
+  [[ "$output" == *"deterministic"* ]]
 }
 
-@test "coder-specialist resolves to MAX_TURNS=15 and specialist-home-orchestrator" {
+@test "coder-specialist resolves to deterministic local coder" {
   run env -u MAX_TURNS bash "$SCRIPT" coder-specialist --dry-run "add hello.txt"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"--max-turns 15"* ]]
-  [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-orchestrator"* ]]
+  [[ "$output" == *"workshop_coder.py"* ]]
+  [[ "$output" == *"deterministic"* ]]
 }
 
 @test "unknown specialist falls back to MAX_TURNS=8 and specialist-home-private" {
@@ -44,8 +44,8 @@ SCRIPT="$BATS_TEST_DIRNAME/../../scripts/hermes-skill-run.sh"
 }
 
 @test "MAX_TURNS env override still resolves correct HERMES_HOME" {
-  run env MAX_TURNS=42 bash "$SCRIPT" planner-specialist --dry-run "noop"
+  run env MAX_TURNS=42 bash "$SCRIPT" triage-specialist --dry-run "noop"
   [ "$status" -eq 0 ]
   [[ "$output" == *"--max-turns 42"* ]]
-  [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-orchestrator"* ]]
+  [[ "$output" == *"HERMES_HOME=/opt/ultra-workshop/specialist-home-private"* ]]
 }

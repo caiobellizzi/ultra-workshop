@@ -6,12 +6,16 @@
 workshop/__init__.py
 workshop/types.py       — Plan, Diff, Review, TriageResult Pydantic models
 workshop/orchestrator.py — run_specialist() subprocess executor
+workshop/planner.py     — deterministic Plan builder for planner-specialist
+workshop/reviewer.py    — deterministic Review builder for reviewer-specialist
 workshop/ledger.py      — write_task_ledger(), append_progress()
 workshop/cost.py        — check_circuit_breaker(), BudgetExhausted
 
 ## Entry-Point Scripts (/opt/ultra-workshop/hermes-skills/)
 hermes-skills/workshop_build.py — Architecture B pipeline runner (exits 2 at HITL gate)
 hermes-skills/workshop_fix.py   — Thin wrapper: fetches issue → delegates to workshop_build.py
+hermes-skills/workshop_planner.py — Deterministic planner CLI used by hermes-skill-run.sh
+hermes-skills/workshop_reviewer.py — Deterministic reviewer CLI used by hermes-skill-run.sh
 hermes-skills/workshop_push.py  — Git push + gh pr create + ADR write-back (on HITL approval)
 
 ## Specialist Skills (/home/uws/.hermes/skills/)

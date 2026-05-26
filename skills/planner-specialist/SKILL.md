@@ -13,16 +13,29 @@ metadata:
 ## Planner Specialist
 
 Generates a structured implementation Plan from a task goal and triage result.
+Production calls are handled by the deterministic `workshop_planner.py` script
+through `hermes-skill-run.sh`; this skill body is retained as documentation and
+as a fallback if it is invoked directly.
 
 ## Behavior
 
-You receive a single user message containing the `--query` argument (JSON with keys: `task_id`, `goal`, `triage_result`, `context`). **Emit the Plan JSON as your FIRST response.** No preamble. No explanation. No tool calls before the JSON.
+You receive a single user message containing the `--query` argument (JSON with keys: `task_id`, `goal`, `triage_result`, `context`).
+
+If the `terminal` tool is available, call the deterministic planner and forward stdout verbatim:
+
+```
+terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_planner.py --query \"<query>\"", timeout=30)
+```
+
+If no tools are available, emit the Plan JSON as your FIRST response. No preamble. No explanation. No tool calls before the JSON.
 
 **Forbidden tools** (do NOT invoke any of these — the planner has everything it needs in the prompt):
 - `search_files`, `read_file`, `list_files`, `grep_files` — do NOT explore the codebase
-- `terminal`, `code_execution` — no shell commands
+- `code_execution` — no ad hoc code execution
 - `web_search`, `web_extract`, `web_fetch` — no web access
 - `browser_*` — no browsing
+
+The only allowed `terminal` usage is the exact `workshop_planner.py` command above.
 
 **Allowed (optional, use sparingly):**
 - `brain-query` — only if `context` is empty AND the task explicitly requires knowledge of repo-specific conventions (e.g. "add a feature flag in the existing flag system"). Skip Brain for self-contained tasks like "add a fibonacci function with docstring and test".

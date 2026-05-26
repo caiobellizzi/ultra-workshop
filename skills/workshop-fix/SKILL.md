@@ -41,9 +41,9 @@ Branch on the exit code from the captured terminal result:
 - `exit 2` (needs_approval):
   - Parse the JSON from the last stdout line emitted by `workshop_build.py` (forwarded through `workshop_fix.py`).
   - Call `clarify` with the value of `summary` from the JSON.
-  - If approved, run the push step in **foreground** (no `background` flag — push is <30s):
+  - If approved, run the push step in **foreground** (no `background` flag — push is <30s). Do not inline `plan_goal` or `diff_summary` in shell arguments; write them to files with quoted heredocs and pass the file paths.
     ```
-    terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_push.py --task-id \"<task_id>\" --branch \"<branch>\" --workspace-dir \"<workspace_dir>\" --repo-full-name \"<repo_full_name>\" --base \"<default_branch>\" --plan-goal \"<plan_goal>\" --diff-summary \"<diff_summary>\"")
+    terminal(command="PLAN_FILE=\"$(mktemp /tmp/uws-plan-goal.XXXXXX)\"\nDIFF_FILE=\"$(mktemp /tmp/uws-diff-summary.XXXXXX)\"\ncat > \"$PLAN_FILE\" <<'__UWS_PLAN_GOAL__'\n<plan_goal>\n__UWS_PLAN_GOAL__\ncat > \"$DIFF_FILE\" <<'__UWS_DIFF_SUMMARY__'\n<diff_summary>\n__UWS_DIFF_SUMMARY__\npython3 /opt/ultra-workshop/hermes-skills/workshop_push.py --task-id \"<task_id>\" --branch \"<branch>\" --workspace-dir \"<workspace_dir>\" --repo-full-name \"<repo_full_name>\" --base \"<default_branch>\" --plan-goal-file \"$PLAN_FILE\" --diff-summary-file \"$DIFF_FILE\"")
     ```
     Return the final stdout (PR URL line from `workshop_push.py`).
   - If rejected, reply: `"PR creation rejected for task <task_id>."`
