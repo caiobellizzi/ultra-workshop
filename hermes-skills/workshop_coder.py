@@ -109,7 +109,7 @@ def _valid_reviewable_path(rel_path: str) -> bool:
         return False
     if rel_path in {"pytest", "python", "pip"}:
         return False
-    if rel_path.startswith(("bash ", "curl ", "pip ", "pytest", "python ", "sh ")):
+    if rel_path.startswith(("bash ", "curl ", "pip ", "pytest ", "python ", "sh ")):
         return False
     return True
 
@@ -281,7 +281,10 @@ def _terminate_process_group(process: subprocess.Popen) -> None:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             return
-        process.wait(timeout=5)
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass  # SIGKILL was sent; process will be reaped by OS eventually
 
 
 def _run_aider_runner(
@@ -445,7 +448,7 @@ def main() -> None:
             capture_output=True,
             text=True,
             shell=False,
-            env={**os.environ, "GH_TOKEN": os.environ.get("GITHUB_PAT", "")},
+            env={**os.environ, "GH_TOKEN": os.environ.get("GITHUB_PAT") or os.environ.get("GH_TOKEN", "")},
         )
         if clone.returncode != 0:
             print(f"[workshop_coder] ERROR: gh repo clone failed: {clone.stderr}", file=sys.stderr, flush=True)
@@ -453,16 +456,22 @@ def main() -> None:
 
     branch = f"workshop/{task_id}"
 
-    # 2. Reset task branch from base ONCE at task start — never between steps.
-    # Prior steps' commits must survive on the workshop/<task_id> branch.
-    subprocess.run(
-        ["git", "-C", str(workspace), "checkout", default_branch],
-        capture_output=True, text=True, shell=False,
-    )
-    checkout = subprocess.run(
-        ["git", "-C", str(workspace), "checkout", "-B", branch, default_branch],
-        capture_output=True, text=True, shell=False,
-    )
+    # 2. Reset task branch from base ONLY on fresh start (start_step == 0).
+    # On resume (start_step > 0), check out the existing branch so prior commits survive.
+    if start_step == 0:
+        subprocess.run(
+            ["git", "-C", str(workspace), "checkout", default_branch],
+            capture_output=True, text=True, shell=False,
+        )
+        checkout = subprocess.run(
+            ["git", "-C", str(workspace), "checkout", "-B", branch, default_branch],
+            capture_output=True, text=True, shell=False,
+        )
+    else:
+        checkout = subprocess.run(
+            ["git", "-C", str(workspace), "checkout", branch],
+            capture_output=True, text=True, shell=False,
+        )
     if checkout.returncode != 0:
         print(f"[workshop_coder] ERROR: git checkout failed: {checkout.stderr}", file=sys.stderr, flush=True)
         sys.exit(1)
