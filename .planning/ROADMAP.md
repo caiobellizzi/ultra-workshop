@@ -183,7 +183,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 07-04-PLAN.md — Wave 3: clone-before-planner in workshop_build.py + planner_query update
+- [x] 07-04-PLAN.md — Wave 3: clone-before-planner in workshop_build.py + planner_query update
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -203,7 +203,7 @@ Plans:
 | 4. Build/Fix Pipeline | 8/8 | Complete | 2026-05-25 |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
-| 7. Agentic Repo-Aware Planner | 3/5 | In Progress|  |
+| 7. Agentic Repo-Aware Planner | 4/5 | In Progress|  |
 | 8. Specialist Quality Uplift | 0/1 | Not started | - |
 | 9. Advanced Agent Architecture | 0/TBD | Planning only (blocked on Ph 8) | - |
 
