@@ -14,6 +14,7 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 - [x] **Phase 4: Build/Fix Pipeline** - Implement 5-role specialist pipeline with HITL, ledgers, cost circuit breaker, and PR output (completed 2026-05-23)
 - [ ] **Phase 5: Autonomous Routines & Integration Loops** - Ship 3 cron routines plus Brain↔Workshop vault signaling flows
 - [x] **Phase 6: Repo Selection & Multi-Repo Builds** - Add a Brain-backed repo registry so Telegram builds and fixes can target active repos beyond the sandbox (VPS dry-run verified 2026-05-24; live Telegram acceptance pending)
+- [ ] **Phase 7: Agentic Repo-Aware Planner** - Replace the blind keyword-heuristic planner with an LLM planner that reads a pre-cloned repo and resolved reference docs (prd.md), keeping the subprocess transport and deterministic state machine (no delegate_task)
 
 ---
 
@@ -151,6 +152,32 @@ Plans:
 
 ---
 
+### Phase 7: Agentic Repo-Aware Planner
+
+**Goal**: The planner produces repo-grounded implementation plans — it reads a pre-cloned workspace and any referenced design doc (resolved from the target repo, the second-brain vault, or Brain) so that `Plan.affected_files` reflect real paths instead of keyword guesses. Built entirely on the existing subprocess + per-specialist `HERMES_HOME` transport and the deterministic state machine; **no `delegate_task`** (consistent with the Phase 4 Wave 0 "delegate_task NOT_SUPPORTED" finding).
+**Depends on**: Phase 4 (pipeline + state machine), Phase 6 (repo registry + repo-aware clone)
+**Requirements**: TBD (new REQ ids assigned during planning)
+**Success Criteria** (what must be TRUE):
+
+  1. The repo is cloned **before** the planner stage and a single `workspace_dir` is shared by planner (read), coder (write), and reviewer (verify), persisted in `state.json` and resumable after a restart
+  2. `planner-specialist` runs as an LLM on the `orchestrator` model (L25) via `hermes chat`, with read-only repo tools (`read_file`/`list_files`/`grep_files`) scoped to `workspace_dir`; write/web/code-exec stay forbidden
+  3. `/build --repo <repo> "<task referencing prd.md>"` resolves the referenced doc deterministically — repo-first, second-brain vault-grep second, Brain HTTP semantic third (degraded while Brain's Groq issue is open) — and injects its content into the planner context
+  4. For a task whose true target files differ from keyword guesses, the planner's `affected_files` match the files the coder actually changes, and the reviewer raises zero "changed files outside the plan" false-blocks
+  5. Subprocess + `HERMES_HOME` isolation, `state.json` resumability, and `exit(2)` HITL are unchanged; no `delegate_task` is introduced; reviewer deterministic safety gates (`_path_issue`, secret regex, `py_compile`) remain authoritative
+  6. Phase-4 and Phase-6 bats + pytest suites stay green; the planner stage timeout accommodates repo I/O without regressing pipeline latency
+
+**Plans**: 5 plans
+**Requirements**: REQ-ws-030, REQ-ws-031, REQ-ws-032, REQ-ws-033, REQ-ws-034
+Plans:
+
+- [ ] 07-01-PLAN.md — Wave 0: test scaffold + VPS Hermes tool verification checkpoint
+- [ ] 07-02-PLAN.md — Wave 1: workspace_dir in state.py, stage_policy timeout 480s, doc_resolver.py
+- [ ] 07-03-PLAN.md — Wave 2: hermes-skill-run.sh routing change + planner SKILL.md LLM rewrite
+- [ ] 07-04-PLAN.md — Wave 3: clone-before-planner in workshop_build.py + planner_query update
+- [ ] 07-05-PLAN.md — Wave 3: phase gate — activate all tests, full regression suite green
+
+---
+
 ## Progress
 
 **Execution Order:** 1 → 2 → 3 → 4 → 5 → 6
@@ -163,6 +190,7 @@ Plans:
 | 4. Build/Fix Pipeline | 8/8 | Complete | 2026-05-25 |
 | 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
+| 7. Agentic Repo-Aware Planner | 0/TBD | Not started | - |
 
 ---
 

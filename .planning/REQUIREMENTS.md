@@ -185,4 +185,35 @@ Acceptance: File exists and matches vocabulary table in PLAN.md (V23)
 | REQ-ws-022 | Phase 5 | Pending |
 | REQ-ws-023 | Phase 5 | Pending |
 
-**Coverage:** 29/29 requirements mapped. No orphans.
+| REQ-ws-030 | Phase 7 | Pending |
+| REQ-ws-031 | Phase 7 | Pending |
+| REQ-ws-032 | Phase 7 | Pending |
+| REQ-ws-033 | Phase 7 | Pending |
+| REQ-ws-034 | Phase 7 | Pending |
+
+**Coverage:** 34/34 requirements mapped. No orphans.
+
+---
+
+### Agentic Repo-Aware Planner (Phase 7)
+
+**REQ-ws-030** — Pre-planner workspace clone + state persistence
+Repo is cloned to a deterministic path (`/tmp/uws-workspace-{task_id}/`) in `workshop_build.py` BEFORE the planner stage. `workspace_dir` key added to `new_task_state()` in `workshop/state.py`. Clone result saved to `state["workspace_dir"]` via `save_task_state()`. Resumable: on restart, existing `.git` directory is detected and re-clone is skipped.
+Acceptance: `python -m pytest tests/phase-07/test_workspace.py -x` passes; `new_task_state()` returns dict containing `"workspace_dir"` key; `workshop_build.py` clones before planner query is built (SC-1)
+
+**REQ-ws-031** — planner-specialist LLM via hermes chat with read-only tools
+`hermes-skill-run.sh` short-circuit for `planner-specialist` removed; planner routes through `hermes chat` with `HERMES_HOME=specialist-home-orchestrator`, `MAX_TURNS=8`. `planner-specialist/SKILL.md` updated: `read_file`/`list_files`/`grep_files` allowed and scoped to `workspace_dir`; write/code-exec/web tools forbidden. Dry-run output reports `hermes chat` and `HERMES_HOME`.
+Acceptance: `bats tests/phase-07/planner-smoke.bats` passes; `bats tests/phase-04/model-matrix-smoke.bats` passes with updated planner assertions (SC-2)
+
+**REQ-ws-032** — 3-tier deterministic doc resolution
+`workshop/doc_resolver.py` implements `resolve_doc(doc_name, workspace_dir, vault_path)`: tier 1 = `Path(workspace_dir).rglob(doc_name)`, tier 2 = `Path(vault_path).rglob(doc_name)`, tier 3 = `brain_http.call_agent("query", ...)` with 60s timeout. Non-blocking at each tier; graceful fallback. `doc_name` validated against path traversal before vault rglob. `VAULT_VPS_PATH` env var used with `/srv/second-brain` fallback.
+Acceptance: `python -m pytest tests/phase-07/test_doc_resolver.py -x` passes (all 3 tiers + traversal guard) (SC-3)
+
+**REQ-ws-033** — LLM planner output accuracy + reviewer false-block elimination
+`workshop_build.py` planner query gains `workspace_dir` and `reference_doc` keys. `planner-specialist/SKILL.md` instructs LLM to use `list_files` (depth 2) + `read_file` on key files to produce `affected_files` with real repo paths. `workshop/stage_policy.py` planner timeout raised to 480s. No changes to `workshop/reviewer.py` required — accurate `affected_files` eliminates "changed files outside the plan" false-blocks automatically.
+Acceptance: `python -m pytest tests/phase-07/test_planner_llm.py -x` passes (schema validation); reviewer gate integration relies on accurate affected_files from LLM (SC-4)
+
+**REQ-ws-034** — Regression safety: Phase 4 + Phase 6 suites stay green
+`tests/phase-04/model-matrix-smoke.bats` planner assertion updated to match new dry-run output format (`hermes chat`, `HERMES_HOME`). All other Phase 4 and Phase 6 bats + pytest assertions remain green. Phase 7 test directory `tests/phase-07/` created with `__init__.py` plus unit test stubs before any implementation tasks run (Wave 0).
+Acceptance: `python -m pytest tests/phase-06/ tests/test_repo_registry.py -q` exits 0; `bats tests/phase-04/model-matrix-smoke.bats` exits 0 after bats update; `python -m pytest tests/phase-07/ -q` exits 0 (SC-5, SC-6)
+
