@@ -5,6 +5,8 @@ import argparse
 import base64
 import binascii
 import json
+import os
+import re
 import secrets
 import subprocess
 import sys
@@ -157,6 +159,12 @@ def _timeout_recovery_payload(task_id: str, stage: str, attempt: int, reason: st
     }
 
 
+def _extract_doc_reference(text: str) -> str:
+    """Return the first *.md filename found in *text*, or empty string."""
+    m = re.search(r'\b([\w\-]+\.md)\b', text or "")
+    return m.group(1) if m else ""
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Workshop build pipeline entry point")
     parser.add_argument("--repo", type=str, default="", help="Target repo, shorthand allowed (e.g. my-app)")
@@ -195,13 +203,19 @@ def main() -> None:
     # Import workshop modules AFTER dry-run check so --dry-run works even without workshop/
     from pydantic import BaseModel
 
+    try:
+        from workshop.doc_resolver import resolve_doc as _resolve_doc
+    except ImportError:
+        def _resolve_doc(*_a, **_kw):  # type: ignore[misc]
+            return None
+
     from workshop.cost import BudgetExhausted, check_circuit_breaker
     from workshop.ledger import append_progress, write_task_ledger
     from workshop.orchestrator import ClarificationNeeded, SpecialistFailed, run_specialist
     from workshop.requirements_gate import RequirementsDecision, build_planning_context
     from workshop.repo_registry import RepoRegistryError, mark_last_used, validate_active_repo
     from workshop.stage_policy import stage_policy
-    from workshop.state import load_task_state, new_task_state, save_task_state, state_exists
+    from workshop.state import clone_repo_to_workspace, load_task_state, new_task_state, save_task_state, state_exists
     from workshop.types import Diff, Plan, Review
 
     class TriageResult(BaseModel):
@@ -303,6 +317,15 @@ def main() -> None:
     state["repo_full_name"] = repo_full_name
     state["default_branch"] = default_branch
 
+    # Clone the repo before any specialist stage so workspace_dir is available.
+    # clone_repo_to_workspace skips re-clone if .git already exists (resume path).
+    if not state.get("workspace_dir"):
+        clone_repo_to_workspace(state, repo=repo_full_name)
+        save_task_state(state)
+        from workshop.ledger import append_progress as _ap
+        _ap(task_id, "workspace_cloned", {"workspace_dir": state["workspace_dir"], "repo": repo_full_name})
+        print(f"[workshop] workspace_cloned: {state['workspace_dir']}", flush=True)
+
     if state.get("next_stage") == "approval" and state.get("approval_payload"):
         state["status"] = "needs_approval"
         save_task_state(state)
@@ -363,6 +386,13 @@ def main() -> None:
         if scope_instruction:
             planner_goal = f"{goal}\n\nScope for this pass: {scope_instruction}"
 
+        # Resolve any referenced doc (e.g. prd.md) into reference content for planner.
+        _doc_name = _extract_doc_reference(planner_goal)
+        _vault_path = os.environ.get("VAULT_VPS_PATH", "/srv/second-brain")
+        _reference_doc = ""
+        if _doc_name:
+            _reference_doc = _resolve_doc(_doc_name, state.get("workspace_dir") or "", _vault_path) or ""
+
         planning_context = build_planning_context(repo_context, requirements.clarifications)
         if _stage_should_run(state, "planner") or "planner" not in stages:
             planner_query = json.dumps({
@@ -374,6 +404,8 @@ def main() -> None:
                 "requirements_result": requirements.model_dump(),
                 "clarifications": requirements.clarifications,
                 "scope_instruction": scope_instruction,
+                "workspace_dir": state.get("workspace_dir") or "",
+                "reference_doc": _reference_doc,
             })
             plan = run_stage("planner", "planner-specialist", planner_query, Plan)
             stages["planner"] = plan.model_dump()
@@ -407,7 +439,7 @@ def main() -> None:
                 coder_payload = {
                     "task_id": task_id,
                     "plan": plan.model_dump(),
-                    "workspace_dir": diff.workspace_dir if diff else "",
+                    "workspace_dir": state.get("workspace_dir") or (diff.workspace_dir if diff else ""),
                     "repo": repo_entry,
                     "clarifications": requirements.clarifications,
                     "stage_policy": coder_policy,

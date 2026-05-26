@@ -24,7 +24,6 @@ def test_new_task_state_has_workspace_dir() -> None:
     assert state["workspace_dir"] == ""
 
 
-@pytest.mark.xfail(reason="clone step not yet implemented in workshop.state", strict=False)
 def test_clone_saves_workspace_dir(tmp_path) -> None:
     """After the clone step, state['workspace_dir'] is populated with the cloned path."""
     _skip_if_missing()

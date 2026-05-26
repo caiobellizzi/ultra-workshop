@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
+import re
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -26,7 +29,7 @@ def new_task_state(
     task_id: str,
     *,
     goal: str,
-    repo: str,
+    repo: str = "",
     session_id: str = "",
     chat_id: str = "",
 ) -> dict[str, Any]:
@@ -80,3 +83,38 @@ def append_state_item(state: dict[str, Any], key: str, item: Any) -> None:
         values = []
         state[key] = values
     values.append(item)
+
+
+def clone_repo_to_workspace(
+    state: dict[str, Any],
+    *,
+    repo: str,
+    clone_root: "Path | str | None" = None,
+) -> dict[str, Any]:
+    """Clone *repo* into a deterministic workspace dir under *clone_root*.
+
+    Skips the clone if the workspace already contains a .git directory
+    (idempotent resume path). Sets ``state["workspace_dir"]`` and returns
+    the updated state dict.  Raises RuntimeError on clone failure.
+    """
+    task_id = str(state.get("task_id") or "unknown")
+    root = Path(clone_root) if clone_root is not None else Path("/tmp")
+    repo_name = repo.split("/")[-1] if "/" in repo else repo
+    workspace = root / f"uws-workspace-{task_id}" / repo_name
+
+    if not (workspace / ".git").exists():
+        workspace.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            ["gh", "repo", "clone", repo, str(workspace)],
+            env={**os.environ, "GH_TOKEN": os.environ.get("GITHUB_PAT", "")},
+            capture_output=True,
+            text=True,
+            shell=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"[workshop] clone failed for {repo}: {result.stderr.strip()}"
+            )
+
+    state["workspace_dir"] = str(workspace)
+    return state
