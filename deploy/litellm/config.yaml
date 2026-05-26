@@ -7,6 +7,12 @@
 # the exact model identifier shown in LM Studio (e.g. "qwen3-32b-mlx" or
 # "lmstudio-community/qwen3-32b"). All tiers can share the same model while
 # you're testing; swap cheap-worker to a lighter model when you load one.
+#
+# NIM model IDs resolved from https://integrate.api.nvidia.com/v1/models (2026-05-26):
+#   planner-reasoner  → nvidia/llama-3.1-nemotron-ultra-253b-v1  (frontier reasoner)
+#   coder-worker      → deepseek-ai/deepseek-v3                  (DeepSeek-V3 coder)
+#   cheap-fast        → meta/llama-3.1-8b-instruct               (small/fast)
+#   reviewer-model    → nvidia/llama-3.3-nemotron-super-49b-v1   (strong general)
 
 model_list:
   # Tier A — orchestrator: heavy model loaded in LM Studio
@@ -54,6 +60,50 @@ model_list:
     model_info:
       mode: chat
 
+  # --- Per-stage NIM aliases (Phase 10) ---
+  # Provider: NVIDIA NIM — https://integrate.api.nvidia.com/v1
+  # Each alias has a cloud fallback for when NIM is unreachable.
+
+  - model_name: planner-reasoner
+    litellm_params:
+      model: openai/nvidia/llama-3.1-nemotron-ultra-253b-v1
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: os.environ/NVIDIA_API_KEY
+      request_timeout: 90
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  - model_name: coder-worker
+    litellm_params:
+      model: openai/deepseek-ai/deepseek-v3
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: os.environ/NVIDIA_API_KEY
+      request_timeout: 90
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  - model_name: reviewer-model
+    litellm_params:
+      model: openai/nvidia/llama-3.3-nemotron-super-49b-v1
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: os.environ/NVIDIA_API_KEY
+      request_timeout: 90
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  - model_name: cheap-fast
+    litellm_params:
+      model: openai/meta/llama-3.1-8b-instruct
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: os.environ/NVIDIA_API_KEY
+      request_timeout: 90
+      max_retries: 1
+    model_info:
+      mode: chat
+
   # Cloud fallbacks — only when LM Studio is unreachable
   - model_name: cloud-sonnet
     litellm_params:
@@ -81,6 +131,10 @@ litellm_settings:
     - default-worker: ["cloud-sonnet", "cloud-groq"]
     - cheap-worker: ["default-worker", "cloud-groq"]
     - private-worker: ["cheap-worker"]
+    - planner-reasoner: ["cloud-sonnet"]
+    - coder-worker: ["cloud-sonnet"]
+    - reviewer-model: ["cloud-sonnet"]
+    - cheap-fast: ["cheap-worker", "cloud-groq"]
   context_window_fallbacks:
     - cheap-worker: ["default-worker"]
     - default-worker: ["cloud-sonnet"]
