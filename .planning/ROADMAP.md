@@ -17,7 +17,7 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 - [x] **Phase 7: Agentic Repo-Aware Planner** - Replace the blind keyword-heuristic planner with an LLM planner that reads a pre-cloned repo and resolved reference docs (prd.md), keeping the subprocess transport and deterministic state machine (no delegate_task) (completed 2026-05-26)
 - [ ] **Phase 8: Specialist Quality Uplift** - In-place soul/discipline/context uplift of all five specialists: lean behavioral souls, build/test verification gate, structured retry feedback, brain reads at planner+reviewer, fix two workshop-fix inconsistencies (imported from grill-me session)
 - [ ] **Phase 9: Advanced Agent Architecture** - Structural redesign adding conception/brainstorm stage, Paperclip-style agent personas+budgets+audit-log, parallel six-scope review wave, AgentTool/SkillTool isolation discipline, and git-worktree parallelism (depends on Phase 8)
-- [ ] **Phase 10: Autonomous Step-by-Step Build Execution** - Replace single monolithic Aider coder call with per-step execution loop (one PlanStep = one commit), per-stage NIM model routing, idle watchdog timeout, bounded auto-recovery with one auto-decompose before HITL, and mid-plan resume via step cursor (depends on Phase 8)
+- [x] **Phase 10: Autonomous Step-by-Step Build Execution** - Replace single monolithic Aider coder call with per-step execution loop (one PlanStep = one commit), per-stage NIM model routing, idle watchdog timeout, bounded auto-recovery with one auto-decompose before HITL, and mid-plan resume via step cursor (depends on Phase 8) (completed 2026-05-26)
 
 ---
 
@@ -207,7 +207,7 @@ Plans:
 | 7. Agentic Repo-Aware Planner | 5/5 | Complete   | 2026-05-26 |
 | 8. Specialist Quality Uplift | 1/1 | Implemented/deployed (live E2E timeout caveat) | 2026-05-26 |
 | 9. Advanced Agent Architecture | 0/TBD | Planning only (blocked on Ph 8) | - |
-| 10. Autonomous Step-by-Step Build Execution | 0/1 | Not started | - |
+| 10. Autonomous Step-by-Step Build Execution | 1/1 | Complete   | 2026-05-26 |
 
 ---
 
@@ -272,7 +272,7 @@ Plans:
 **Plans**: 1 plan
 Plans:
 
-- [ ] 10-01-PLAN.md — Per-stage NIM routing + step loop + idle watchdog + auto-recovery + planner cap removal + state cursor
+- [x] 10-01-PLAN.md — Per-stage NIM routing + step loop + idle watchdog + auto-recovery + planner cap removal + state cursor
 
 ---
 

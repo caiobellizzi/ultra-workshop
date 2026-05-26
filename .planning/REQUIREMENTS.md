@@ -191,12 +191,12 @@ Acceptance: File exists and matches vocabulary table in PLAN.md (V23)
 | REQ-ws-033 | Phase 7 | Complete |
 | REQ-ws-034 | Phase 7 | Complete |
 
-| REQ-ws-051 | Phase 10 | Pending |
-| REQ-ws-052 | Phase 10 | Pending |
-| REQ-ws-053 | Phase 10 | Pending |
-| REQ-ws-054 | Phase 10 | Pending |
-| REQ-ws-055 | Phase 10 | Pending |
-| REQ-ws-056 | Phase 10 | Pending |
+| REQ-ws-051 | Phase 10 | Complete |
+| REQ-ws-052 | Phase 10 | Complete |
+| REQ-ws-053 | Phase 10 | Complete |
+| REQ-ws-054 | Phase 10 | Complete |
+| REQ-ws-055 | Phase 10 | Complete |
+| REQ-ws-056 | Phase 10 | Complete |
 
 **Coverage:** 40/40 requirements mapped. No orphans.
 
