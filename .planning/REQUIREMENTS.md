@@ -185,10 +185,10 @@ Acceptance: File exists and matches vocabulary table in PLAN.md (V23)
 | REQ-ws-022 | Phase 5 | Pending |
 | REQ-ws-023 | Phase 5 | Pending |
 
-| REQ-ws-030 | Phase 7 | Pending |
+| REQ-ws-030 | Phase 7 | Complete |
 | REQ-ws-031 | Phase 7 | Complete |
-| REQ-ws-032 | Phase 7 | Pending |
-| REQ-ws-033 | Phase 7 | Pending |
+| REQ-ws-032 | Phase 7 | Complete |
+| REQ-ws-033 | Phase 7 | Complete |
 | REQ-ws-034 | Phase 7 | Complete |
 
 **Coverage:** 34/34 requirements mapped. No orphans.
