@@ -91,9 +91,24 @@ def main() -> None:
     parser.add_argument("command", choices=["list", "add", "create", "remove"])
     parser.add_argument("repo", nargs="?", default="")
     parser.add_argument("--approved", action="store_true", help="Mutation already approved by Telegram HITL")
+    parser.add_argument(
+        "--choice",
+        default="",
+        help="HITL button token (e.g. 1/yes/approved or 2/no/rejected); tolerated "
+        "for parity with the build pipeline's continuation contract",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Show what would happen without mutating")
     parser.add_argument("--registry", default="", help="Override registry path for tests")
     args = parser.parse_args()
+
+    # Resolve the approval signal. The agent sometimes carries over the build
+    # pipeline's `--choice <number>` continuation pattern instead of `--approved`;
+    # accept both so a numbered HITL button can't desync the repo flow.
+    _APPROVE_TOKENS = {"approved", "approve", "yes", "y", "1", "ok", "confirm", "confirmed"}
+    _REJECT_TOKENS = {"rejected", "reject", "no", "n", "2", "cancel", "deny", "denied"}
+    choice = args.choice.strip().lower()
+    approved = args.approved or choice in _APPROVE_TOKENS
+    rejected = choice in _REJECT_TOKENS
 
     path = registry_path(args.registry or None)
 
@@ -112,7 +127,11 @@ def main() -> None:
             print(f"[dry-run] would {args.command} {full_name}", flush=True)
             return
 
-        if not args.approved:
+        if rejected:
+            print(f"[workshop_repo] {args.command} rejected for {full_name}.", flush=True)
+            return
+
+        if not approved:
             verbs = {
                 "add": "Register existing GitHub repo",
                 "create": "Create private GitHub repo and register it",

@@ -59,6 +59,14 @@ terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_repo.py rem
 
 Removal only marks the registry entry inactive. It never deletes a GitHub repository.
 
+## Approval token
+
+The canonical approval flag is `--approved`. Do **not** use `workshop_continue.py`
+here — that script belongs to the build/fix pipeline. If you instead pass the
+HITL button selection as `--choice <token>`, `workshop_repo.py` tolerates it:
+`1`/`yes`/`approved` count as approval, `2`/`no`/`rejected` cleanly cancel. Prefer
+`--approved` for clarity.
+
 ## Dry-run
 
 If `--dry-run` appears in the trigger, pass it through to `workshop_repo.py`. No registry or GitHub mutation occurs.
