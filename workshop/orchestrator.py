@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -72,12 +73,13 @@ def run_specialist(
     query_json: str,
     output_schema: Type[T],
     dry_run: bool = False,
-    timeout: int = 1200,
+    timeout: int = int(os.environ.get("UWS_CODER_MAX", "7200")),
 ) -> T:
     """Call a Hermes specialist skill via hermes-skill-run.sh and parse JSON stdout.
 
-    Default timeout is 1200s (20 min) to accommodate reasoning models with
-    thinking-mode enabled (e.g. NIM DeepSeek V4 Pro). Override per-call as needed.
+    Default timeout is UWS_CODER_MAX (default 7200s) as a backstop for the multi-step
+    coder stage. Per-step idle timeout and total task budget govern per step — this is
+    the outer wall-clock limit only. Override per-call as needed.
 
     Raises SpecialistFailed if subprocess exits non-zero.
     Raises subprocess.TimeoutExpired if specialist exceeds timeout.

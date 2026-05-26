@@ -56,6 +56,9 @@ def new_task_state(
         "stages": {},
         "approval_payload": {},
         "timeout_payload": {},
+        # Phase 10: step cursor for per-step execution loop and resume
+        "current_step": 0,
+        "decompose_depth": {},
         "created_at": now,
         "updated_at": now,
     }

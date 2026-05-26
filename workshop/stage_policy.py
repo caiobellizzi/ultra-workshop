@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 
@@ -15,10 +16,15 @@ STAGE_POLICIES: dict[str, StagePolicy] = {
     "triage": StagePolicy(timeout=180, auto_retries=1),
     "requirements": StagePolicy(timeout=180, auto_retries=1),
     "planner": StagePolicy(timeout=480, auto_retries=1),
-    # coder: hitl_on_timeout only fires after the per-step recovery ladder
-    # (retry → auto-decompose) is exhausted in workshop_build.py. The
-    # immediate-escalate path must not trigger on a single step timeout.
-    "coder": StagePolicy(timeout=960, tool_timeout=900, auto_retries=0, hitl_on_timeout=False),
+    # coder: UWS_CODER_MAX is the orchestrator backstop for the full multi-step coder
+    # stage. Per-step idle timeout + total task budget govern per step; this is the
+    # outer wall-clock limit only. hitl_on_timeout=False — recovery ladder fires first.
+    "coder": StagePolicy(
+        timeout=int(os.environ.get("UWS_CODER_MAX", "7200")),
+        tool_timeout=int(os.environ.get("UWS_CODER_MAX", "7200")),
+        auto_retries=0,
+        hitl_on_timeout=False,
+    ),
     "reviewer": StagePolicy(timeout=300, auto_retries=1),
 }
 
