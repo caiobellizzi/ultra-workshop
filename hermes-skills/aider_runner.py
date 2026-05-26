@@ -1,9 +1,9 @@
 """
-aider_runner — subprocess wrapper for Aider coder with architect/editor model split.
+aider_runner — subprocess wrapper for Aider coder with single-model alias routing.
 
 Wraps aider as a subprocess with:
-  - Architect model: openai/orchestrator (NIM DeepSeek V4 Pro, thinking on; cloud-sonnet via proxy failover)
-  - Editor model: openai/private-worker (via LM Link → LM Studio on Mac)
+  - Single --model <alias> routed through LiteLLM proxy at 127.0.0.1:4000/v1
+  - model_alias is passed by the caller (e.g. "coder-worker" for coder stage)
   - All LLM calls routed through LiteLLM proxy at 127.0.0.1:4000/v1
 
 SECURITY: subprocess.run([...], shell=False) — no shell injection vector.
@@ -16,8 +16,8 @@ Cost ledger (OPTION B): After aider completes, posts a completion event to Brain
 curator agent (HTTP 200 + run_id). Full 2-LLM-call cost verification is deferred.
 
 # BACKLOG: The cost ledger currently records an event marker only (OPTION B).
-# Strengthen to verify 2 LLM-call entries (orchestrator + private-worker) once
-# Brain exposes a queryable cost-history endpoint. Decided 2026-05-21.
+# Strengthen to verify LLM-call entries once Brain exposes a queryable cost-history
+# endpoint. Decided 2026-05-21.
 """
 from __future__ import annotations
 
@@ -216,16 +216,14 @@ def _build_aider_argv(
     target_files: list[str],
     litellm_api_key: str,
     history_dir: Path,
+    model_alias: str = "coder-worker",
 ) -> list[str]:
     return [
         aider_bin,
-        "--model", "openai/orchestrator",
-        "--editor-model", "openai/private-worker",
-        "--architect",
+        "--model", f"openai/{model_alias}",
         "--openai-api-base", "http://127.0.0.1:4000/v1",
         "--openai-api-key", litellm_api_key,
         "--yes-always",
-        "--no-stream",
         "--no-fancy-input",
         "--no-pretty",
         "--no-detect-urls",
@@ -240,12 +238,11 @@ def _build_aider_argv(
     ]
 
 
-def run_aider(task: str, workspace_files: Optional[list[str]] = None) -> None:
+def run_aider(task: str, workspace_files: Optional[list[str]] = None, model_alias: str = "coder-worker") -> None:
     """Run aider on *task* inside a temp git workspace.
 
     Creates a temporary git-initialised workspace under /tmp, invokes aider
-    with architect=orchestrator (NIM DSv4 Pro) + editor=private-worker (local
-    Gemma via LM Studio) routed through the LiteLLM proxy,
+    with a single --model <model_alias> routed through the LiteLLM proxy,
     prints the diff summary, then posts a cost-ledger marker to Brain curator.
 
     Args:
@@ -254,6 +251,7 @@ def run_aider(task: str, workspace_files: Optional[list[str]] = None) -> None:
                          paths are passed as positional arguments to aider so
                          they are added to the chat. If not given, a blank
                          workspace.py is created in the temp workspace dir.
+        model_alias:     LiteLLM alias for the model to use (default: "coder-worker").
     """
     workspace_dir, target_files = _resolve_workspace(workspace_files)
     print(f"[aider_runner] workspace: {workspace_dir}", flush=True)
@@ -275,6 +273,7 @@ def run_aider(task: str, workspace_files: Optional[list[str]] = None) -> None:
         target_files=target_files,
         litellm_api_key=litellm_api_key,
         history_dir=history_dir,
+        model_alias=model_alias,
     )
 
     print(f"[aider_runner] running aider on task: {task[:80]!r}", flush=True)
@@ -297,23 +296,23 @@ def run_aider(task: str, workspace_files: Optional[list[str]] = None) -> None:
     if result.returncode != 0:
         print(result.stderr, file=sys.stderr, flush=True)
         # Post cost-ledger marker even on failure (non-blocking)
-        _post_cost_ledger(task, success=False)
+        _post_cost_ledger(task, model_alias=model_alias, success=False)
         sys.exit(result.returncode)
 
     verification = verify_workspace(workspace_dir)
     print(f"[aider_runner] verification: {json.dumps(verification, sort_keys=True)}", flush=True)
 
     # --- Cost ledger (OPTION B — curator liveness only) ---
-    _post_cost_ledger(task, success=True)
+    _post_cost_ledger(task, model_alias=model_alias, success=True)
 
 
-def _post_cost_ledger(task: str, success: bool) -> None:
+def _post_cost_ledger(task: str, success: bool, model_alias: str = "coder-worker") -> None:
     """Post a cost-ledger completion event to Brain's curator agent (OPTION B).
 
     Non-blocking: cost ledger failure does NOT abort the aider result.
 
-    # BACKLOG: Strengthen to assert 2 LLM-call entries (orchestrator + private-worker)
-    # once Brain exposes a queryable cost-history endpoint. Decided 2026-05-21.
+    # BACKLOG: Strengthen to assert LLM-call entries once Brain exposes a queryable
+    # cost-history endpoint. Decided 2026-05-21.
     """
     status_tag = "success" if success else "failed"
     if _brain_http is None:
@@ -323,7 +322,7 @@ def _post_cost_ledger(task: str, success: bool) -> None:
         ledger_result = _brain_http.call_agent(
             "curator",
             f"aider task completed: cost_ledger_event status={status_tag} "
-            f"model=orchestrator+private-worker task={task[:80]}",
+            f"model={model_alias} task={task[:80]}",
         )
         run_id = ledger_result.get("run_id", "unknown")
         print(f"[cost-ledger] curator run_id={run_id}", flush=True)

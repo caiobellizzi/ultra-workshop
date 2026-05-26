@@ -10,6 +10,7 @@ class PlanStep(BaseModel):
     id: str
     description: str
     files: list[str] = Field(default_factory=list)
+    model_alias: str = "coder-worker"
 
 
 class Plan(BaseModel):
