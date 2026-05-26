@@ -10,10 +10,16 @@ import re
 import secrets
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
 sys.path.insert(0, str(Path(__file__).parent.parent))  # adds /opt/ultra-workshop to sys.path
+
+# Phase 10 task-level budget caps
+UWS_TASK_BUDGET = int(os.environ.get("UWS_TASK_BUDGET", "2400"))
+MAX_STEPS = 20
+DECOMPOSE_DEPTH_MAX = 1
 
 T = TypeVar("T")
 
@@ -28,10 +34,11 @@ _STAGE_INDEX = {
 
 
 class StageTimeoutForHITL(RuntimeError):
-    def __init__(self, stage: str, attempt: int, reason: str):
+    def __init__(self, stage: str, attempt: int, reason: str, step_context: dict | None = None):
         self.stage = stage
         self.attempt = attempt
         self.reason = reason
+        self.step_context = step_context or {}
         super().__init__(reason)
 
 
@@ -137,6 +144,36 @@ def _is_timeout_failure(exc: Exception) -> bool:
     )
 
 
+def _step_exhausted_hitl_payload(
+    task_id: str,
+    *,
+    step_idx: int,
+    step_desc: str,
+    decompose_attempted: bool,
+    reason: str,
+) -> dict[str, Any]:
+    return {
+        "needs_approval": True,
+        "hitl_type": "step_retry_exhausted",
+        "task_id": task_id,
+        "step_idx": step_idx,
+        "step_desc": step_desc,
+        "decompose_attempted": decompose_attempted,
+        "reason": reason,
+        "summary": (
+            f"Step {step_idx + 1} exhausted retries and auto-decompose on task {task_id}. "
+            "Human intervention required to continue."
+        ),
+        "options": [
+            "1. Provide a refined description and retry this step",
+            "2. Skip this step and continue from the next",
+            "3. Re-enter planning with a smaller goal",
+            "4. Stop this workflow",
+        ],
+        "allow_free_text": True,
+    }
+
+
 def _timeout_recovery_payload(task_id: str, stage: str, attempt: int, reason: str) -> dict[str, Any]:
     return {
         "needs_approval": True,
@@ -203,6 +240,163 @@ def _extract_doc_reference(text: str) -> str:
     """Return the first *.md filename found in *text*, or empty string."""
     m = re.search(r'\b([\w\-]+\.md)\b', text or "")
     return m.group(1) if m else ""
+
+
+def _handle_step_retry_exhausted(
+    exc: Any,
+    state: dict[str, Any],
+    task_id: str,
+    plan: Any,
+    planner_query_template: str,
+    run_stage: Any,
+    stage_model_alias: Any,
+    append_progress: Any,
+    save_task_state: Any,
+    Diff: Any,
+    Plan: Any,
+    task_start: float,
+) -> Any:
+    """Handle StepRetryExhausted escalation from workshop_coder.
+
+    Recovery ladder:
+    1. Parse step context from exc.stderr to find step_idx and step_id
+    2. If decompose_depth[step_id] < DECOMPOSE_DEPTH_MAX: auto-decompose via planner
+    3. Otherwise: raise StageTimeoutForHITL with full context
+    """
+    from workshop.orchestrator import SpecialistFailed  # local import — only available after workshop/ is on path
+
+    # Extract step context from stderr if available
+    stderr_text = str(getattr(exc, "stderr", "") or "")
+    step_idx = 0
+    step_id = "unknown"
+    step_desc = ""
+
+    # Parse step context from StepRetryExhausted repr in stderr
+    import re as _re
+    _m_idx = _re.search(r"idx=(\d+)", stderr_text)
+    if _m_idx:
+        step_idx = int(_m_idx.group(1))
+    _m_id = _re.search(r"Step\s+(\S+)\s+\(idx=", stderr_text)
+    if _m_id:
+        step_id = _m_id.group(1)
+
+    # Get step description from plan
+    plan_dict = plan.model_dump() if hasattr(plan, "model_dump") else (plan or {})
+    steps = plan_dict.get("steps") or []
+    if 0 <= step_idx < len(steps):
+        step = steps[step_idx]
+        step_desc = str(step.get("description") or "") if isinstance(step, dict) else str(getattr(step, "description", ""))
+        step_id = str(step.get("id") or step_idx + 1) if isinstance(step, dict) else str(getattr(step, "id", step_idx + 1))
+
+    decompose_depth = state.setdefault("decompose_depth", {})
+    current_depth = int(decompose_depth.get(step_id, 0))
+
+    append_progress(task_id, "step_retry_exhausted", {"step_id": step_id, "step_idx": step_idx, "decompose_depth": current_depth})
+
+    # Check global caps before attempting decompose
+    elapsed_total = time.monotonic() - task_start
+    budget_exceeded = elapsed_total > UWS_TASK_BUDGET
+
+    if current_depth >= DECOMPOSE_DEPTH_MAX or budget_exceeded:
+        reason = (
+            f"Step {step_id} retry exhausted; decompose_depth={current_depth}>={DECOMPOSE_DEPTH_MAX}"
+            if current_depth >= DECOMPOSE_DEPTH_MAX
+            else f"UWS_TASK_BUDGET={UWS_TASK_BUDGET}s exceeded before decompose attempt"
+        )
+        payload = _step_exhausted_hitl_payload(
+            task_id,
+            step_idx=step_idx,
+            step_desc=step_desc,
+            decompose_attempted=current_depth > 0,
+            reason=reason,
+        )
+        state["status"] = "needs_step_recovery"
+        state["step_recovery_payload"] = payload
+        save_task_state(state)
+        raise StageTimeoutForHITL(
+            "coder",
+            state.get("attempts", {}).get("coder", 0),
+            reason,
+            step_context={"step_idx": step_idx, "step_desc": step_desc, "decompose_attempted": current_depth > 0},
+        ) from exc
+
+    # Auto-decompose: call planner to split the failing step into 2-3 sub-steps
+    print(f"[workshop] auto-decompose step {step_id} (depth={current_depth} → {current_depth + 1})", flush=True)
+    decompose_depth[step_id] = current_depth + 1
+    state["decompose_depth"] = decompose_depth
+    save_task_state(state)
+
+    goal = plan_dict.get("goal", "")
+    decompose_goal = (
+        f"{goal}\n\nSplit the following failing step into 2-3 smaller independently "
+        f"buildable sub-steps:\n\nFailing step: {step_desc}\n\n"
+        "Return a Plan with only the sub-steps for this failing step."
+    )
+    decompose_query = json.dumps({
+        "task_id": task_id,
+        "goal": decompose_goal,
+        "model_alias": stage_model_alias("planner-specialist"),
+        "triage_result": {},
+        "context": f"auto-decompose of step {step_id}",
+        "repo": state.get("repo_entry") or {},
+        "requirements_result": {},
+        "clarifications": [],
+        "scope_instruction": f"decompose step {step_id} only",
+        "workspace_dir": state.get("workspace_dir") or "",
+        "reference_doc": "",
+    })
+
+    try:
+        sub_plan = run_stage("planner", "planner-specialist", decompose_query, Plan)
+    except Exception as decompose_exc:
+        reason = f"Auto-decompose planner call failed: {decompose_exc}"
+        raise StageTimeoutForHITL(
+            "coder",
+            state.get("attempts", {}).get("coder", 0),
+            reason,
+            step_context={"step_idx": step_idx, "step_desc": step_desc, "decompose_attempted": True},
+        ) from decompose_exc
+
+    # Merge sub-steps into the plan for the coder retry
+    new_steps = list(steps[:step_idx]) + sub_plan.steps + list(steps[step_idx + 1:])
+    if len(new_steps) > MAX_STEPS:
+        reason = f"Decomposed plan has {len(new_steps)} steps > MAX_STEPS={MAX_STEPS}"
+        raise StageTimeoutForHITL(
+            "coder",
+            state.get("attempts", {}).get("coder", 0),
+            reason,
+            step_context={"step_idx": step_idx, "step_desc": step_desc, "decompose_attempted": True},
+        )
+
+    # Build updated plan with sub-steps
+    new_plan_dict = dict(plan_dict)
+    new_plan_dict["steps"] = [s.model_dump() if hasattr(s, "model_dump") else s for s in new_steps]
+    new_plan = Plan.model_validate(new_plan_dict)
+
+    # Run the sub-steps via coder
+    from workshop.stage_policy import stage_policy as _stage_policy
+    coder_policy = _stage_policy_payload(state, "coder", _stage_policy)
+    sub_coder_payload = {
+        "task_id": task_id,
+        "plan": new_plan.model_dump(),
+        "workspace_dir": state.get("workspace_dir") or "",
+        "repo": state.get("repo_entry") or {},
+        "clarifications": [],
+        "stage_policy": coder_policy,
+        "model_alias": stage_model_alias("coder-specialist"),
+        "current_step": step_idx,  # start from the failing step position
+    }
+    sub_coder_query = json.dumps(sub_coder_payload)
+    try:
+        return run_stage("coder", "coder-specialist", sub_coder_query, Diff)
+    except SpecialistFailed as sub_exc:
+        reason = f"Sub-steps also failed after decompose: {sub_exc}"
+        raise StageTimeoutForHITL(
+            "coder",
+            state.get("attempts", {}).get("coder", 0),
+            reason,
+            step_context={"step_idx": step_idx, "step_desc": step_desc, "decompose_attempted": True},
+        ) from sub_exc
 
 
 def main() -> None:
@@ -382,6 +576,7 @@ def main() -> None:
 
     state["status"] = "running"
     save_task_state(state)
+    task_start = time.monotonic()
 
     try:
         check_circuit_breaker()
@@ -503,7 +698,20 @@ def main() -> None:
                 sys.exit(2)
 
             if _stage_should_run(state, "coder") or diff is None:
+                # Budget check before running coder
+                elapsed_total = time.monotonic() - task_start
+                if elapsed_total > UWS_TASK_BUDGET:
+                    reason = f"UWS_TASK_BUDGET={UWS_TASK_BUDGET}s exceeded (elapsed={elapsed_total:.0f}s)"
+                    raise StageTimeoutForHITL("coder", state.get("attempts", {}).get("coder", 0), reason)
+
+                # Cap check: if plan has too many steps, escalate before running
+                plan_steps = plan.steps if hasattr(plan, "steps") else (plan.model_dump().get("steps") or [])
+                if len(plan_steps) > MAX_STEPS:
+                    reason = f"Plan has {len(plan_steps)} steps > MAX_STEPS={MAX_STEPS}. PRD too large — split it."
+                    raise StageTimeoutForHITL("coder", 0, reason)
+
                 coder_policy = _stage_policy_payload(state, "coder", stage_policy)
+                current_step = int(state.get("current_step") or 0)
                 coder_payload = {
                     "task_id": task_id,
                     "plan": plan.model_dump(),
@@ -512,11 +720,21 @@ def main() -> None:
                     "clarifications": requirements.clarifications,
                     "stage_policy": coder_policy,
                     "model_alias": stage_model_alias("coder-specialist"),
+                    "current_step": current_step,
                 }
                 if review is not None and not review.passed:
                     coder_payload["previous_review"] = review.model_dump()
                 coder_query = json.dumps(coder_payload)
-                diff = run_stage("coder", "coder-specialist", coder_query, Diff)
+                try:
+                    diff = run_stage("coder", "coder-specialist", coder_query, Diff)
+                except SpecialistFailed as exc:
+                    # workshop_coder.py exits non-zero when StepRetryExhausted is raised.
+                    # Run the auto-recovery ladder: decompose → HITL.
+                    diff = _handle_step_retry_exhausted(
+                        exc, state, task_id, plan, "",
+                        run_stage, stage_model_alias, append_progress, save_task_state, Diff, Plan,
+                        task_start,
+                    )
                 stages["diff"] = diff.model_dump()
                 state["next_stage"] = "reviewer"
                 save_task_state(state)
@@ -571,6 +789,8 @@ def main() -> None:
         sys.exit(2)
     except StageTimeoutForHITL as timeout:
         payload = _timeout_recovery_payload(task_id, timeout.stage, timeout.attempt, timeout.reason)
+        if timeout.step_context:
+            payload.update(timeout.step_context)
         state["status"] = "needs_timeout_recovery"
         state["next_stage"] = timeout.stage
         state["timeout_payload"] = payload
