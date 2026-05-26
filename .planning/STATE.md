@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
+status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-05-25T14:22:14Z"
-last_activity: 2026-05-25
+last_updated: "2026-05-26T03:21:21.739Z"
+last_activity: 2026-05-26 -- Phase 07 planning complete
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 5
-  total_plans: 21
+  total_plans: 26
   completed_plans: 21
-  percent: 83
+  percent: 71
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 
 Phase: 5
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-25
+Status: Ready to execute
+Last activity: 2026-05-26 -- Phase 07 planning complete
 
-Progress: [████████░░] 83%
+Progress: [███████░░░] 71%
 
 ## Performance Metrics
 
@@ -50,6 +50,10 @@ Progress: [████████░░] 83%
 | Phase 04-build-fix-pipeline P00 | 20 | 3 tasks | 1 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 7 added (2026-05-25): Agentic Repo-Aware Planner — upgrade the planner from a blind keyword-heuristic to an LLM planner that reads a pre-cloned repo + resolved reference docs (prd.md via repo/vault/Brain). Keeps subprocess + HERMES_HOME transport and the deterministic state machine; no `delegate_task`. Motivated by analysis that confirmed the subprocess orchestration is correct for this fixed, HITL-gated, budget-capped pipeline (delegate_task would regress reliability, cost, and restart-resilience), leaving per-role intelligence as the only genuine "more agentic" opportunity.
 
 ### Decisions
 

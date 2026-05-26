@@ -170,10 +170,21 @@ Plans:
 **Requirements**: REQ-ws-030, REQ-ws-031, REQ-ws-032, REQ-ws-033, REQ-ws-034
 Plans:
 
+**Wave 1**
+
 - [ ] 07-01-PLAN.md — Wave 0: test scaffold + VPS Hermes tool verification checkpoint
 - [ ] 07-02-PLAN.md — Wave 1: workspace_dir in state.py, stage_policy timeout 480s, doc_resolver.py
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 07-03-PLAN.md — Wave 2: hermes-skill-run.sh routing change + planner SKILL.md LLM rewrite
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 07-04-PLAN.md — Wave 3: clone-before-planner in workshop_build.py + planner_query update
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 07-05-PLAN.md — Wave 3: phase gate — activate all tests, full regression suite green
 
 ---
