@@ -15,9 +15,28 @@ STAGE_POLICIES: dict[str, StagePolicy] = {
     "triage": StagePolicy(timeout=180, auto_retries=1),
     "requirements": StagePolicy(timeout=180, auto_retries=1),
     "planner": StagePolicy(timeout=480, auto_retries=1),
-    "coder": StagePolicy(timeout=960, tool_timeout=900, auto_retries=0, hitl_on_timeout=True),
+    # coder: hitl_on_timeout only fires after the per-step recovery ladder
+    # (retry → auto-decompose) is exhausted in workshop_build.py. The
+    # immediate-escalate path must not trigger on a single step timeout.
+    "coder": StagePolicy(timeout=960, tool_timeout=900, auto_retries=0, hitl_on_timeout=False),
     "reviewer": StagePolicy(timeout=300, auto_retries=1),
 }
+
+# Per-stage model alias routing map.
+# Each stage's query payload includes "model_alias": MODEL_ALIASES.get(stage, "default-worker")
+# so that workshop_coder.py and workshop_planner.py can read the alias from the payload.
+MODEL_ALIASES: dict[str, str] = {
+    "triage-specialist": "cheap-fast",
+    "requirements-specialist": "cheap-fast",
+    "planner-specialist": "planner-reasoner",
+    "coder-specialist": "coder-worker",
+    "reviewer-specialist": "reviewer-model",
+}
+
+
+def stage_model_alias(skill_name: str) -> str:
+    """Return the LiteLLM model alias for the given specialist skill name."""
+    return MODEL_ALIASES.get(skill_name, "default-worker")
 
 
 def stage_policy(stage: str) -> StagePolicy:

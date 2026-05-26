@@ -254,7 +254,7 @@ def main() -> None:
     from workshop.orchestrator import ClarificationNeeded, SpecialistFailed, run_specialist
     from workshop.requirements_gate import RequirementsDecision, build_planning_context
     from workshop.repo_registry import RepoRegistryError, mark_last_used, validate_active_repo
-    from workshop.stage_policy import stage_policy
+    from workshop.stage_policy import stage_model_alias, stage_policy
     from workshop.state import clone_repo_to_workspace, load_task_state, new_task_state, save_task_state, state_exists
     from workshop.types import Diff, Plan, Review
 
@@ -396,7 +396,7 @@ def main() -> None:
         repo_context = f"Target repo: {repo_full_name}; base branch: {default_branch}"
 
         if _stage_should_run(state, "triage") or "triage" not in stages:
-            triage_query = json.dumps({"task_id": task_id, "goal": goal, "context": repo_context})
+            triage_query = json.dumps({"task_id": task_id, "goal": goal, "context": repo_context, "model_alias": stage_model_alias("triage-specialist")})
             triage_raw = run_stage("triage", "triage-specialist", triage_query, TriageResult)
             stages["triage"] = triage_raw.model_dump()
             state["next_stage"] = "requirements"
@@ -414,6 +414,7 @@ def main() -> None:
                     "context": repo_context,
                     "repo": repo_entry,
                     "clarifications": state.get("clarifications") or [],
+                    "model_alias": stage_model_alias("requirements-specialist"),
                 }
             )
             requirements = run_stage("requirements", "requirements-specialist", requirements_query, RequirementsDecision)
@@ -458,6 +459,7 @@ def main() -> None:
                 "scope_instruction": scope_instruction,
                 "workspace_dir": state.get("workspace_dir") or "",
                 "reference_doc": _reference_doc,
+                "model_alias": stage_model_alias("planner-specialist"),
             })
             plan = run_stage("planner", "planner-specialist", planner_query, Plan)
             stages["planner"] = plan.model_dump()
@@ -509,6 +511,7 @@ def main() -> None:
                     "repo": repo_entry,
                     "clarifications": requirements.clarifications,
                     "stage_policy": coder_policy,
+                    "model_alias": stage_model_alias("coder-specialist"),
                 }
                 if review is not None and not review.passed:
                     coder_payload["previous_review"] = review.model_dump()
@@ -528,6 +531,7 @@ def main() -> None:
                     "context": planning_context,
                     "repo": repo_entry,
                     "clarifications": requirements.clarifications,
+                    "model_alias": stage_model_alias("reviewer-specialist"),
                 })
                 review = run_stage("reviewer", "reviewer-specialist", reviewer_query, Review)
                 stages["review"] = review.model_dump()
