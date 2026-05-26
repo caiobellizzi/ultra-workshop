@@ -1,0 +1,51 @@
+# Hermes Tool Verification Notes
+# Plan 07-01 Task 2 — VPS verification (2026-05-26)
+# Consumed by Plans 07-02 and 07-03 (SKILL.md rewrite)
+
+## Source
+/opt/ultra-workshop/hermes/toolsets.py (live VPS binary)
+
+## Confirmed File Tool Names
+
+ALLOWED for planner-specialist:
+  read_file     — read a file
+  search_files  — search/grep files (NOTE: NOT grep_files, NOT list_files)
+
+FORBIDDEN for planner-specialist (must appear in SKILL.md forbidden list):
+  write_file
+  patch
+  code_execution
+  execute_code
+  web_search
+  web_extract
+  browser_* (all browser tools)
+
+CORRECTION vs RESEARCH.md assumptions A2/A3:
+  - RESEARCH.md assumed: read_file, list_files, grep_files
+  - ACTUAL names:        read_file, search_files
+  - list_files does NOT exist in this binary
+  - grep_files does NOT exist in this binary
+  - Plan 03 SKILL.md rewrite MUST use read_file and search_files
+
+## specialist-home-orchestrator Allowlist State
+
+Config: /opt/ultra-workshop/specialist-home-orchestrator/config.yaml
+  model: orchestrator
+  agent.max_turns: 5
+  approvals.mode: off
+  mcp_servers: {} (none)
+
+HERMES.md: does NOT exist in /opt/ultra-workshop/specialist-home-orchestrator/
+
+Tool restrictions: NONE — all toolsets enabled by default including `file` toolset.
+The `file` toolset (read_file, search_files, write_file, patch) is fully enabled.
+Restriction of write_file/patch for planner MUST be enforced via SKILL.md forbidden
+list, not via orchestrator-level config.
+
+## Impact on Plan 03
+
+Plan 03 (planner SKILL.md rewrite) must:
+1. Use `read_file` and `search_files` (not list_files/grep_files) in the allowed tools list
+2. Explicitly forbid write_file, patch, code_execution, execute_code, web_search,
+   web_extract, browser_* in the SKILL.md FORBIDDEN section
+3. No changes needed to specialist-home-orchestrator config.yaml (no restrictions exist there)
