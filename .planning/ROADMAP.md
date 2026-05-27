@@ -206,7 +206,7 @@ Plans:
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
 | 7. Agentic Repo-Aware Planner | 5/5 | Complete   | 2026-05-26 |
 | 8. Specialist Quality Uplift | 1/1 | Implemented/deployed (live E2E timeout caveat) | 2026-05-26 |
-| 9. Advanced Agent Architecture | 0/TBD | Planning only (blocked on Ph 8) | - |
+| 9. Advanced Agent Architecture | 2/4 | In Progress|  |
 | 10. Autonomous Step-by-Step Build Execution | 1/1 | Complete   | 2026-05-26 |
 
 ---
@@ -253,8 +253,8 @@ Plans:
 
 **Wave 1**
 
-- [ ] 09-01-PLAN.md — Foundation: ReviewFinding/WaveReport/MergeReport types, per-role budget layer, audit log append_audit, review-roster.yaml (Wave 1)
-- [ ] 09-02-PLAN.md — Souls + worktree: 9 reviewer SKILL.md files, workshop/worktree.py, agent-isolation-policy.md (Wave 1)
+- [x] 09-01-PLAN.md — Foundation: ReviewFinding/WaveReport/MergeReport types, per-role budget layer, audit log append_audit, review-roster.yaml (Wave 1)
+- [x] 09-02-PLAN.md — Souls + worktree: 9 reviewer SKILL.md files, workshop/worktree.py, agent-isolation-policy.md (Wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
