@@ -248,10 +248,13 @@ Plans:
 
 **Status**: Context gathered (2026-05-27) — L12 unlocked for Phase 9 (owner amendment L12-A); pre-planning checklist resolved in 09-CONTEXT.md. Ready for plan-phase.
 
-**Plans**: TBD (requires discuss-phase + plan-phase before sub-plans are created)
+**Plans**: 4 plans
 Plans:
 
-- [ ] 09-01-PLAN.md — Design intent document (PLANNING ONLY, not yet executable)
+- [ ] 09-01-PLAN.md — Foundation: ReviewFinding/WaveReport/MergeReport types, per-role budget layer, audit log append_audit, review-roster.yaml (Wave 1)
+- [ ] 09-02-PLAN.md — Souls + worktree: 9 reviewer SKILL.md files, workshop/worktree.py, agent-isolation-policy.md (Wave 1)
+- [ ] 09-03-PLAN.md — Integration: brainstorm stage in workshop_build.py, wave dispatch + merge agent, requirements brain pre-query (Wave 2)
+- [ ] 09-04-PLAN.md — Final wiring: stage_policy.py update, brainstorm-specialist soul, requirements-specialist soul update, human smoke test (Wave 3)
 
 ---
 
