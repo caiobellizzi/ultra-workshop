@@ -230,6 +230,7 @@ def _build_aider_argv(
         "--no-show-model-warnings",
         "--no-check-update",
         "--no-gitignore",
+        "--model-settings-file", str(Path(__file__).parent / ".aider.model.settings.yml"),
         "--input-history-file", str(history_dir / "input.history"),
         "--chat-history-file", str(history_dir / "chat.history.md"),
         "--llm-history-file", str(history_dir / "llm.history"),
