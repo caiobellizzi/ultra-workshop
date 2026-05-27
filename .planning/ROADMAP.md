@@ -234,7 +234,7 @@ Plans:
 
 ### Phase 9: Advanced Agent Architecture
 
-**Goal**: Pipeline extended with a conception/brainstorm HITL stage; agents have job descriptions, monthly token budgets, and auto-pause; every pipeline action is logged to an immutable per-ticket audit trail; single reviewer replaced by a parallel six-scope review wave (correctness/security/perf/tests/docs/config) with a dedup+autofix merge agent; AgentTool/SkillTool isolation policy enforced
+**Goal**: Pipeline extended with a conception/brainstorm HITL stage; agents have job descriptions, monthly token budgets, and auto-pause; every pipeline action is logged to an immutable per-ticket audit trail; single reviewer replaced by a parallel 8-scope review wave (correctness/security/python/typescript/reactjs/qa/docs/config) with a dedup+autofix merge agent; AgentTool/SkillTool isolation policy enforced
 **Depends on**: Phase 8
 **Requirements**: REQ-ws-043 through REQ-ws-050 (to be minted during planning)
 **Success Criteria** (what must be TRUE):
@@ -242,7 +242,7 @@ Plans:
   1. A brainstorm/conception stage runs as a pre-triage HITL conversational loop that loops until explicit owner approval (no turn cap — owner amendment B1-A) and produces a scoped goal statement
   2. Each specialist has a documented job description, monthly token budget tracked in brain ledger, and auto-pauses at 100%
   3. Every pipeline event is appended to `vault/_system/workshop-audit/{task_id}.jsonl` via brain ingest
-  4. Six parallel AgentTool-isolated reviewers run in wave 2; a merge agent deduplicates and auto-fixes `severity: low` items in wave 3
+  4. 8 parallel AgentTool-isolated reviewers run in wave 2 (correctness, security, python, typescript, reactjs, qa, docs, config); a merge agent deduplicates and auto-fixes `severity: low` items in wave 3. *(SC-4 amended by D-01/D-04 per 09-CONTEXT.md — original draft said 6 reviewers.)*
   5. AgentTool/SkillTool isolation policy is documented and all code+review agents use isolated context
   6. `requirements-specialist` queries brain for prior clarifications before triggering HITL
 
