@@ -278,20 +278,46 @@ def run_aider(task: str, workspace_files: Optional[list[str]] = None, model_alia
 
     print(f"[aider_runner] running aider on task: {task[:80]!r}", flush=True)
 
-    # --- Run aider (shell=False — no shell injection) ---
-    result = subprocess.run(
+    # --- Run aider, streaming output so the upstream idle watchdog sees activity ---
+    # subprocess.run(capture_output=True) blocks until aider exits without forwarding
+    # any bytes — that causes the workshop_coder.py idle watchdog (120s no-output) to
+    # kill us prematurely. Streaming via Popen + threads keeps the watchdog alive.
+    import threading
+
+    stdout_parts: list[str] = []
+    stderr_parts: list[str] = []
+
+    def _reader(stream, collector: list, dest) -> None:
+        for line in stream:
+            collector.append(line)
+            dest.write(line)
+            dest.flush()
+
+    proc = subprocess.Popen(
         argv,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
         shell=False,
         cwd=str(workspace_dir),
         stdin=subprocess.DEVNULL,
         env={**os.environ, "TERM": "dumb", "CI": "1"},
     )
+    t_out = threading.Thread(target=_reader, args=(proc.stdout, stdout_parts, sys.stdout), daemon=True)
+    t_err = threading.Thread(target=_reader, args=(proc.stderr, stderr_parts, sys.stderr), daemon=True)
+    t_out.start()
+    t_err.start()
+    proc.wait()
+    t_out.join(timeout=5)
+    t_err.join(timeout=5)
 
-    # Print diff summary to stdout (skill body captures this)
-    if result.stdout:
-        print(result.stdout, flush=True)
+    # Reconstruct result-like object for downstream checks
+    class _Result:
+        returncode = proc.returncode
+        stdout = "".join(stdout_parts)
+        stderr = "".join(stderr_parts)
+
+    result = _Result()
 
     if result.returncode != 0:
         print(result.stderr, file=sys.stderr, flush=True)

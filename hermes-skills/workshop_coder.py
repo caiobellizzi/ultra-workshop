@@ -304,7 +304,7 @@ def _run_aider_runner(
         argv,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True,
+        text=False,  # bytes mode — TextIOWrapper.read() blocks after select(); read1() does not
         shell=False,
         env=env,
         start_new_session=True,
@@ -340,17 +340,19 @@ def _run_aider_runner(
             raise subprocess.TimeoutExpired(argv, idle_timeout)
 
         # Non-blocking read with select — 1s poll interval
+        # read1() returns immediately with whatever bytes are available (no buffering block)
         readable, _, _ = select.select(
             [process.stdout, process.stderr], [], [], 1.0
         )
         for stream in readable:
-            data = stream.read(4096)
+            data = stream.read1(4096)
             if data:
                 last_output_at = time.monotonic()
+                decoded = data.decode("utf-8", errors="replace")
                 if stream is process.stdout:
-                    stdout_chunks.append(data)
+                    stdout_chunks.append(decoded)
                 else:
-                    stderr_chunks.append(data)
+                    stderr_chunks.append(decoded)
 
         # Check if process has exited
         if process.poll() is not None:
@@ -358,9 +360,9 @@ def _run_aider_runner(
             try:
                 remaining_out, remaining_err = process.communicate(timeout=5)
                 if remaining_out:
-                    stdout_chunks.append(remaining_out)
+                    stdout_chunks.append(remaining_out.decode("utf-8", errors="replace"))
                 if remaining_err:
-                    stderr_chunks.append(remaining_err)
+                    stderr_chunks.append(remaining_err.decode("utf-8", errors="replace"))
             except subprocess.TimeoutExpired:
                 pass
             break
