@@ -102,3 +102,43 @@ class IngestResult(BaseModel):
     run_id: str
     status: str
     adr_path: str
+
+
+class ReviewFinding(BaseModel):
+    file: str
+    line: int | None = None
+    problem: str
+    required_fix: str
+    severity: Literal["Critical", "Important", "Minor"]
+
+    @field_validator("severity", mode="before")
+    @classmethod
+    def _normalize_severity(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise ValueError(f"severity must be a string, got {type(value)}")
+        upper = value.upper()
+        if upper in ("CRITICAL", "HIGH"):
+            return "Critical"
+        if upper in ("IMPORTANT", "MEDIUM"):
+            return "Important"
+        if upper in ("MINOR", "LOW"):
+            return "Minor"
+        raise ValueError(
+            f"unrecognized severity {value!r}; expected Critical/High, Important/Medium, or Minor/Low"
+        )
+
+
+class WaveReport(BaseModel):
+    role: str
+    passed: bool
+    findings: list[ReviewFinding] = Field(default_factory=list)
+    tokens_used: int = 0
+    cost_cents: float = 0.0
+
+
+class MergeReport(BaseModel):
+    block_push: bool
+    critical_findings: list[ReviewFinding] = Field(default_factory=list)
+    important_findings: list[ReviewFinding] = Field(default_factory=list)
+    auto_fixed: list[ReviewFinding] = Field(default_factory=list)
+    summary: str = ""

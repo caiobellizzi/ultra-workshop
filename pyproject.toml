@@ -1,2 +1,2 @@
 [tool.pytest.ini_options]
-testpaths = ["hermes-skills", "scripts"]
+testpaths = ["hermes-skills", "scripts", "tests"]

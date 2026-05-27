@@ -1,0 +1,61 @@
+# Agent isolation policy enforcement: see hermes-config/agent-isolation-policy.md
+# This file is the single source of truth for reviewer isolation and monthly budget caps.
+# security + correctness are always-on (isolation: true); all others are diff-gated (isolation: false).
+# Never remove security or correctness from this file — check_role_budget for security raises BLOCK on exhaustion.
+
+reviewers:
+  - role: correctness
+    model_alias: reviewer-model
+    isolation: true
+    file_patterns: []
+    monthly_budget_cents: 3000
+    fallback_model_alias: null
+
+  - role: security
+    model_alias: reviewer-model
+    isolation: true
+    file_patterns: []
+    monthly_budget_cents: 4000
+    fallback_model_alias: null
+
+  - role: python
+    model_alias: reviewer-model
+    isolation: false
+    file_patterns: [".py"]
+    monthly_budget_cents: 2000
+    fallback_model_alias: cheap-fast
+
+  - role: typescript
+    model_alias: reviewer-model
+    isolation: false
+    file_patterns: [".ts", ".tsx"]
+    monthly_budget_cents: 2000
+    fallback_model_alias: cheap-fast
+
+  - role: reactjs
+    model_alias: reviewer-model
+    isolation: false
+    file_patterns: [".tsx", ".jsx"]
+    monthly_budget_cents: 2000
+    fallback_model_alias: cheap-fast
+
+  - role: qa
+    model_alias: reviewer-model
+    isolation: false
+    file_patterns: ["test", "spec"]
+    monthly_budget_cents: 1000
+    fallback_model_alias: cheap-fast
+
+  - role: docs
+    model_alias: reviewer-model
+    isolation: false
+    file_patterns: [".md", ".rst"]
+    monthly_budget_cents: 1000
+    fallback_model_alias: cheap-fast
+
+  - role: config
+    model_alias: reviewer-model
+    isolation: false
+    file_patterns: ["deploy", ".env", "secrets", "config"]
+    monthly_budget_cents: 1000
+    fallback_model_alias: cheap-fast
