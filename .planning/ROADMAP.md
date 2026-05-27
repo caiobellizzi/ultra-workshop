@@ -239,14 +239,14 @@ Plans:
 **Requirements**: REQ-ws-043 through REQ-ws-050 (to be minted during planning)
 **Success Criteria** (what must be TRUE):
 
-  1. A brainstorm/conception stage runs as a pre-triage HITL conversational loop (≤5 turns) and produces a scoped goal statement
+  1. A brainstorm/conception stage runs as a pre-triage HITL conversational loop that loops until explicit owner approval (no turn cap — owner amendment B1-A) and produces a scoped goal statement
   2. Each specialist has a documented job description, monthly token budget tracked in brain ledger, and auto-pauses at 100%
   3. Every pipeline event is appended to `vault/_system/workshop-audit/{task_id}.jsonl` via brain ingest
   4. Six parallel AgentTool-isolated reviewers run in wave 2; a merge agent deduplicates and auto-fixes `severity: low` items in wave 3
   5. AgentTool/SkillTool isolation policy is documented and all code+review agents use isolated context
   6. `requirements-specialist` queries brain for prior clarifications before triggering HITL
 
-**Status**: PLANNING ONLY — requires pre-planning checklist completion (see 09-01-PLAN.md) and explicit owner unlock of L12 (5-role topology)
+**Status**: Context gathered (2026-05-27) — L12 unlocked for Phase 9 (owner amendment L12-A); pre-planning checklist resolved in 09-CONTEXT.md. Ready for plan-phase.
 
 **Plans**: TBD (requires discuss-phase + plan-phase before sub-plans are created)
 Plans:

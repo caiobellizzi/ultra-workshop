@@ -111,6 +111,13 @@ These amendments explicitly unlock a follow-up phase after the completed Phase 4
 - **L17-A — Multi-repo support unlocked for Phase 6.** Workshop may target repositories listed as `active: true` in `/srv/second-brain/_system/workshop-repos.json`. The registry auto-seeds `caiobellizzi/test-workshop-sandbox`; `/repo remove` marks entries inactive and never deletes GitHub repositories. `/build` and `/fix` must reject unknown or inactive repos.
 - **L18-A — GitHub auth/security expanded for Phase 6.** `GITHUB_PAT` on the VPS may cover registered repos with the minimum GitHub permissions needed for view, clone, branch push, PR creation, and private repo creation. Repo creation, repo registration, repo removal, git push, and PR creation remain HITL-gated through the single allowed Telegram chat. GitHub App auth remains the preferred later hardening path.
 
+### Owner Amendments — 2026-05-27 (Phase 9)
+
+These amendments unlock the advanced agent architecture. They supersede the named locks for Phase 9 onward only; the original locks remain the Phase 1 historical record.
+
+- **L12-A — 5-role topology unlocked for Phase 9.** L12's locked topology (triage → planner → coder → reviewer → pr_opener) is superseded for Phase 9. The pipeline becomes **brainstorm → triage → requirements → planner → coder → parallel review-wave → HITL → push**: adds a brainstorm/conception role (role 0) and replaces the single `reviewer-specialist` with a hybrid parallel review wave (correctness + security always-on; python/typescript/reactjs diff-gated; qa test-gated; docs/config file-gated) plus a dedup+autofix merge agent. L10 (coder = Aider), L11 (Hermes `delegate_task`), and L22 (no LangGraph) remain in force.
+- **B1-A — Brainstorm runs until explicit owner approval (no turn cap).** Supersedes ROADMAP Phase 9 SC-1's "≤5 turns": the conception loop has no hard turn limit and only proceeds to triage on explicit owner approval.
+
 </decisions>
 
 ---
