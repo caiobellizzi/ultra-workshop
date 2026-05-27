@@ -9,8 +9,8 @@
 # you're testing; swap cheap-worker to a lighter model when you load one.
 #
 # NIM model IDs resolved from https://integrate.api.nvidia.com/v1/models (2026-05-26):
-#   planner-reasoner  → nvidia/llama-3.1-nemotron-ultra-253b-v1  (frontier reasoner)
-#   coder-worker      → deepseek-ai/deepseek-v3                  (DeepSeek-V3 coder)
+#   planner-reasoner  → mistralai/mistral-large-3-675b-instruct-2512 (frontier reasoner, 675B)
+#   coder-worker      → deepseek-ai/deepseek-v4-flash              (DeepSeek-V4 coder)
 #   cheap-fast        → meta/llama-3.1-8b-instruct               (small/fast)
 #   reviewer-model    → nvidia/llama-3.3-nemotron-super-49b-v1   (strong general)
 
@@ -66,7 +66,7 @@ model_list:
 
   - model_name: planner-reasoner
     litellm_params:
-      model: openai/nvidia/llama-3.1-nemotron-ultra-253b-v1
+      model: openai/mistralai/mistral-large-3-675b-instruct-2512
       api_base: https://integrate.api.nvidia.com/v1
       api_key: os.environ/NVIDIA_API_KEY
       request_timeout: 90
@@ -76,7 +76,7 @@ model_list:
 
   - model_name: coder-worker
     litellm_params:
-      model: openai/deepseek-ai/deepseek-v3
+      model: openai/deepseek-ai/deepseek-v4-flash
       api_base: https://integrate.api.nvidia.com/v1
       api_key: os.environ/NVIDIA_API_KEY
       request_timeout: 90
