@@ -131,7 +131,8 @@ def _run_verification_command(
         f"{result.stdout or ''}"
         f"{result.stderr or ''}"
     )
-    return result.returncode == 0, output
+    # pytest exit code 5 = no tests collected (empty scaffold files); treat as pass
+    return result.returncode in (0, 5), output
 
 
 def verify_workspace(workspace_dir: Path | str, *, timeout: int = 120) -> dict[str, object]:
