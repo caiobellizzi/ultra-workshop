@@ -113,7 +113,7 @@ Emit exactly this JSON object to stdout (no surrounding text):
 Fields:
 - `goal`: the original task goal string (pass through from query)
 - `steps`: list of 1–20 steps; each step has `id` (string integer), `description`
-  (plain text), `files` (list of strings, may be empty). Emit as many small,
+  (plain text), `files` (list of strings — **required for BUILD tasks**: use exact workspace-relative paths from search_files; never leave empty when task_type=BUILD). Emit as many small,
   ordered, independently build/testable steps as needed — one step per coherent
   change. Never exceed 20 steps; emit a "PRD too large — split it" clarification
   signal if the PRD scope requires more.
