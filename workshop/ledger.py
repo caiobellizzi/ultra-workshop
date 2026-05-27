@@ -1,8 +1,10 @@
 # Deploy location: /opt/ultra-workshop/workshop/ledger.py
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,3 +47,39 @@ def write_task_ledger(task_id: str, goal: str, status: str, pr_url: str = "") ->
         f"**Created:** {datetime.now(timezone.utc).isoformat()}\n"
     )
     p.write_text(content, encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Audit log — non-blocking fire-and-forget brain ingest (Phase 09)
+# ---------------------------------------------------------------------------
+
+_BRAIN_HTTP_FILE = Path("/opt/ultra-workshop/hermes-skills/brain_http.py")
+try:
+    _spec = importlib.util.spec_from_file_location("brain_http_ledger", _BRAIN_HTTP_FILE)
+    _brain_http = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
+    _spec.loader.exec_module(_brain_http)  # type: ignore[union-attr]
+except Exception:
+    _brain_http = None  # type: ignore[assignment]
+
+
+def append_audit(task_id: str, event: str, data: dict) -> None:
+    """Append an audit entry to the brain ingest agent in a daemon thread (non-blocking).
+
+    Failures are silently swallowed — audit logging must never block the pipeline.
+    """
+    payload = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "task_id": task_id,
+        "event": event,
+        **data,
+    }
+    message = f"workshop-audit/{task_id}: " + json.dumps(payload)
+
+    def _fire() -> None:
+        try:
+            if _brain_http:
+                _brain_http.call_agent("ingest", message)
+        except Exception:
+            pass
+
+    threading.Thread(target=_fire, daemon=True).start()
