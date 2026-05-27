@@ -296,13 +296,16 @@ If the YAML file is missing or malformed, the wave dispatcher has no reviewers t
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **NIM model alias for reviewers (D-05 open detail)** — what exact LiteLLM alias to use for the 8 reviewer roles? Current aliases: `cheap-fast`, `planner-reasoner`, `coder-worker`, `reviewer-model`, `default-worker`. Need a decision before `review-roster.yaml` can be written. Recommendation: use `reviewer-model` as default for all reviewers, with a cheaper fallback (e.g., `cheap-fast`) for stack reviewers per D-09.
+   **RESOLVED (09-01 Task 2):** Use `reviewer-model` for all 8 roles; `cheap-fast` as fallback for stack reviewers (python/typescript/reactjs/docs/config) per D-09.
 
 2. **Brain ingest message format for audit log** — `brain_http.call_agent("ingest", message)` takes a free-text message string. How does the Brain ingest agent determine the vault path? Does it parse a prefix like `workshop-audit/{task_id}:` or is there a structured format? This must be confirmed against the Brain ingest agent configuration before writing `append_audit()`.
+   **RESOLVED (09-01 Task 3):** Use prefix format `f"workshop-audit/{task_id}: " + json.dumps(payload)` — Brain ingest agent parses the leading path token as the vault key.
 
 3. **Brainstorm HITL mechanism** — The brainstorm stage is conversational (multi-turn). The existing `StageTimeoutForHITL` and `record_hitl_pause` patterns handle single HITL pause points, not multi-turn conversation loops. The brainstorm loop needs a different pattern: Hermes `clarify()` in a loop, not a single exception-based pause. Research how Hermes `clarify()` supports multi-turn within a skill before implementing.
+   **RESOLVED (09-03 Task 1):** Use the exit-2 resumption pattern in a loop: emit HITL payload with `hitl_type: "brainstorm"` + `brainstorm_turn` counter, call `sys.exit(2)`. On resume, `workshop_build.py` re-enters the brainstorm stage with the next turn. Loop exits when `state["brainstorm_approved"] == True`. No turn cap (B1-A).
 
 ---
 

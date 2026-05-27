@@ -251,9 +251,17 @@ Plans:
 **Plans**: 4 plans
 Plans:
 
+**Wave 1**
+
 - [ ] 09-01-PLAN.md — Foundation: ReviewFinding/WaveReport/MergeReport types, per-role budget layer, audit log append_audit, review-roster.yaml (Wave 1)
 - [ ] 09-02-PLAN.md — Souls + worktree: 9 reviewer SKILL.md files, workshop/worktree.py, agent-isolation-policy.md (Wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 09-03-PLAN.md — Integration: brainstorm stage in workshop_build.py, wave dispatch + merge agent, requirements brain pre-query (Wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 09-04-PLAN.md — Final wiring: stage_policy.py update, brainstorm-specialist soul, requirements-specialist soul update, human smoke test (Wave 3)
 
 ---

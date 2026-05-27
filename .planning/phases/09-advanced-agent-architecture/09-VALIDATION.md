@@ -18,7 +18,7 @@ created: 2026-05-27
 | Property | Value |
 |----------|-------|
 | **Framework** | pytest 7.x + bats 14 integration tests |
-| **Config file** | `pyproject.toml` (`testpaths = ["hermes-skills", "scripts"]`) |
+| **Config file** | `pyproject.toml` (`testpaths = ["hermes-skills", "scripts", "tests"]`) |
 | **Quick run command** | `python -m pytest hermes-skills/ tests/ -q` |
 | **Full suite command** | `python -m pytest hermes-skills/ scripts/ tests/ -v && bash tests/phase-08/*.bats 2>/dev/null` |
 | **Estimated runtime** | ~15 seconds (unit), ~60 seconds (full with bats) |
@@ -81,6 +81,6 @@ created: 2026-05-27
 - [x] Wave 0 covers all MISSING references
 - [x] No watch-mode flags
 - [x] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
