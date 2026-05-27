@@ -15,7 +15,7 @@ class StagePolicy:
 STAGE_POLICIES: dict[str, StagePolicy] = {
     "triage": StagePolicy(timeout=180, auto_retries=1),
     "requirements": StagePolicy(timeout=180, auto_retries=1),
-    "planner": StagePolicy(timeout=480, auto_retries=1),
+    "planner": StagePolicy(timeout=900, auto_retries=1),
     # coder: UWS_CODER_MAX is the orchestrator backstop for the full multi-step coder
     # stage. Per-step idle timeout + total task budget govern per step; this is the
     # outer wall-clock limit only. hitl_on_timeout=False — recovery ladder fires first.
