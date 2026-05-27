@@ -11,8 +11,11 @@ import secrets
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable, TypeVar
+
+import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent))  # adds /opt/ultra-workshop to sys.path
 
@@ -24,13 +27,226 @@ DECOMPOSE_DEPTH_MAX = 1
 T = TypeVar("T")
 
 _STAGE_INDEX = {
-    "triage": 0,
-    "requirements": 1,
-    "planner": 2,
-    "coder": 3,
-    "reviewer": 4,
-    "approval": 5,
+    "brainstorm": 0,
+    "triage": 1,
+    "requirements": 2,
+    "planner": 3,
+    "coder": 4,
+    "reviewer": 5,
+    "approval": 6,
 }
+
+# Path to review roster config (T-09-03-01: fail-safe if missing)
+_REVIEW_ROSTER_PATH = Path("/opt/ultra-workshop/hermes-config/review-roster.yaml")
+# Fallback roster used when YAML is missing/malformed — security never silently skipped
+_FALLBACK_ROSTER: list[dict] = [
+    {"role": "correctness", "model_alias": "reviewer-model", "isolation": True, "file_patterns": [], "monthly_budget_cents": 3000, "fallback_model_alias": None},
+    {"role": "security", "model_alias": "reviewer-model", "isolation": True, "file_patterns": [], "monthly_budget_cents": 4000, "fallback_model_alias": None},
+]
+
+
+def load_review_roster() -> list[dict]:
+    """Load the review roster from hermes-config/review-roster.yaml.
+
+    T-09-03-01: If the file is missing or malformed, returns the fallback roster
+    which always contains correctness and security — security is never silently skipped.
+    """
+    roster_path = _REVIEW_ROSTER_PATH
+    # Allow local override for testing
+    local_path = Path(__file__).parent.parent / "hermes-config" / "review-roster.yaml"
+    if local_path.exists():
+        roster_path = local_path
+    try:
+        data = yaml.safe_load(roster_path.read_text(encoding="utf-8"))
+        reviewers = data.get("reviewers") or []
+        if not reviewers:
+            raise ValueError("review-roster.yaml has no reviewers entries")
+        # Ensure always-on roles (correctness, security) are present
+        roles_present = {r["role"] for r in reviewers}
+        for fallback_entry in _FALLBACK_ROSTER:
+            if fallback_entry["role"] not in roles_present:
+                reviewers.insert(0, fallback_entry)
+        return reviewers
+    except (OSError, yaml.YAMLError, KeyError, TypeError) as exc:
+        print(f"[workshop] WARNING: could not load review roster ({exc}); using fallback", file=sys.stderr, flush=True)
+        return list(_FALLBACK_ROSTER)
+
+
+def _select_reviewers(roster: list[dict], diff_files: list[str]) -> list[dict]:
+    """Select reviewers to run based on the diff file list.
+
+    Always-on entries (file_patterns == []) are always included.
+    Pattern-gated entries are included if any diff file matches any pattern
+    (substring or suffix match per D-03).
+    """
+    selected = []
+    for entry in roster:
+        patterns = entry.get("file_patterns") or []
+        if not patterns:
+            # Always-on reviewer
+            selected.append(entry)
+            continue
+        # Extension/path-gated: include if any diff file matches any pattern
+        for diff_file in diff_files:
+            if any(pat in diff_file for pat in patterns):
+                selected.append(entry)
+                break
+    return selected
+
+
+def _dedup_findings(findings: list) -> list:
+    """Deduplicate findings by (file, line), keeping highest severity.
+
+    Groups by (file, line). For each group, keeps one entry with:
+    - highest severity (Critical > Important > Minor)
+    - merged required_fix strings
+    - first problem statement
+    """
+    _SEVERITY_ORDER = {"Critical": 3, "Important": 2, "Minor": 1}
+    groups: dict[tuple, list] = {}
+    for f in findings:
+        key = (getattr(f, "file", ""), getattr(f, "line", None))
+        groups.setdefault(key, []).append(f)
+
+    result = []
+    for group in groups.values():
+        if len(group) == 1:
+            result.append(group[0])
+            continue
+        # Pick highest severity
+        best = max(group, key=lambda f: _SEVERITY_ORDER.get(f.severity, 0))
+        # Merge required_fix strings if different
+        fixes = list(dict.fromkeys(f.required_fix for f in group))
+        if len(fixes) > 1:
+            merged_fix = "; ".join(fixes)
+            # Create a new finding with merged fix (Pydantic model_copy)
+            if hasattr(best, "model_copy"):
+                best = best.model_copy(update={"required_fix": merged_fix})
+        result.append(best)
+    return result
+
+
+def _build_merge_report(wave_reports: list) -> Any:
+    """Build a MergeReport from a list of WaveReports.
+
+    Collects all findings, deduplicates, splits by severity.
+    MergeReport.block_push = True when any Critical findings exist.
+    Minor findings go to auto_fixed.
+    """
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from workshop.types import MergeReport
+
+    all_findings = []
+    for report in wave_reports:
+        all_findings.extend(getattr(report, "findings", []) or [])
+
+    deduped = _dedup_findings(all_findings)
+
+    critical = [f for f in deduped if f.severity == "Critical"]
+    important = [f for f in deduped if f.severity == "Important"]
+    minor = [f for f in deduped if f.severity == "Minor"]
+
+    return MergeReport(
+        block_push=len(critical) > 0,
+        critical_findings=critical,
+        important_findings=important,
+        auto_fixed=minor,
+        summary=f"{len(critical)} critical, {len(important)} important, {len(minor)} auto-fixed",
+    )
+
+
+def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict]) -> list:
+    """Dispatch parallel reviewer wave using ThreadPoolExecutor(max_workers=8).
+
+    T-09-03-02: Each reviewer has a per-reviewer timeout; wave-level timeout is
+    max(per-reviewer) + 60s buffer.
+
+    D-09 budget fallback:
+    - security exhausted → raise (block the pipeline)
+    - fallback_model_alias present → use it
+    - non-critical exhausted → skip + append_audit
+
+    Raises ValueError if roster is empty.
+    """
+    if not roster:
+        raise ValueError("Roster is empty — cannot dispatch review wave")
+
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from workshop.cost import RoleBudgetExhausted, RoleBudgetWarning, check_role_budget
+    from workshop.ledger import append_audit
+    from workshop.orchestrator import run_specialist
+    from workshop.types import WaveReport
+
+    diff_files = [getattr(c, "path", str(c)) for c in (getattr(diff, "changes", []) or [])]
+    selected = _select_reviewers(roster, diff_files)
+
+    if not selected:
+        raise ValueError("No reviewers selected after file filtering")
+
+    per_reviewer_timeout = 120  # seconds
+    wave_timeout = per_reviewer_timeout + 60
+
+    def _run_one(entry: dict) -> WaveReport:
+        role = entry["role"]
+        skill_name = f"{role}-reviewer"
+        model_alias = entry.get("model_alias", "reviewer-model")
+
+        # D-09 budget check before dispatch
+        try:
+            check_role_budget(role)
+        except RoleBudgetExhausted:
+            if role == "security":
+                raise  # security exhaustion blocks pipeline
+            fallback = entry.get("fallback_model_alias")
+            if fallback:
+                model_alias = fallback
+                print(f"[workshop] role {role!r} exhausted; using fallback model {fallback!r}", file=sys.stderr, flush=True)
+            else:
+                # Non-critical exhausted, no fallback → skip
+                try:
+                    append_audit(task_id, "role_budget_skipped", {"role": role})
+                except Exception:
+                    pass
+                return WaveReport(role=role, passed=True, findings=[], tokens_used=0, cost_cents=0.0)
+        except RoleBudgetWarning:
+            print(f"[workshop] WARNING: role {role!r} approaching budget cap", file=sys.stderr, flush=True)
+
+        reviewer_query = json.dumps({
+            "task_id": task_id,
+            "role": role,
+            "plan": plan.model_dump() if hasattr(plan, "model_dump") else {},
+            "diff": diff.model_dump() if hasattr(diff, "model_dump") else {},
+            "model_alias": model_alias,
+        })
+
+        try:
+            result = run_specialist(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
+            return result
+        except Exception as exc:
+            # Per-reviewer failure is non-blocking for non-critical roles
+            print(f"[workshop] WARNING: {role} reviewer failed: {exc}", file=sys.stderr, flush=True)
+            return WaveReport(role=role, passed=True, findings=[], tokens_used=0, cost_cents=0.0)
+
+    results: list[WaveReport] = []
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(_run_one, entry): entry for entry in selected}
+        for future in as_completed(futures, timeout=wave_timeout):
+            try:
+                results.append(future.result())
+            except RoleBudgetExhausted:
+                raise  # re-raise for security budget exhaustion
+            except Exception as exc:
+                entry = futures[future]
+                print(f"[workshop] reviewer {entry['role']!r} future failed: {exc}", file=sys.stderr, flush=True)
+
+    roles_run = [r.role for r in results]
+    total_findings = sum(len(r.findings) for r in results)
+    try:
+        append_audit(task_id, "wave_complete", {"roles": roles_run, "total_findings": total_findings})
+    except Exception:
+        pass
+
+    return results
 
 
 class StageTimeoutForHITL(RuntimeError):
@@ -411,6 +627,7 @@ def main() -> None:
     parser.add_argument("--session-id", type=str, default="", help="Hermes session ID")
     parser.add_argument("--chat-id", type=str, default="7113965359", help="Telegram chat ID")
     parser.add_argument("--dry-run", action="store_true", help="Print dry-run message and exit 0")
+    parser.add_argument("--brainstorm", action="store_true", help="Enable brainstorm stage before triage (D-17)")
     args = parser.parse_args()
 
     if args.task_file:
@@ -444,18 +661,23 @@ def main() -> None:
             return None
 
     from workshop.cost import BudgetExhausted, check_circuit_breaker
-    from workshop.ledger import append_progress, validate_task_id, write_task_ledger
+    from workshop.ledger import append_audit, append_progress, validate_task_id, write_task_ledger
     from workshop.orchestrator import ClarificationNeeded, SpecialistFailed, run_specialist
     from workshop.requirements_gate import RequirementsDecision, build_planning_context
     from workshop.repo_registry import RepoRegistryError, mark_last_used, validate_active_repo
     from workshop.stage_policy import stage_model_alias, stage_policy
     from workshop.state import clone_repo_to_workspace, load_task_state, new_task_state, save_task_state, state_exists
-    from workshop.types import Diff, Plan, Review
+    from workshop.types import Diff, Plan, Review, ReviewIssue
 
     class TriageResult(BaseModel):
         task_type: str
         summary: str
         complexity: str
+
+    class BrainstormResult(BaseModel):
+        approved: bool
+        goal_statement: str
+        follow_up: str | None = None
 
     def run_stage(stage: str, skill_name: str, query_json: str, output_schema: type[T]) -> T:
         policy_data = _stage_policy_payload(state, stage, stage_policy)
@@ -589,6 +811,48 @@ def main() -> None:
     try:
         stages = state.setdefault("stages", {})
         repo_context = f"Target repo: {repo_full_name}; base branch: {default_branch}"
+
+        # Brainstorm stage (D-17: only triggered when --brainstorm flag is set)
+        if args.brainstorm and _stage_should_run(state, "brainstorm"):
+            if not state.get("brainstorm_approved"):
+                brainstorm_query = json.dumps({
+                    "task_id": task_id,
+                    "goal": goal,
+                    "context": repo_context,
+                    "clarifications": state.get("clarifications") or [],
+                    "brainstorm_turn": state.get("brainstorm_turn", 0),
+                    "model_alias": stage_model_alias("brainstorm-specialist"),
+                })
+                brainstorm_result = run_stage("brainstorm", "brainstorm-specialist", brainstorm_query, BrainstormResult)
+                if not brainstorm_result.approved:
+                    # B1-A / D-18: no turn cap — loop until approved
+                    state["next_stage"] = "brainstorm"
+                    state["brainstorm_turn"] = state.get("brainstorm_turn", 0) + 1
+                    save_task_state(state)
+                    hitl_brainstorm = {
+                        "needs_approval": False,
+                        "hitl_type": "brainstorm",
+                        "task_id": task_id,
+                        "turn": state["brainstorm_turn"],
+                        "goal_statement": brainstorm_result.goal_statement,
+                        "follow_up": brainstorm_result.follow_up,
+                        "summary": (
+                            f"Brainstorm turn {state['brainstorm_turn']}: "
+                            + (brainstorm_result.follow_up or "Review and approve or provide feedback")
+                        ),
+                    }
+                    print(json.dumps(hitl_brainstorm), flush=True)
+                    sys.exit(2)
+                else:
+                    state["brainstorm_approved"] = True
+                    state["brainstorm_goal"] = brainstorm_result.goal_statement
+                    state["next_stage"] = "triage"
+                    save_task_state(state)
+                    append_audit(task_id, "brainstorm_approved", {
+                        "goal": brainstorm_result.goal_statement,
+                        "turns": state.get("brainstorm_turn", 0),
+                    })
+                    print("[workshop] brainstorm_approved done", flush=True)
 
         if _stage_should_run(state, "triage") or "triage" not in stages:
             triage_query = json.dumps({"task_id": task_id, "goal": goal, "context": repo_context, "model_alias": stage_model_alias("triage-specialist")})
@@ -742,19 +1006,32 @@ def main() -> None:
                 print("[workshop] coder_complete done", flush=True)
 
             if _stage_should_run(state, "reviewer") or review is None:
-                reviewer_query = json.dumps({
-                    "task_id": task_id,
-                    "plan": plan.model_dump(),
-                    "diff": diff.model_dump(),
-                    "context": planning_context,
-                    "repo": repo_entry,
-                    "clarifications": requirements.clarifications,
-                    "model_alias": stage_model_alias("reviewer-specialist"),
+                # Track reviewer attempt (mirrors the run_stage increment pattern)
+                reviewer_attempts = state.setdefault("attempts", {})
+                reviewer_attempt = int(reviewer_attempts.get("reviewer", 0)) + 1
+                reviewer_attempts["reviewer"] = reviewer_attempt
+                save_task_state(state)
+
+                roster = load_review_roster()
+                wave_reports = wave_dispatch(diff, plan, task_id, roster)
+                merge_report = _build_merge_report(wave_reports)
+                append_audit(task_id, "merge_complete", {
+                    "block_push": merge_report.block_push,
+                    "critical": len(merge_report.critical_findings),
                 })
-                review = run_stage("reviewer", "reviewer-specialist", reviewer_query, Review)
+                # Convert MergeReport to Review — block_push=True → passed=False → triggers retry loop
+                compat_review = Review(
+                    passed=not merge_report.block_push,
+                    feedback=merge_report.summary,
+                    blocking_issues=[
+                        ReviewIssue(file=f.file, problem=f.problem, required_fix=f.required_fix)
+                        for f in merge_report.critical_findings + merge_report.important_findings
+                    ],
+                )
+                review = compat_review
                 stages["review"] = review.model_dump()
                 save_task_state(state)
-                append_progress(task_id, "review_complete", {"passed": review.passed, "attempt": state["attempts"]["reviewer"]})
+                append_progress(task_id, "review_complete", {"passed": review.passed, "attempt": reviewer_attempt})
                 print("[workshop] review_complete done", flush=True)
 
             if review.passed:

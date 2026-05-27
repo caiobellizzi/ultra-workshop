@@ -143,21 +143,21 @@ def test_workshop_build_exits_2_after_review_retry_exhaustion(monkeypatch, capsy
                 build_passed=True,
                 test_passed=True,
             )
-        if skill_name == "reviewer-specialist":
-            return Review(
-                passed=False,
-                feedback="Review blocked",
-                blocking_issues=[
-                    {
-                        "file": "app.py",
-                        "problem": "missing behavior",
-                        "required_fix": "implement the requested behavior",
-                    }
-                ],
-            )
         raise AssertionError(skill_name)
 
     monkeypatch.setattr(orchestrator_mod, "run_specialist", fake_run_specialist)
+
+    # Phase 9: wave_dispatch replaced single reviewer-specialist. Patch it to return
+    # a critical finding so the retry-exhaustion path is triggered (same intent as before).
+    from workshop.types import ReviewFinding, WaveReport
+    _critical_finding = ReviewFinding(
+        file="app.py",
+        problem="missing behavior",
+        required_fix="implement the requested behavior",
+        severity="Critical",
+    )
+    _blocking_wave_report = WaveReport(role="correctness", passed=False, findings=[_critical_finding])
+    monkeypatch.setattr(workshop_build, "wave_dispatch", lambda *a, **kw: [_blocking_wave_report])
     monkeypatch.setattr(
         sys,
         "argv",
