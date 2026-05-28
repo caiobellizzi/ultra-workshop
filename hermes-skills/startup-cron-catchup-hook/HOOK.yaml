@@ -1,0 +1,6 @@
+name: startup-cron-catchup
+description: "Re-runs missed daily-research and nightly-tests cron jobs after a service restart"
+version: 1.0.0
+author: ultra-workshop
+events:
+  - gateway:startup
