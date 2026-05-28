@@ -679,7 +679,7 @@ def main() -> None:
         def _resolve_doc(*_a, **_kw):  # type: ignore[misc]
             return None
 
-    from workshop.cost import BudgetExhausted, check_circuit_breaker
+    from workshop.cost import BudgetExhausted, RoleBudgetExhausted, check_circuit_breaker, check_role_budget
     from workshop.ledger import append_audit, append_progress, validate_task_id, write_task_ledger
     from workshop.orchestrator import ClarificationNeeded, SpecialistFailed, run_specialist
     from workshop.requirements_gate import RequirementsDecision, build_planning_context
@@ -842,6 +842,11 @@ def main() -> None:
                     "brainstorm_turn": state.get("brainstorm_turn", 0),
                     "model_alias": stage_model_alias("brainstorm-specialist"),
                 })
+                # WR-01: enforce brainstorm budget cap before dispatch
+                try:
+                    check_role_budget("brainstorm")
+                except RoleBudgetExhausted as _exc:
+                    raise StageTimeoutForHITL("brainstorm", 0, str(_exc)) from _exc
                 brainstorm_result = run_stage("brainstorm", "brainstorm-specialist", brainstorm_query, BrainstormResult)
                 if not brainstorm_result.approved:
                     # B1-A / D-18: no turn cap — loop until approved
@@ -1039,6 +1044,11 @@ def main() -> None:
 
                 roster = load_review_roster()
                 wave_reports = wave_dispatch(diff, plan, task_id, roster)
+                # WR-01: enforce merge budget cap before consolidation
+                try:
+                    check_role_budget("merge")
+                except RoleBudgetExhausted as _exc:
+                    raise StageTimeoutForHITL("reviewer", reviewer_attempt, str(_exc)) from _exc
                 merge_report = _build_merge_report(wave_reports)
                 append_audit(task_id, "merge_complete", {
                     "block_push": merge_report.block_push,
