@@ -108,6 +108,7 @@ def seed_entry(now: str | None = None) -> dict[str, Any]:
         "created_at": ts,
         "updated_at": ts,
         "last_used_at": None,
+        "test_command": "",
     }
 
 
@@ -205,6 +206,11 @@ def find_repo(data: dict[str, Any], repo: str) -> dict[str, Any] | None:
 def list_active_repos(path: str | Path | None = None) -> list[dict[str, Any]]:
     data = load_registry(path)
     return [entry for entry in data["repos"] if entry.get("active")]
+
+
+def list_repos_with_tests(path: str | Path | None = None) -> list[dict[str, Any]]:
+    """Return active repos that have a non-empty test_command field."""
+    return [r for r in list_active_repos(path) if r.get("test_command", "").strip()]
 
 
 def validate_active_repo(repo: str, path: str | Path | None = None) -> dict[str, Any]:
