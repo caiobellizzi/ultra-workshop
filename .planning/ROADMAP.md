@@ -16,7 +16,7 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 - [x] **Phase 6: Repo Selection & Multi-Repo Builds** - Add a Brain-backed repo registry so Telegram builds and fixes can target active repos beyond the sandbox (VPS dry-run verified 2026-05-24; live Telegram acceptance pending)
 - [x] **Phase 7: Agentic Repo-Aware Planner** - Replace the blind keyword-heuristic planner with an LLM planner that reads a pre-cloned repo and resolved reference docs (prd.md), keeping the subprocess transport and deterministic state machine (no delegate_task) (completed 2026-05-26)
 - [ ] **Phase 8: Specialist Quality Uplift** - In-place soul/discipline/context uplift of all five specialists: lean behavioral souls, build/test verification gate, structured retry feedback, brain reads at planner+reviewer, fix two workshop-fix inconsistencies (imported from grill-me session)
-- [ ] **Phase 9: Advanced Agent Architecture** - Structural redesign adding conception/brainstorm stage, Paperclip-style agent personas+budgets+audit-log, parallel six-scope review wave, AgentTool/SkillTool isolation discipline, and git-worktree parallelism (depends on Phase 8)
+- [x] **Phase 9: Advanced Agent Architecture** - Structural redesign adding conception/brainstorm stage, Paperclip-style agent personas+budgets+audit-log, parallel six-scope review wave, AgentTool/SkillTool isolation discipline, and git-worktree parallelism (depends on Phase 8) (completed 2026-05-28)
 - [x] **Phase 10: Autonomous Step-by-Step Build Execution** - Replace single monolithic Aider coder call with per-step execution loop (one PlanStep = one commit), per-stage NIM model routing, idle watchdog timeout, bounded auto-recovery with one auto-decompose before HITL, and mid-plan resume via step cursor (depends on Phase 8) (completed 2026-05-26)
 
 ---
@@ -206,7 +206,7 @@ Plans:
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
 | 7. Agentic Repo-Aware Planner | 5/5 | Complete   | 2026-05-26 |
 | 8. Specialist Quality Uplift | 1/1 | Implemented/deployed (live E2E timeout caveat) | 2026-05-26 |
-| 9. Advanced Agent Architecture | 3/4 | In Progress|  |
+| 9. Advanced Agent Architecture | 4/4 | Complete   | 2026-05-28 |
 | 10. Autonomous Step-by-Step Build Execution | 1/1 | Complete   | 2026-05-26 |
 
 ---
@@ -262,7 +262,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 09-04-PLAN.md — Final wiring: stage_policy.py update, brainstorm-specialist soul, requirements-specialist soul update, human smoke test (Wave 3)
+- [x] 09-04-PLAN.md — Final wiring: stage_policy.py update, brainstorm-specialist soul, requirements-specialist soul update, human smoke test (Wave 3)
 
 ---
 
