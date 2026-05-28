@@ -90,4 +90,25 @@ rsh "systemctl start uws-hermes"
 echo "==> Step 8: VERIFY"
 rsh "sleep 5 && systemctl is-active uws-hermes"
 
+echo "==> Step N: TRUST SYMLINK"
+rsh "ln -sf /opt/ultra-agents-brain/ultra_brain/trust.py /opt/ultra-workshop/workshop/trust_shared.py && \
+  echo 'trust symlink ok'"
+
+echo "==> Step N+1: HERMES_CRON_TIMEOUT ENV VAR"
+rsh "grep -q HERMES_CRON_TIMEOUT /etc/uws/env 2>/dev/null || echo 'HERMES_CRON_TIMEOUT=1800' >> /etc/uws/env"
+
+echo "==> Step N+2: BUG-SCAN FASTPOLL SYSTEMD UNIT"
+rsync_files "deploy/systemd/uws-bug-scan-fastpoll.service" "/etc/systemd/system/"
+rsh "systemctl daemon-reload && systemctl enable uws-bug-scan-fastpoll && systemctl start uws-bug-scan-fastpoll"
+
+echo "==> Step N+3: CATCH-UP HOOK DEPLOY"
+rsync_files "hermes-skills/startup-cron-catchup-hook/" "/home/uws/.hermes/hooks/startup-cron-catchup/"
+rsh "chown -R uws:uws /home/uws/.hermes/hooks/startup-cron-catchup"
+
+echo "==> Step N+4: REGISTER HERMES CRON JOBS"
+rsh "sudo -u uws /opt/ultra-workshop/.venv/bin/hermes skill run /opt/ultra-workshop/hermes-skills/bootstrap_cron_jobs.py"
+
+echo "==> Step N+5: DEPLOY INTEGRATION CONTRACT TO VAULT"
+rsync_files "vault/_system/integration-contract.md" "${VAULT_VPS_PATH:-/srv/second-brain}/_system/"
+
 echo "==> Done."
