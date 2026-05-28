@@ -25,7 +25,7 @@ decisions:
 metrics:
   duration: "~10 minutes"
   completed: "2026-05-28"
-  tasks_completed: 2
+  tasks_completed: 3
   tasks_total: 3
   files_created: 1
   files_modified: 3
@@ -41,10 +41,19 @@ Stage policy extended with brainstorm stage and all reviewer model aliases; brai
 |------|------|--------|-------|
 | 1 | Extend stage_policy.py for brainstorm + reviewer aliases | 358c7e0 | workshop/stage_policy.py |
 | 2 | Create brainstorm-specialist soul + update requirements/planner souls | 2534514 | skills/brainstorm-specialist/SKILL.md, skills/requirements-specialist/SKILL.md, skills/planner-specialist/SKILL.md |
+| 3 | End-to-end smoke verification on VPS | (human verify) | /opt/ultra-workshop — all 7 checks passed |
 
-## Task 3: PENDING HUMAN VERIFICATION
+## Task 3: COMPLETE — All 7 VPS Checks Passed
 
-Task 3 is a `checkpoint:human-verify` gate. Human must run the smoke test checks listed in the plan before this plan can be marked complete.
+Human smoke verification completed on VPS at `/opt/ultra-workshop`:
+
+1. 121 tests passed, 2 skipped — no regressions
+2. Stage index: `{'brainstorm': 0, 'triage': 1, 'requirements': 2, 'planner': 3, 'coder': 4, 'reviewer': 5, 'approval': 6}`
+3. Brainstorm dry-run: `{"approved": true, "goal_statement": "dry-run goal statement"}`
+4. Merge agent dry-run: `{"block_push": false, ...}`
+5. Reviewer shim dry-run: `{"passed": true, ...}`
+6. All 10 souls present: correctness, security, python, typescript, reactjs, qa, docs, config, merge-agent, brainstorm-specialist
+7. Policy OK
 
 ## What Was Built
 
