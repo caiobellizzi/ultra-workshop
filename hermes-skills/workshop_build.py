@@ -11,7 +11,7 @@ import secrets
 import subprocess
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -229,14 +229,23 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict]) -> lis
     results: list[WaveReport] = []
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = {executor.submit(_run_one, entry): entry for entry in selected}
-        for future in as_completed(futures, timeout=wave_timeout):
-            try:
-                results.append(future.result())
-            except RoleBudgetExhausted:
-                raise  # re-raise for security budget exhaustion
-            except Exception as exc:
-                entry = futures[future]
-                print(f"[workshop] reviewer {entry['role']!r} future failed: {exc}", file=sys.stderr, flush=True)
+        try:
+            for future in as_completed(futures, timeout=wave_timeout):
+                try:
+                    results.append(future.result())
+                except RoleBudgetExhausted:
+                    raise  # re-raise for security/correctness budget exhaustion
+                except Exception as exc:
+                    entry = futures[future]
+                    print(f"[workshop] reviewer {entry['role']!r} future failed: {exc}", file=sys.stderr, flush=True)
+        except FuturesTimeoutError:
+            # Wave-level timeout: cancel pending futures, surface as StageTimeoutForHITL
+            for f in futures:
+                f.cancel()
+            raise StageTimeoutForHITL(
+                "reviewer", 0,
+                f"Review wave timed out after {wave_timeout}s",
+            )
 
     roles_run = [r.role for r in results]
     total_findings = sum(len(r.findings) for r in results)
