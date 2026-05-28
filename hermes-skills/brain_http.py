@@ -59,6 +59,19 @@ def call_agent(agent_id: str, message: str, user_id: str = "workshop") -> dict:
     return data
 
 
+def mark_queue_entry_dispatched(entry_id: str) -> dict:
+    """PUT /workshop/queue/{entry_id}/dispatched — mark queue entry as dispatched.
+
+    Raises httpx.HTTPStatusError on non-2xx response.
+    """
+    resp = httpx.put(
+        f"{BRAIN_BASE_URL}/workshop/queue/{entry_id}/dispatched",
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print(
