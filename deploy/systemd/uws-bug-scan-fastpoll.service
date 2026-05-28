@@ -1,0 +1,16 @@
+[Unit]
+Description=ultra-workshop bug-scan fast-poll (30s)
+After=network.target uws-hermes.service
+
+[Service]
+Type=simple
+User=uws
+EnvironmentFile=/etc/uws/env
+ExecStart=/opt/ultra-workshop/.venv/bin/python /opt/ultra-workshop/hermes-skills/cron_bug_scan_fastpoll.py
+Restart=always
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
