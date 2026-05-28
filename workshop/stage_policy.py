@@ -13,6 +13,9 @@ class StagePolicy:
 
 
 STAGE_POLICIES: dict[str, StagePolicy] = {
+    # brainstorm: conversational Socratic loop — longer timeout, no auto-retries,
+    # hitl_on_timeout=True so a stalled session escalates to the owner rather than failing hard.
+    "brainstorm": StagePolicy(timeout=300, auto_retries=0, hitl_on_timeout=True),
     "triage": StagePolicy(timeout=180, auto_retries=1),
     "requirements": StagePolicy(timeout=180, auto_retries=1),
     "planner": StagePolicy(timeout=900, auto_retries=1),
@@ -37,6 +40,20 @@ MODEL_ALIASES: dict[str, str] = {
     "planner-specialist": "planner-reasoner",
     "coder-specialist": "coder-worker",
     "reviewer-specialist": "reviewer-model",
+    # Reviewer roles (always-on: correctness, security; diff-gated: rest)
+    "correctness-reviewer": "reviewer-model",
+    "security-reviewer": "reviewer-model",
+    "python-reviewer": "reviewer-model",
+    "typescript-reviewer": "reviewer-model",
+    "reactjs-reviewer": "reviewer-model",
+    "qa-reviewer": "reviewer-model",
+    "docs-reviewer": "reviewer-model",
+    "config-reviewer": "reviewer-model",
+    # Merge agent (consolidates parallel review verdicts)
+    "merge-agent": "reviewer-model",
+    # Brainstorm specialist (conversational, not code-analysis heavy)
+    "brainstorm-specialist": "default-worker",
+    "brainstorm": "default-worker",
 }
 
 
