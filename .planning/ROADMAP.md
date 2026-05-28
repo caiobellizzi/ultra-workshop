@@ -130,10 +130,13 @@ Plans:
   5. `readlink /opt/ultra-workshop/workshop/trust_shared.py` returns the Brain trust module path; `trust_shared.classify_action('git push')` returns the expected risk tier
   6. `vault/_system/integration-contract.md` exists and matches the frontmatter vocabulary spec
 
-**Plans**: TBD
+**Plans**: 4 plans
 Plans:
 
-- [ ] Phase 5 plans not generated yet
+- [ ] 05-01-PLAN.md — Brain dispatched-ACK endpoint (PUT /workshop/queue/{id}/dispatched)
+- [ ] 05-02-PLAN.md — daily-research + nightly-tests Hermes cron skills + telegram_alert.py
+- [ ] 05-03-PLAN.md — bug-scan fast-poll systemd service (30s loop)
+- [ ] 05-04-PLAN.md — standard-poll Hermes cron + integration contract + trust symlink + install
 
 ### Phase 6: Repo Selection & Multi-Repo Builds
 
@@ -202,7 +205,7 @@ Plans:
 | 2. Hermes Deploy | 5/5 | ✓ Complete (REQ-ws-015 deferred) | 2026-05-21 |
 | 3. Skill Toolkit | 5/5 | Complete   | 2026-05-21 |
 | 4. Build/Fix Pipeline | 8/8 | Complete | 2026-05-25 |
-| 5. Autonomous Routines & Integration Loops | 0/TBD | Not started | - |
+| 5. Autonomous Routines & Integration Loops | 0/4 | Plans ready | - |
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
 | 7. Agentic Repo-Aware Planner | 5/5 | Complete   | 2026-05-26 |
 | 8. Specialist Quality Uplift | 1/1 | Implemented/deployed (live E2E timeout caveat) | 2026-05-26 |
