@@ -12,7 +12,7 @@ Bootstrap a Tier 2 autonomous coding agent that runs alongside Brain on the same
 - [x] **Phase 2: Hermes Deploy** - Install Hermes on VPS with Telegram gateway, systemd service, and MCP registration *(REQ-ws-015 deferred)*
 - [x] **Phase 3: Skill Toolkit** - Build and smoke-test all skills the pipeline needs: audit, Tier-1 ports, brain-bridge, Aider (completed 2026-05-21)
 - [x] **Phase 4: Build/Fix Pipeline** - Implement 5-role specialist pipeline with HITL, ledgers, cost circuit breaker, and PR output (completed 2026-05-23)
-- [ ] **Phase 5: Autonomous Routines & Integration Loops** - Ship 3 cron routines plus Brain↔Workshop vault signaling flows
+- [x] **Phase 5: Autonomous Routines & Integration Loops** - Ship 3 cron routines plus Brain↔Workshop vault signaling flows (completed 2026-05-28)
 - [x] **Phase 6: Repo Selection & Multi-Repo Builds** - Add a Brain-backed repo registry so Telegram builds and fixes can target active repos beyond the sandbox (VPS dry-run verified 2026-05-24; live Telegram acceptance pending)
 - [x] **Phase 7: Agentic Repo-Aware Planner** - Replace the blind keyword-heuristic planner with an LLM planner that reads a pre-cloned repo and resolved reference docs (prd.md), keeping the subprocess transport and deterministic state machine (no delegate_task) (completed 2026-05-26)
 - [ ] **Phase 8: Specialist Quality Uplift** - In-place soul/discipline/context uplift of all five specialists: lean behavioral souls, build/test verification gate, structured retry feedback, brain reads at planner+reviewer, fix two workshop-fix inconsistencies (imported from grill-me session)
@@ -133,10 +133,10 @@ Plans:
 **Plans**: 4 plans
 Plans:
 
-- [ ] 05-01-PLAN.md — Brain dispatched-ACK endpoint (PUT /workshop/queue/{id}/dispatched)
-- [ ] 05-02-PLAN.md — daily-research + nightly-tests Hermes cron skills + telegram_alert.py
-- [ ] 05-03-PLAN.md — bug-scan fast-poll systemd service (30s loop)
-- [ ] 05-04-PLAN.md — standard-poll Hermes cron + integration contract + trust symlink + install
+- [x] 05-01-PLAN.md — Brain dispatched-ACK endpoint (PUT /workshop/queue/{id}/dispatched)
+- [x] 05-02-PLAN.md — daily-research + nightly-tests Hermes cron skills + telegram_alert.py
+- [x] 05-03-PLAN.md — bug-scan fast-poll systemd service (30s loop)
+- [x] 05-04-PLAN.md — standard-poll Hermes cron + integration contract + trust symlink + install
 
 ### Phase 6: Repo Selection & Multi-Repo Builds
 
@@ -205,7 +205,7 @@ Plans:
 | 2. Hermes Deploy | 5/5 | ✓ Complete (REQ-ws-015 deferred) | 2026-05-21 |
 | 3. Skill Toolkit | 5/5 | Complete   | 2026-05-21 |
 | 4. Build/Fix Pipeline | 8/8 | Complete | 2026-05-25 |
-| 5. Autonomous Routines & Integration Loops | 0/4 | Plans ready | - |
+| 5. Autonomous Routines & Integration Loops | 4/4 | Complete   | 2026-05-28 |
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
 | 7. Agentic Repo-Aware Planner | 5/5 | Complete   | 2026-05-26 |
 | 8. Specialist Quality Uplift | 1/1 | Implemented/deployed (live E2E timeout caveat) | 2026-05-26 |
