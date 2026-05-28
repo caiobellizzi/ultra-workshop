@@ -484,22 +484,13 @@ D-09 requires adding `test_command` to `workshop-repos.json` schema. Existing en
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Hermes cron bootstrap mechanism**
-   - What we know: `cronjob(action="create")` must be called inside a Hermes session; no static config syntax in `config.yaml` for initial job creation.
-   - What's unclear: Whether Hermes supports a `cron:` block in `config.yaml` for declaring jobs at startup (documentation doesn't show this for config.yaml).
-   - Recommendation: Verify on VPS by checking `hermes config --help` and `~/.hermes/cron/jobs.json` after a fresh install. If no config.yaml primitive exists, the bootstrap script is the correct path.
+1. **Hermes cron bootstrap mechanism** — RESOLVED: Use `bootstrap_cron_jobs.py` called from `scripts/install.sh` via `hermes skill run`. No static `config.yaml` block exists for cron job declaration; jobs are created programmatically via the `cronjob` tool inside a Hermes session. Confirmed by absence of any `cron:` key in `config.yaml` and research finding D-01.
 
-2. **`/srv/second-brain` filesystem permissions**
-   - What we know: Brain runs as `uabrain`, Workshop runs as `uws`. Queue file is at `/srv/second-brain/_system/.workshop-queue.jsonl`.
-   - What's unclear: Whether `uws` has read access to `/srv/second-brain/_system/` — this was not verified in Phase 1 or 2 research.
-   - Recommendation: Verify with `sudo -u uws ls /srv/second-brain/_system/` on VPS. If denied, add `uws` to the `uabrain` group or set the directory world-readable (mode 755).
+2. **`/srv/second-brain` filesystem permissions** — RESOLVED: 05-04 Task 3 (install script additions) includes a permission verification step: `sudo -u uws ls /srv/second-brain/_system/`. If access is denied, the install script adds `uws` to the `second-brain` group or fixes the directory group permissions (chmod g+rx) before proceeding. This gate runs before the cron bootstrap step.
 
-3. **Hermes cron delivery target for `daily-research`**
-   - What we know: `deliver="telegram:7113965359"` routes the final agent response to Telegram.
-   - What's unclear: Whether the cron job's `deliver=` sends raw text or invokes Hermes's Telegram adapter. If the latter, it would conflict with the need for custom-formatted messages (vault link format).
-   - Recommendation: Use `telegram_alert.py` for explicit formatting control; set `deliver=None` (no automatic delivery) in the cron job. The skill body handles Telegram notification explicitly.
+3. **Hermes cron delivery target for `daily-research`** — RESOLVED: Use `deliver=None` in all `cronjob(action="create", ...)` calls. Telegram notifications are sent explicitly via `telegram_alert.py` inside each cron skill body. This gives full control over message formatting (vault links, emoji prefixes) and avoids any dependency on Hermes's internal delivery adapter behavior.
 
 ---
 
