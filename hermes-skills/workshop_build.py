@@ -11,7 +11,7 @@ import secrets
 import subprocess
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -194,8 +194,8 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict]) -> lis
         try:
             check_role_budget(role)
         except RoleBudgetExhausted:
-            if role == "security":
-                raise  # security exhaustion blocks pipeline
+            if role in ("security", "correctness"):  # both always-on, no substitute
+                raise  # blocks pipeline; outer except in wave_dispatch re-raises
             fallback = entry.get("fallback_model_alias")
             if fallback:
                 model_alias = fallback
@@ -219,7 +219,18 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict]) -> lis
         })
 
         try:
-            result = run_specialist(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
+            # CR-03: dispatch isolation:true roles via delegate_task (fresh context window)
+            # to prevent prior pipeline context from biasing blocking decisions.
+            # delegate_task is not yet implemented — fall back to run_specialist with a warning.
+            if entry.get("isolation", False):
+                try:
+                    from workshop.orchestrator import delegate_task
+                    result = delegate_task(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
+                except ImportError:
+                    print(f"[workshop] WARNING: delegate_task not available; role {role!r} isolation not enforced", file=sys.stderr, flush=True)
+                    result = run_specialist(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
+            else:
+                result = run_specialist(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
             return result
         except Exception as exc:
             # Per-reviewer failure is non-blocking for non-critical roles
@@ -229,14 +240,23 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict]) -> lis
     results: list[WaveReport] = []
     with ThreadPoolExecutor(max_workers=8) as executor:
         futures = {executor.submit(_run_one, entry): entry for entry in selected}
-        for future in as_completed(futures, timeout=wave_timeout):
-            try:
-                results.append(future.result())
-            except RoleBudgetExhausted:
-                raise  # re-raise for security budget exhaustion
-            except Exception as exc:
-                entry = futures[future]
-                print(f"[workshop] reviewer {entry['role']!r} future failed: {exc}", file=sys.stderr, flush=True)
+        try:
+            for future in as_completed(futures, timeout=wave_timeout):
+                try:
+                    results.append(future.result())
+                except RoleBudgetExhausted:
+                    raise  # re-raise for security/correctness budget exhaustion
+                except Exception as exc:
+                    entry = futures[future]
+                    print(f"[workshop] reviewer {entry['role']!r} future failed: {exc}", file=sys.stderr, flush=True)
+        except FuturesTimeoutError:
+            # Wave-level timeout: cancel pending futures, surface as StageTimeoutForHITL
+            for f in futures:
+                f.cancel()
+            raise StageTimeoutForHITL(
+                "reviewer", 0,
+                f"Review wave timed out after {wave_timeout}s",
+            )
 
     roles_run = [r.role for r in results]
     total_findings = sum(len(r.findings) for r in results)
@@ -659,7 +679,7 @@ def main() -> None:
         def _resolve_doc(*_a, **_kw):  # type: ignore[misc]
             return None
 
-    from workshop.cost import BudgetExhausted, check_circuit_breaker
+    from workshop.cost import BudgetExhausted, RoleBudgetExhausted, check_circuit_breaker, check_role_budget
     from workshop.ledger import append_audit, append_progress, validate_task_id, write_task_ledger
     from workshop.orchestrator import ClarificationNeeded, SpecialistFailed, run_specialist
     from workshop.requirements_gate import RequirementsDecision, build_planning_context
@@ -822,6 +842,11 @@ def main() -> None:
                     "brainstorm_turn": state.get("brainstorm_turn", 0),
                     "model_alias": stage_model_alias("brainstorm-specialist"),
                 })
+                # WR-01: enforce brainstorm budget cap before dispatch
+                try:
+                    check_role_budget("brainstorm")
+                except RoleBudgetExhausted as _exc:
+                    raise StageTimeoutForHITL("brainstorm", 0, str(_exc)) from _exc
                 brainstorm_result = run_stage("brainstorm", "brainstorm-specialist", brainstorm_query, BrainstormResult)
                 if not brainstorm_result.approved:
                     # B1-A / D-18: no turn cap — loop until approved
@@ -852,6 +877,12 @@ def main() -> None:
                         "turns": state.get("brainstorm_turn", 0),
                     })
                     print("[workshop] brainstorm_approved done", flush=True)
+
+        # CR-04: enforce brainstorm gate on resume — if the task was started with
+        # --brainstorm but resumed without it, block until the gate is satisfied.
+        if state.get("brainstorm_turn", 0) > 0 and not state.get("brainstorm_approved"):
+            print("[workshop] brainstorm gate not satisfied — re-run with --brainstorm to continue", flush=True)
+            sys.exit(1)
 
         if _stage_should_run(state, "triage") or "triage" not in stages:
             triage_query = json.dumps({"task_id": task_id, "goal": goal, "context": repo_context, "model_alias": stage_model_alias("triage-specialist")})
@@ -1013,6 +1044,11 @@ def main() -> None:
 
                 roster = load_review_roster()
                 wave_reports = wave_dispatch(diff, plan, task_id, roster)
+                # WR-01: enforce merge budget cap before consolidation
+                try:
+                    check_role_budget("merge")
+                except RoleBudgetExhausted as _exc:
+                    raise StageTimeoutForHITL("reviewer", reviewer_attempt, str(_exc)) from _exc
                 merge_report = _build_merge_report(wave_reports)
                 append_audit(task_id, "merge_complete", {
                     "block_push": merge_report.block_push,
