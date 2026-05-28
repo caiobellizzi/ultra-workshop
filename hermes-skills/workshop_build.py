@@ -15,8 +15,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
-import yaml
-
 sys.path.insert(0, str(Path(__file__).parent.parent))  # adds /opt/ultra-workshop to sys.path
 
 # Phase 10 task-level budget caps
@@ -57,6 +55,7 @@ def load_review_roster() -> list[dict]:
     if local_path.exists():
         roster_path = local_path
     try:
+        import yaml  # lazy import — pyyaml not required at module load time
         data = yaml.safe_load(roster_path.read_text(encoding="utf-8"))
         reviewers = data.get("reviewers") or []
         if not reviewers:
@@ -67,7 +66,7 @@ def load_review_roster() -> list[dict]:
             if fallback_entry["role"] not in roles_present:
                 reviewers.insert(0, fallback_entry)
         return reviewers
-    except (OSError, yaml.YAMLError, KeyError, TypeError) as exc:
+    except (ImportError, OSError, KeyError, TypeError, Exception) as exc:
         print(f"[workshop] WARNING: could not load review roster ({exc}); using fallback", file=sys.stderr, flush=True)
         return list(_FALLBACK_ROSTER)
 

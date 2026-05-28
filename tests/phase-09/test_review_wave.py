@@ -63,11 +63,9 @@ def test_select_reviewers_always_on_included() -> None:
     """correctness and security reviewers are always included regardless of diff files."""
     ns = _load_wb_globals()
     _select_reviewers = ns["_select_reviewers"]
+    load_review_roster = ns["load_review_roster"]
 
-    import yaml
-    roster_path = _PROJECT_ROOT / "hermes-config" / "review-roster.yaml"
-    roster_data = yaml.safe_load(roster_path.read_text())
-    roster = roster_data["reviewers"]
+    roster = load_review_roster()
 
     selected = _select_reviewers(roster, [".md"])
     roles = [r["role"] for r in selected]
@@ -77,13 +75,12 @@ def test_select_reviewers_always_on_included() -> None:
 
 def test_select_reviewers_python_gated_on_py_files() -> None:
     """python reviewer is selected for .py files but not for .md-only diffs."""
+    yaml = pytest.importorskip("yaml", reason="pyyaml required to load full roster")
     ns = _load_wb_globals()
     _select_reviewers = ns["_select_reviewers"]
 
-    import yaml
     roster_path = _PROJECT_ROOT / "hermes-config" / "review-roster.yaml"
-    roster_data = yaml.safe_load(roster_path.read_text())
-    roster = roster_data["reviewers"]
+    roster = yaml.safe_load(roster_path.read_text())["reviewers"]
 
     with_py = _select_reviewers(roster, ["foo.py"])
     without_py = _select_reviewers(roster, ["foo.md"])
