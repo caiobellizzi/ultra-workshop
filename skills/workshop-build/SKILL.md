@@ -16,6 +16,10 @@ Runs the full 5-role workshop pipeline for a coding task and opens a PR on human
 
 ## Behavior
 
+> **CRITICAL — Tool call discipline:** Every `terminal(...)` call in this skill is a **direct Hermes tool invocation**.
+> **Never** wrap any `terminal(...)` call inside `execute_code`. **Never** use Python or a sandbox to construct or launch these commands.
+> Compute base64 inline when building the command string — do NOT open `execute_code` for encoding.
+
 The skill body handles two kinds of turns: the initial `/build` trigger turn, and the background-job notification turn that fires when the pipeline subprocess finishes.
 
 ### A. Initial `/build --repo <repo> <task>` turn
@@ -25,10 +29,10 @@ The skill body handles two kinds of turns: the initial `/build` trigger turn, an
 3. If `--dry-run` appears in the trigger, run `workshop_build.py --dry-run` with any parsed `--repo` and `--task`, return stdout, and stop. No LLM calls are made.
 4. Fire the pipeline as a **background job** (the foreground `terminal` tool hard-caps at 600s; the pipeline runs 12–20 min).
    Never use a multiline shell command, heredoc, or literal `\n` escape in this skill. Encode the exact UTF-8 task text as base64 with no trailing newline and pass it through `--task-b64`.
-   ```
-   terminal(command="python3 /opt/ultra-workshop/hermes-skills/workshop_build.py --repo \"<repo>\" --task-b64 \"<base64_utf8_task>\" --session-id \"<session_id>\" --chat-id \"<chat_id>\"",
-            background=true, notify_on_complete=true)
-   ```
+
+   **Call the `terminal` tool directly** (NOT via execute_code) with:
+   - `background=true, notify_on_complete=true`
+   - `command`: `python3 /opt/ultra-workshop/hermes-skills/workshop_build.py --repo "<repo>" --task-b64 "<base64_utf8_task>" --session-id "<session_id>" --chat-id "<chat_id>"`
 5. Reply: `"🔧 Workshop pipeline started in background. I'll ping you when it's ready for approval."` and end the turn.
 
 ### B. Background-job completion notification turn
