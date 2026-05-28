@@ -206,7 +206,7 @@ Plans:
 | 6. Repo Selection & Multi-Repo Builds | 1/1 | VPS dry-run verified (live acceptance pending) | 2026-05-24 |
 | 7. Agentic Repo-Aware Planner | 5/5 | Complete   | 2026-05-26 |
 | 8. Specialist Quality Uplift | 1/1 | Implemented/deployed (live E2E timeout caveat) | 2026-05-26 |
-| 9. Advanced Agent Architecture | 2/4 | In Progress|  |
+| 9. Advanced Agent Architecture | 3/4 | In Progress|  |
 | 10. Autonomous Step-by-Step Build Execution | 1/1 | Complete   | 2026-05-26 |
 
 ---
@@ -258,7 +258,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 09-03-PLAN.md — Integration: brainstorm stage in workshop_build.py, wave dispatch + merge agent, requirements brain pre-query (Wave 2)
+- [x] 09-03-PLAN.md — Integration: brainstorm stage in workshop_build.py, wave dispatch + merge agent, requirements brain pre-query (Wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
