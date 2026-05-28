@@ -873,6 +873,12 @@ def main() -> None:
                     })
                     print("[workshop] brainstorm_approved done", flush=True)
 
+        # CR-04: enforce brainstorm gate on resume — if the task was started with
+        # --brainstorm but resumed without it, block until the gate is satisfied.
+        if state.get("brainstorm_turn", 0) > 0 and not state.get("brainstorm_approved"):
+            print("[workshop] brainstorm gate not satisfied — re-run with --brainstorm to continue", flush=True)
+            sys.exit(1)
+
         if _stage_should_run(state, "triage") or "triage" not in stages:
             triage_query = json.dumps({"task_id": task_id, "goal": goal, "context": repo_context, "model_alias": stage_model_alias("triage-specialist")})
             triage_raw = run_stage("triage", "triage-specialist", triage_query, TriageResult)
