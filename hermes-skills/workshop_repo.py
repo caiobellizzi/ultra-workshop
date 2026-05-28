@@ -24,7 +24,11 @@ from workshop.repo_registry import (  # noqa: E402
 
 
 def _gh_env() -> dict[str, str]:
-    return {**os.environ, "GH_TOKEN": os.environ.get("GITHUB_PAT", "")}
+    env = dict(os.environ)
+    pat = os.environ.get("GITHUB_PAT") or os.environ.get("GH_TOKEN")
+    if pat:
+        env["GH_TOKEN"] = pat
+    return env
 
 
 def _run_gh(args: list[str]) -> dict[str, Any]:

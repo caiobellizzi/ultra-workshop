@@ -46,7 +46,7 @@ def main() -> None:
         capture_output=True,
         text=True,
         shell=False,
-        env={**os.environ, "GH_TOKEN": os.environ.get("GITHUB_PAT", "")},
+        env={**os.environ, **({"GH_TOKEN": _t} if (_t := os.environ.get("GITHUB_PAT") or os.environ.get("GH_TOKEN")) else {})},
     )
     if result.returncode != 0:
         print(f"[workshop_fix] ERROR: gh issue view failed: {result.stderr}", flush=True)
