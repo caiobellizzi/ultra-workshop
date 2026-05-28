@@ -26,21 +26,23 @@ QUERY="$*"
 # SPECIALIST_HOME_OVERRIDE.
 if [ -z "${MAX_TURNS:-}" ]; then
   case "$SKILL" in
-    triage-specialist)   MAX_TURNS=3;  HOME_DIR=specialist-home-private ;;
-    requirements-specialist) MAX_TURNS=6; HOME_DIR=specialist-home-orchestrator ;;
-    planner-specialist)  MAX_TURNS=8;  HOME_DIR=specialist-home-orchestrator ;;
-    reviewer-specialist) MAX_TURNS=10; HOME_DIR=specialist-home-research ;;
-    coder-specialist)    MAX_TURNS=15; HOME_DIR=specialist-home-orchestrator ;;
-    *)                   MAX_TURNS=8;  HOME_DIR=specialist-home-private ;;
+    triage-specialist)       MAX_TURNS=3;  HOME_DIR=specialist-home-private ;;
+    requirements-specialist) MAX_TURNS=6;  HOME_DIR=specialist-home-orchestrator ;;
+    planner-specialist)      MAX_TURNS=8;  HOME_DIR=specialist-home-orchestrator ;;
+    brainstorm-specialist)   MAX_TURNS=8;  HOME_DIR=specialist-home-orchestrator ;;
+    reviewer-specialist)     MAX_TURNS=10; HOME_DIR=specialist-home-research ;;
+    coder-specialist)        MAX_TURNS=15; HOME_DIR=specialist-home-orchestrator ;;
+    *)                       MAX_TURNS=8;  HOME_DIR=specialist-home-private ;;
   esac
 else
   case "$SKILL" in
-    triage-specialist)   HOME_DIR=specialist-home-private ;;
+    triage-specialist)       HOME_DIR=specialist-home-private ;;
     requirements-specialist) HOME_DIR=specialist-home-orchestrator ;;
-    planner-specialist)  HOME_DIR=specialist-home-orchestrator ;;
-    reviewer-specialist) HOME_DIR=specialist-home-research ;;
-    coder-specialist)    HOME_DIR=specialist-home-orchestrator ;;
-    *)                   HOME_DIR=specialist-home-private ;;
+    planner-specialist)      HOME_DIR=specialist-home-orchestrator ;;
+    brainstorm-specialist)   HOME_DIR=specialist-home-orchestrator ;;
+    reviewer-specialist)     HOME_DIR=specialist-home-research ;;
+    coder-specialist)        HOME_DIR=specialist-home-orchestrator ;;
+    *)                       HOME_DIR=specialist-home-private ;;
   esac
 fi
 
