@@ -9,6 +9,7 @@ per D-20.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -34,7 +35,13 @@ def create_worktree(repo_path: str, branch_name: str, task_id: str) -> Path:
     Raises:
         subprocess.CalledProcessError: If the git command fails.
     """
+    from workshop.ledger import validate_task_id
+    validate_task_id(task_id)  # raises ValueError on traversal chars or invalid chars
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9/_.-]{0,199}", branch_name) or branch_name.startswith("-"):
+        raise ValueError(f"invalid branch_name: {branch_name!r}")
     worktree_path = WORKTREE_BASE / task_id
+    # Defense-in-depth: verify resolved path didn't escape the base directory
+    worktree_path.resolve().relative_to(WORKTREE_BASE.resolve())
     subprocess.run(
         ["git", "-C", repo_path, "worktree", "add", str(worktree_path), "-b", branch_name],
         check=True,
