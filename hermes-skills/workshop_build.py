@@ -194,8 +194,8 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict]) -> lis
         try:
             check_role_budget(role)
         except RoleBudgetExhausted:
-            if role == "security":
-                raise  # security exhaustion blocks pipeline
+            if role in ("security", "correctness"):  # both always-on, no substitute
+                raise  # blocks pipeline; outer except in wave_dispatch re-raises
             fallback = entry.get("fallback_model_alias")
             if fallback:
                 model_alias = fallback
