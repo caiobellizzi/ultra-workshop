@@ -65,6 +65,50 @@ def _git_env() -> dict[str, str]:
     }
 
 
+def _ensure_scaffold_dir(path: Path) -> None:
+    """``mkdir -p`` that repairs a stale empty-file stub sitting where *path*
+    must be a directory.
+
+    A prior crashed attempt could have ``touch()``ed a 0-byte file at a path that
+    a later entry needs as a directory; ``mkdir(exist_ok=True)`` still raises
+    FileExistsError on a non-directory, so we remove the empty stub first. A
+    non-empty file is left untouched (mkdir then raises) — real data is never
+    silently destroyed.
+    """
+    if path.exists() and not path.is_dir() and path.stat().st_size == 0:
+        path.unlink()
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def _scaffold_target_files(workspace: Path, rel_paths: list[str]) -> tuple[list[str], bool]:
+    """Create scaffold files/dirs for plan-relative *rel_paths* under *workspace*.
+
+    Entries ending in ``/`` denote directories: they are created as directories
+    (never ``touch()``ed as files) and excluded from the returned editable-target
+    list. File entries get their parent directory created and are ``touch()``ed if
+    missing. Returns ``(target_files, scaffolded_any)``.
+
+    Trailing-slash directory entries used to be touched as 0-byte files, which
+    then collided with the ``mkdir`` of a later file inside the same directory
+    (FileExistsError) — see test_scaffold_treats_trailing_slash_entry_as_directory.
+    """
+    target_files: list[str] = []
+    scaffolded_any = False
+    for rel_path in rel_paths:
+        if not rel_path:
+            continue
+        if rel_path.endswith("/"):
+            _ensure_scaffold_dir(workspace / rel_path)
+            continue
+        abs_path = workspace / rel_path
+        _ensure_scaffold_dir(abs_path.parent)
+        if not abs_path.exists():
+            abs_path.touch()
+            scaffolded_any = True
+        target_files.append(str(abs_path))
+    return target_files, scaffolded_any
+
+
 def _changed_paths_since(workspace: Path, base_ref: str) -> list[str]:
     result = subprocess.run(
         ["git", "-C", str(workspace), "diff", "--name-only", "-z", base_ref],
@@ -480,15 +524,7 @@ def main() -> None:
 
     # 3. Scaffold all affected files so aider can edit them
     affected = plan.get("affected_files") or ["README.md"]
-    all_target_files: list[str] = []
-    scaffolded_any = False
-    for rel_path in affected:
-        abs_path = workspace / rel_path
-        abs_path.parent.mkdir(parents=True, exist_ok=True)
-        if not abs_path.exists():
-            abs_path.touch()
-            scaffolded_any = True
-        all_target_files.append(str(abs_path))
+    all_target_files, scaffolded_any = _scaffold_target_files(workspace, affected)
 
     if scaffolded_any:
         subprocess.run(
@@ -523,27 +559,24 @@ def main() -> None:
         if isinstance(step, dict):
             step_id = str(step.get("id") or str(step_idx + 1))
             step_description = str(step.get("description") or "")
-            step_files = [str(workspace / f) for f in (step.get("files") or []) if f]
+            step_files_raw = [f for f in (step.get("files") or []) if f]
         else:
             # PlanStep model object (if deserialized)
             step_id = str(getattr(step, "id", str(step_idx + 1)))
             step_description = str(getattr(step, "description", ""))
-            step_files = [str(workspace / f) for f in (getattr(step, "files", None) or []) if f]
+            step_files_raw = [f for f in (getattr(step, "files", None) or []) if f]
 
         # Resume: skip already-committed steps
         if step_idx < start_step:
             print(f"[workshop_coder] skipping step {step_idx + 1} (already committed, resume from {start_step})", flush=True)
             continue
 
-        if not step_files:
+        # Scaffold step-specific files (dirs for trailing-slash entries),
+        # falling back to the full affected-file set when the step lists none.
+        if step_files_raw:
+            step_files, _ = _scaffold_target_files(workspace, step_files_raw)
+        else:
             step_files = all_target_files
-
-        # Scaffold any step-specific files that don't exist
-        for abs_path_str in step_files:
-            abs_p = Path(abs_path_str)
-            if not abs_p.exists():
-                abs_p.parent.mkdir(parents=True, exist_ok=True)
-                abs_p.touch()
 
         step_head_before = subprocess.run(
             ["git", "-C", str(workspace), "rev-parse", "HEAD"],

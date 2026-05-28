@@ -151,3 +151,50 @@ def test_planned_reviewable_paths_includes_step_files() -> None:
         "app.py",
         "tests/test_app.py",
     }
+
+
+def test_scaffold_treats_trailing_slash_entry_as_directory(tmp_path: Path) -> None:
+    """Regression: a plan affected_files list mixing a trailing-slash dir entry
+    with files inside that same dir must not crash with FileExistsError."""
+    targets, scaffolded = workshop_coder._scaffold_target_files(
+        tmp_path,
+        ["src/dashboard/", "src/index.js", "src/dashboard/TaskList.js"],
+    )
+
+    # Trailing-slash entry becomes a real directory, not a 0-byte file.
+    assert (tmp_path / "src" / "dashboard").is_dir()
+    # File entries are created and returned as editable targets.
+    assert (tmp_path / "src" / "index.js").is_file()
+    assert (tmp_path / "src" / "dashboard" / "TaskList.js").is_file()
+    # The directory entry is excluded from the editable-target list.
+    assert str(tmp_path / "src" / "dashboard") not in targets
+    assert str(tmp_path / "src" / "index.js") in targets
+    assert str(tmp_path / "src" / "dashboard" / "TaskList.js") in targets
+    assert scaffolded is True
+
+
+def test_scaffold_repairs_stale_empty_file_where_dir_expected(tmp_path: Path) -> None:
+    """Resume safety: an empty-file stub left by a prior crashed attempt where a
+    directory now belongs is repaired instead of raising FileExistsError."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "dashboard").touch()  # poison from a prior buggy run
+
+    targets, _ = workshop_coder._scaffold_target_files(
+        tmp_path,
+        ["src/dashboard/", "src/dashboard/TaskList.js"],
+    )
+
+    assert (tmp_path / "src" / "dashboard").is_dir()
+    assert (tmp_path / "src" / "dashboard" / "TaskList.js").is_file()
+
+
+def test_scaffold_preserves_non_empty_file_collision(tmp_path: Path) -> None:
+    """A non-empty file where a directory is requested must NOT be clobbered;
+    real data is never silently destroyed."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "dashboard").write_text("real content")
+
+    with pytest.raises(FileExistsError):
+        workshop_coder._scaffold_target_files(tmp_path, ["src/dashboard/"])
+
+    assert (tmp_path / "src" / "dashboard").read_text() == "real content"
