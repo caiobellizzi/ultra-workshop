@@ -219,7 +219,18 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict]) -> lis
         })
 
         try:
-            result = run_specialist(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
+            # CR-03: dispatch isolation:true roles via delegate_task (fresh context window)
+            # to prevent prior pipeline context from biasing blocking decisions.
+            # delegate_task is not yet implemented — fall back to run_specialist with a warning.
+            if entry.get("isolation", False):
+                try:
+                    from workshop.orchestrator import delegate_task
+                    result = delegate_task(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
+                except ImportError:
+                    print(f"[workshop] WARNING: delegate_task not available; role {role!r} isolation not enforced", file=sys.stderr, flush=True)
+                    result = run_specialist(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
+            else:
+                result = run_specialist(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
             return result
         except Exception as exc:
             # Per-reviewer failure is non-blocking for non-critical roles
