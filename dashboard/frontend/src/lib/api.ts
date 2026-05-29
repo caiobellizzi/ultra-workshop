@@ -39,7 +39,11 @@ async function request<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const res = await fetch(path, {
+  // Backend routes are all under /api. Some call sites omit the prefix and
+  // relied on a Vite dev proxy; in the production build (served by the backend
+  // itself, no proxy) we must normalize to the /api base.
+  const url = path.startsWith("/api/") ? path : `/api${path}`;
+  const res = await fetch(url, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
