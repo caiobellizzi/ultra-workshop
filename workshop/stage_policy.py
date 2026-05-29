@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
 
@@ -12,61 +11,23 @@ class StagePolicy:
     hitl_on_timeout: bool = False
 
 
-STAGE_POLICIES: dict[str, StagePolicy] = {
-    # brainstorm: conversational Socratic loop — longer timeout, no auto-retries,
-    # hitl_on_timeout=True so a stalled session escalates to the owner rather than failing hard.
-    "brainstorm": StagePolicy(timeout=300, auto_retries=0, hitl_on_timeout=True),
-    "triage": StagePolicy(timeout=180, auto_retries=1),
-    "requirements": StagePolicy(timeout=180, auto_retries=1),
-    "planner": StagePolicy(timeout=900, auto_retries=1),
-    # coder: UWS_CODER_MAX is the orchestrator backstop for the full multi-step coder
-    # stage. Per-step idle timeout + total task budget govern per step; this is the
-    # outer wall-clock limit only. hitl_on_timeout=False — recovery ladder fires first.
-    "coder": StagePolicy(
-        timeout=int(os.environ.get("UWS_CODER_MAX", "7200")),
-        tool_timeout=int(os.environ.get("UWS_CODER_MAX", "7200")),
-        auto_retries=0,
-        hitl_on_timeout=False,
-    ),
-    "reviewer": StagePolicy(timeout=300, auto_retries=1),
-}
-
-# Per-stage model alias routing map.
-# Each stage's query payload includes "model_alias": MODEL_ALIASES.get(stage, "default-worker")
-# so that workshop_coder.py and workshop_planner.py can read the alias from the payload.
-MODEL_ALIASES: dict[str, str] = {
-    "triage-specialist": "cheap-fast",
-    "requirements-specialist": "cheap-fast",
-    "planner-specialist": "planner-reasoner",
-    "coder-specialist": "coder-worker",
-    "reviewer-specialist": "reviewer-model",
-    # Reviewer roles (always-on: correctness, security; diff-gated: rest)
-    "correctness-reviewer": "reviewer-model",
-    "security-reviewer": "reviewer-model",
-    "python-reviewer": "reviewer-model",
-    "typescript-reviewer": "reviewer-model",
-    "reactjs-reviewer": "reviewer-model",
-    "qa-reviewer": "reviewer-model",
-    "docs-reviewer": "reviewer-model",
-    "config-reviewer": "reviewer-model",
-    # Merge agent (consolidates parallel review verdicts)
-    "merge-agent": "reviewer-model",
-    # Brainstorm specialist (conversational, not code-analysis heavy)
-    "brainstorm-specialist": "default-worker",
-    "brainstorm": "default-worker",
-}
-
+# ---------------------------------------------------------------------------
+# Public accessors — delegate to _config_loader for YAML-backed runtime config
+# ---------------------------------------------------------------------------
 
 def stage_model_alias(skill_name: str) -> str:
     """Return the LiteLLM model alias for the given specialist skill name."""
-    return MODEL_ALIASES.get(skill_name, "default-worker")
+    from workshop._config_loader import load_model_aliases
+    return load_model_aliases().get(skill_name, "default-worker")
 
 
 def stage_policy(stage: str) -> StagePolicy:
+    from workshop._config_loader import load_stage_policies
+    policies = load_stage_policies()
     try:
-        return STAGE_POLICIES[stage]
+        return policies[stage]
     except KeyError as exc:
-        known_stages = ", ".join(sorted(STAGE_POLICIES))
+        known_stages = ", ".join(sorted(policies))
         raise KeyError(f"no policy defined for stage {stage!r}; known stages: {known_stages}") from exc
 
 
