@@ -29,7 +29,7 @@ graph TD
         TELEGRAM[Telegram Bot\nHITL approval]
     end
 
-    PIPELINE -->|POST /agents/{id}/runs| BRAIN
+    PIPELINE -->|POST /agents/&#123;id&#125;/runs| BRAIN
     BRAIN -->|vault frontmatter polling| VAULT
     VAULT -->|cron sync 5 min| PIPELINE
     PIPELINE --> AIDER
@@ -51,10 +51,10 @@ The pipeline is implemented in `hermes-skills/workshop_build.py`. Each stage is 
 
 ```mermaid
 graph LR
-    S0[Stage 0\nBrainstorm HITL] --> S1[Stage 1\nTriage]
-    S1 --> S2[Stage 2\nRequirements]
-    S2 --> S3[Stage 3\nPlanner]
-    S3 --> S4[Stage 4\nCoder]
+    S0[Stage 0<br/>Brainstorm HITL] --> S1[Stage 1<br/>Triage]
+    S1 --> S2[Stage 2<br/>Requirements]
+    S2 --> S3[Stage 3<br/>Planner]
+    S3 --> S4[Stage 4<br/>Coder]
     S4 --> S5A[correctness]
     S4 --> S5B[security]
     S4 --> S5C[python]
@@ -63,8 +63,8 @@ graph LR
     S4 --> S5F[qa]
     S4 --> S5G[docs]
     S4 --> S5H[config]
-    S5A & S5B & S5C & S5D & S5E & S5F & S5G & S5H --> S6[Stage 6\nMerge Agent]
-    S6 --> S7[Stage 7\nHITL]
+    S5A & S5B & S5C & S5D & S5E & S5F & S5G & S5H --> S6[Stage 6<br/>Merge Agent]
+    S6 --> S7[Stage 7<br/>HITL]
     S7 -->|Approved| S8[Stage 8\nPush + PR]
     S7 -->|Rejected| END([abort])
 ```
