@@ -91,14 +91,14 @@ class TestCostService:
             {
                 "request_id": "req-1",
                 "model": "coder-worker",
-                "response_cost": 0.0025,
+                "response_cost": 0.25,
                 "user": "task-abc",
                 "start_time": "2026-05-29T10:00:00",
             },
             {
                 "request_id": "req-2",
                 "model": "reviewer-model",
-                "response_cost": 0.0010,
+                "response_cost": 0.10,
                 "user": "task-abc",
                 "start_time": "2026-05-29T10:01:00",
             },
@@ -108,8 +108,9 @@ class TestCostService:
 
         result = get_task_spend("task-abc")
         assert result["task_id"] == "task-abc"
-        assert abs(result["total_usd"] - 0.0035) < 1e-9
-        assert len(result["breakdown"]) == 2
+        # cost_service now returns integer cents (0.25 + 0.10 USD = 35 cents)
+        assert result["total_cents"] == 35
+        assert len(result["wave_breakdown"]) == 2
 
     def test_daily_totals_empty_db(self, tmp_path, monkeypatch):
         from dashboard.backend import config as cfg_module
