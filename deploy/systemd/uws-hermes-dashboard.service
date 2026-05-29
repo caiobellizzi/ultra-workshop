@@ -1,8 +1,7 @@
 [Unit]
 Description=ultra-workshop Dashboard backend
-After=network-online.target uab-brain.service
+After=network-online.target
 Wants=network-online.target
-Requires=uab-brain.service
 StartLimitIntervalSec=120
 StartLimitBurst=5
 
