@@ -14,6 +14,7 @@ from dashboard.backend.routers import (
     config_api,
     control,
     cost,
+    cron,
     health,
     hitl,
     internal,
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
     application.include_router(tasks.router)
     application.include_router(cost.router)
     application.include_router(config_api.router)
+    application.include_router(cron.router)
     application.include_router(skills.router)
     application.include_router(hitl.router)
     application.include_router(control.router)

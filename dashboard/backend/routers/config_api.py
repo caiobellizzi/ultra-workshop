@@ -1,14 +1,13 @@
 """Config endpoints: stage-policies, model-aliases, review-roster, cron."""
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, Depends, HTTPException
 
 from dashboard.backend.deps import require_auth
 from dashboard.backend.models.api_models import (
     CronPayload,
     ModelAliasesPayload,
+    ModelsConfigResponse,
     RosterPayload,
     StagePoliciesPayload,
 )
@@ -35,15 +34,15 @@ def set_stage_policies(body: StagePoliciesPayload, _auth=Depends(require_auth)):
 
 # --- Model Aliases ---
 
-@router.get("/models")
+@router.get("/models", response_model=ModelsConfigResponse)
 def get_model_aliases(_auth=Depends(require_auth)):
-    return {"model_aliases": config_service.get_model_aliases()}
+    return config_service.get_models_config()
 
 
-@router.put("/models")
+@router.put("/models/aliases")
 def set_model_aliases(body: ModelAliasesPayload, _auth=Depends(require_auth)):
     try:
-        config_service.set_model_aliases(body.model_aliases)
+        config_service.set_model_aliases(body.routing)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     return {"ok": True}
@@ -53,22 +52,40 @@ def set_model_aliases(body: ModelAliasesPayload, _auth=Depends(require_auth)):
 
 @router.get("/roster")
 def get_roster(_auth=Depends(require_auth)):
-    return {"reviewers": config_service.get_roster()}
+    return {"roster": config_service.get_roster()}
 
 
 @router.put("/roster")
 def set_roster(body: RosterPayload, _auth=Depends(require_auth)):
+    roster = body.roster if body.roster is not None else body.reviewers or []
     try:
-        config_service.set_roster(body.reviewers)
+        config_service.set_roster(roster)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     return {"ok": True}
 
 
-# --- Cron ---
+# --- Reviewers (alias for roster — FE calls /api/config/reviewers) ---
+
+@router.get("/reviewers")
+def get_reviewers(_auth=Depends(require_auth)):
+    return {"reviewers": config_service.get_roster()}
+
+
+@router.put("/reviewers")
+def set_reviewers(body: RosterPayload, _auth=Depends(require_auth)):
+    reviewers = body.reviewers if body.reviewers is not None else body.roster or []
+    try:
+        config_service.set_roster(reviewers)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    return {"ok": True}
+
+
+# --- Cron (bulk — legacy route kept for backward compat) ---
 
 @router.get("/cron")
-def get_cron(_auth=Depends(require_auth)):
+def get_cron_legacy(_auth=Depends(require_auth)):
     return {"jobs": config_service.get_cron_config()}
 
 

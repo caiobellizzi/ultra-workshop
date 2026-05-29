@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import AsyncIterator
 
@@ -37,7 +39,11 @@ async def tail_aider_logs(task_id: str, poll_interval: float = 1.0) -> AsyncIter
                 chunk = content[offset:].decode("utf-8", errors="replace")
                 seen_offsets[log_file] = len(content)
                 for line in chunk.splitlines():
-                    yield line
+                    yield json.dumps({
+                        "ts": datetime.utcnow().isoformat() + "Z",
+                        "event": "log",
+                        "msg": line,
+                    })
                 any_new = True
 
         if any_new:

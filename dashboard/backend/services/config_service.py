@@ -95,6 +95,51 @@ def get_model_aliases() -> dict[str, str]:
     return data.get("model_aliases", {})
 
 
+def get_models_config() -> dict[str, Any]:
+    """Return structured {aliases, routing} for GET /api/config/models.
+
+    - aliases: list of ModelAliasDef built from deploy/litellm/config.yaml
+    - routing: list of AgentRouting built from stage-policies.yaml model_aliases
+    """
+    # Build aliases from LiteLLM config
+    repo_root = Path(__file__).parent.parent.parent.parent
+    litellm_config_path = repo_root / "deploy" / "litellm" / "config.yaml"
+    aliases: list[dict[str, Any]] = []
+    if litellm_config_path.exists():
+        try:
+            litellm_data = yaml.safe_load(litellm_config_path.read_text(encoding="utf-8"))
+            for entry in litellm_data.get("model_list") or []:
+                model_name = entry.get("model_name", "")
+                params = entry.get("litellm_params", {})
+                raw_model = params.get("model", "")
+                # provider/model_id split: "openai/some/model" → provider="openai", model_id="some/model"
+                if "/" in raw_model:
+                    provider, model_id = raw_model.split("/", 1)
+                else:
+                    provider, model_id = "", raw_model
+                timeout = params.get("timeout") or params.get("request_timeout")
+                retries = params.get("max_retries")
+                aliases.append({
+                    "alias": model_name,
+                    "provider": provider,
+                    "model_id": model_id,
+                    "timeout": timeout,
+                    "retries": retries,
+                    "fallback": None,
+                })
+        except Exception:
+            pass
+
+    # Build routing from stage-policies.yaml model_aliases
+    model_aliases_map = get_model_aliases()
+    routing: list[dict[str, Any]] = [
+        {"agent": agent, "alias": alias}
+        for agent, alias in model_aliases_map.items()
+    ]
+
+    return {"aliases": aliases, "routing": routing}
+
+
 def _get_litellm_model_names() -> set[str]:
     """Read deploy/litellm/config.yaml and return the set of model_name values."""
     repo_root = Path(__file__).parent.parent.parent.parent

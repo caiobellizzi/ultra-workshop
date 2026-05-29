@@ -28,9 +28,17 @@ class TaskSummary(BaseModel):
     status: str
     goal: str
     repo: str
-    stage: str  # next_stage
+    next_stage: str  # renamed from stage
     created_at: str
     updated_at: str
+    current_step: Optional[int] = None
+    total_steps: Optional[int] = None
+    cost_cents_so_far: int = 0
+    repo_full_name: str = ""
+
+
+class TaskListResponse(BaseModel):
+    tasks: list[TaskSummary]
 
 
 class TaskDetail(BaseModel):
@@ -43,10 +51,21 @@ class TaskDetail(BaseModel):
     updated_at: str
     stages: dict[str, Any] = Field(default_factory=dict)
     attempts: dict[str, Any] = Field(default_factory=dict)
-    current_step: int = 0
-    approval_payload: dict[str, Any] = Field(default_factory=dict)
-    timeout_payload: dict[str, Any] = Field(default_factory=dict)
+    current_step: Optional[int] = None
+    total_steps: Optional[int] = None
+    cost_cents_so_far: int = 0
+    repo_full_name: str = ""
+    workspace_dir: str = ""
+    default_branch: str = ""
+    hitl_responses: list[Any] = Field(default_factory=list)
+    recovery_decisions: list[Any] = Field(default_factory=list)
+    approval_payload: Optional[dict[str, Any]] = None
+    timeout_payload: Optional[dict[str, Any]] = None
     clarifications: list[Any] = Field(default_factory=list)
+
+
+class ProgressResponse(BaseModel):
+    events: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class LaunchRequest(BaseModel):
@@ -91,6 +110,62 @@ class ModelCost(BaseModel):
     request_count: int
 
 
+class CostSummaryResponse(BaseModel):
+    today_cents: int
+    daily_limit_cents: int
+    this_month_cents: int
+    per_task_avg_cents: int
+    most_expensive_alias: str
+
+
+class WaveBreakdownItem(BaseModel):
+    role: str
+    tokens_used: int
+    cost_cents: int
+
+
+class TaskCostRowResponse(BaseModel):
+    task_id: str
+    goal: str
+    repo: str
+    date: str
+    status: str
+    stage_costs: dict[str, int] = Field(default_factory=dict)
+    total_cents: int
+    wave_breakdown: Optional[list[WaveBreakdownItem]] = None
+
+
+class TaskCostListResponse(BaseModel):
+    tasks: list[TaskCostRowResponse]
+
+
+class DailySpendResponse(BaseModel):
+    date: str
+    cents: int
+
+
+class ModelSpendResponse(BaseModel):
+    alias: str
+    cents: int
+
+
+class RoleSpendResponse(BaseModel):
+    role: str
+    spend_cents: int
+    cap_cents: int
+    month: str
+
+
+class CostTrendsResponse(BaseModel):
+    daily: list[DailySpendResponse]
+    by_model: list[ModelSpendResponse]
+    by_role: list[RoleSpendResponse]
+
+
+class RoleCostListResponse(BaseModel):
+    roles: list[RoleSpendResponse]
+
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -100,15 +175,45 @@ class StagePoliciesPayload(BaseModel):
 
 
 class ModelAliasesPayload(BaseModel):
-    model_aliases: dict[str, str]
+    routing: dict[str, str]  # renamed from model_aliases
 
 
 class RosterPayload(BaseModel):
-    reviewers: list[dict[str, Any]]
+    reviewers: Optional[list[dict[str, Any]]] = None
+    roster: Optional[list[dict[str, Any]]] = None
 
 
 class CronPayload(BaseModel):
     jobs: list[dict[str, Any]]
+
+
+class CronJobModel(BaseModel):
+    name: str
+    schedule: str
+    last_run: Optional[str] = None
+    next_run: Optional[str] = None
+    status: str = "disabled"
+    budget_cap_cents: Optional[int] = None
+
+
+class ModelAliasDef(BaseModel):
+    alias: str
+    provider: str
+    model_id: str
+    timeout: Optional[int] = None
+    retries: Optional[int] = None
+    fallback: Optional[str] = None
+
+
+class AgentRouting(BaseModel):
+    agent: str
+    alias: str
+    stage_timeout: Optional[int] = None
+
+
+class ModelsConfigResponse(BaseModel):
+    aliases: list[ModelAliasDef]
+    routing: list[AgentRouting]
 
 
 # ---------------------------------------------------------------------------
@@ -117,17 +222,29 @@ class CronPayload(BaseModel):
 
 class SkillSummary(BaseModel):
     name: str
+    version: str = ""
+    description: str = ""
+    tags: list[str] = Field(default_factory=list)
     path: str
-    size: int
-    has_output_schema: bool
+    size: int = 0
+    has_output_schema: bool = False
+
+
+class SkillListResponse(BaseModel):
+    skills: list[SkillSummary]
+
+
+class SkillMetaModel(BaseModel):
+    name: str
+    version: str
+    description: str
+    tags: list[str]
+    path: str
 
 
 class SkillDetail(BaseModel):
-    name: str
+    meta: SkillMetaModel
     content: str
-    path: str
-    size: int
-    has_output_schema: bool
 
 
 class SkillUpdateRequest(BaseModel):
@@ -135,13 +252,23 @@ class SkillUpdateRequest(BaseModel):
 
 
 class SkillRollbackRequest(BaseModel):
-    # rollback to .bak file
-    pass
+    commit: str = ""
 
 
 class SkillDryRunRequest(BaseModel):
     content: str
     test_input: str = ""
+
+
+class GitHistoryEntry(BaseModel):
+    hash: str
+    date: str
+    message: str
+    author: str
+
+
+class SkillHistoryResponse(BaseModel):
+    entries: list[GitHistoryEntry]
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +284,17 @@ class HitlRow(BaseModel):
     status: str
     telegram_chat_id: str
     telegram_message_id: Optional[str] = None
+
+
+class HITLItem(BaseModel):
+    task_id: str
+    hitl_type: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    created_at: str
+
+
+class HITLListResponse(BaseModel):
+    items: list[HITLItem]
 
 
 class HitlResolveRequest(BaseModel):
@@ -178,8 +316,12 @@ class RepoEntry(BaseModel):
     source: str = "manual"
     created_at: str = ""
     updated_at: str = ""
-    last_used_at: Optional[str] = None
+    last_used: Optional[str] = None  # renamed from last_used_at
     test_command: str = ""
+
+
+class RepoListResponse(BaseModel):
+    repos: list[RepoEntry]
 
 
 class AddRepoRequest(BaseModel):
@@ -194,15 +336,44 @@ class AddRepoRequest(BaseModel):
 
 class ServiceStatus(BaseModel):
     name: str
-    ok: bool
-    detail: str = ""
+    running: bool
+    uptime_seconds: Optional[int] = None
+    version: Optional[str] = None
+
+
+class DiskStats(BaseModel):
+    used_bytes: int
+    total_bytes: int
+    path: str
 
 
 class HealthResponse(BaseModel):
-    ok: bool
     services: list[ServiceStatus] = Field(default_factory=list)
+    disk: DiskStats
     queue_depth: int = 0
-    disk_free_gb: float = 0.0
+    hitl_count: int = 0
+
+
+class ModelReachability(BaseModel):
+    alias: str
+    reachable: Literal["green", "yellow", "red"]
+    latency_ms: Optional[int] = None
+    error: Optional[str] = None
+
+
+class ModelReachabilityResponse(BaseModel):
+    models: list[ModelReachability]
+
+
+class ErrorLogEntry(BaseModel):
+    ts: str
+    task_id: str
+    event: str
+    excerpt: str
+
+
+class ErrorLogResponse(BaseModel):
+    errors: list[ErrorLogEntry]
 
 
 # ---------------------------------------------------------------------------

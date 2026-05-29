@@ -11,7 +11,9 @@ from dashboard.backend.models.api_models import (
     FixRequest,
     LaunchRequest,
     LaunchResponse,
+    ProgressResponse,
     TaskDetail,
+    TaskListResponse,
     TaskSummary,
 )
 from dashboard.backend.services import build_trigger, task_store
@@ -19,9 +21,9 @@ from dashboard.backend.services import build_trigger, task_store
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 
-@router.get("", response_model=list[TaskSummary])
+@router.get("", response_model=TaskListResponse)
 def list_tasks(_auth=Depends(require_auth)):
-    return task_store.list_tasks()
+    return TaskListResponse(tasks=task_store.list_tasks())
 
 
 @router.get("/{task_id}", response_model=TaskDetail)
@@ -38,14 +40,14 @@ def get_task(task_id: str, _auth=Depends(require_auth)):
         raise HTTPException(status_code=404, detail=f"task {task_id!r} not found")
 
 
-@router.get("/{task_id}/progress", response_model=list[dict])
+@router.get("/{task_id}/progress", response_model=ProgressResponse)
 def get_progress(task_id: str, _auth=Depends(require_auth)):
     try:
         from workshop.ledger import validate_task_id
         validate_task_id(task_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    return task_store.get_progress(task_id)
+    return ProgressResponse(events=task_store.get_progress(task_id))
 
 
 @router.post("", response_model=LaunchResponse, status_code=202)

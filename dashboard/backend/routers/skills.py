@@ -13,8 +13,13 @@ from fastapi.responses import StreamingResponse
 from dashboard.backend.config import settings
 from dashboard.backend.deps import require_auth
 from dashboard.backend.models.api_models import (
+    GitHistoryEntry,
     SkillDetail,
     SkillDryRunRequest,
+    SkillHistoryResponse,
+    SkillListResponse,
+    SkillMetaModel,
+    SkillRollbackRequest,
     SkillSummary,
     SkillUpdateRequest,
 )
@@ -24,6 +29,7 @@ router = APIRouter(prefix="/api/skills", tags=["skills"])
 _SKILL_NAME_RE = re.compile(r"^[a-z0-9_-]+$")
 _MAX_SKILL_SIZE = 128_000  # bytes
 _OUTPUT_SCHEMA_RE = re.compile(r"##\s*output\s*schema", re.IGNORECASE)
+_FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 
 def _skills_root() -> Path:
@@ -38,11 +44,39 @@ def _has_output_schema(content: str) -> bool:
     return bool(_OUTPUT_SCHEMA_RE.search(content))
 
 
-@router.get("", response_model=list[SkillSummary])
+def _parse_frontmatter(content: str) -> dict[str, Any]:
+    """Extract YAML frontmatter from a SKILL.md file into a plain dict."""
+    m = _FRONTMATTER_RE.match(content)
+    if not m:
+        return {}
+    try:
+        import yaml  # PyYAML is already a transitive dep via pydantic/fastapi env
+        data = yaml.safe_load(m.group(1))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _meta_from_content(name: str, path: str, content: str) -> SkillMetaModel:
+    fm = _parse_frontmatter(content)
+    version = str(fm.get("version", "")).strip()
+    description = str(fm.get("description", "")).strip()
+    raw_tags = fm.get("tags", [])
+    tags: list[str] = [str(t) for t in raw_tags] if isinstance(raw_tags, list) else []
+    return SkillMetaModel(
+        name=name,
+        version=version,
+        description=description,
+        tags=tags,
+        path=path,
+    )
+
+
+@router.get("", response_model=SkillListResponse)
 def list_skills(_auth=Depends(require_auth)):
     root = _skills_root()
     if not root.exists():
-        return []
+        return SkillListResponse(skills=[])
     results: list[SkillSummary] = []
     for skill_dir in sorted(root.iterdir()):
         if not skill_dir.is_dir():
@@ -52,15 +86,19 @@ def list_skills(_auth=Depends(require_auth)):
             continue
         name = skill_dir.name
         content = skill_file.read_text(encoding="utf-8")
+        meta = _meta_from_content(name, str(skill_file), content)
         results.append(
             SkillSummary(
                 name=name,
+                version=meta.version,
+                description=meta.description,
+                tags=meta.tags,
                 path=str(skill_file),
                 size=len(content.encode("utf-8")),
                 has_output_schema=_has_output_schema(content),
             )
         )
-    return results
+    return SkillListResponse(skills=results)
 
 
 @router.get("/{name}", response_model=SkillDetail)
@@ -71,13 +109,8 @@ def get_skill(name: str, _auth=Depends(require_auth)):
     if not skill_file.exists():
         raise HTTPException(status_code=404, detail=f"skill {name!r} not found")
     content = skill_file.read_text(encoding="utf-8")
-    return SkillDetail(
-        name=name,
-        content=content,
-        path=str(skill_file),
-        size=len(content.encode("utf-8")),
-        has_output_schema=_has_output_schema(content),
-    )
+    meta = _meta_from_content(name, str(skill_file), content)
+    return SkillDetail(meta=meta, content=content)
 
 
 @router.put("/{name}")
@@ -118,7 +151,7 @@ def update_skill(name: str, body: SkillUpdateRequest, _auth=Depends(require_auth
     }
 
 
-@router.get("/{name}/history")
+@router.get("/{name}/history", response_model=SkillHistoryResponse)
 def skill_history(name: str, _auth=Depends(require_auth)):
     """Return recent git log for the skill file (if under git)."""
     if not _SKILL_NAME_RE.match(name):
@@ -128,31 +161,83 @@ def skill_history(name: str, _auth=Depends(require_auth)):
         raise HTTPException(status_code=404, detail=f"skill {name!r} not found")
     try:
         result = subprocess.run(
-            ["git", "log", "--oneline", "-20", "--", str(skill_file)],
+            ["git", "log", "--format=%H|%ai|%s|%an", "-20", "--", str(skill_file)],
             capture_output=True,
             text=True,
             cwd=str(_skills_root()),
             timeout=10,
         )
-        lines = result.stdout.strip().splitlines() if result.returncode == 0 else []
+        raw_lines = result.stdout.strip().splitlines() if result.returncode == 0 else []
     except Exception:
-        lines = []
-    return {"history": lines}
+        raw_lines = []
+
+    entries: list[GitHistoryEntry] = []
+    for line in raw_lines:
+        parts = line.split("|", 3)
+        if len(parts) == 4:
+            entries.append(
+                GitHistoryEntry(
+                    hash=parts[0],
+                    date=parts[1],
+                    message=parts[2],
+                    author=parts[3],
+                )
+            )
+    return SkillHistoryResponse(entries=entries)
 
 
 @router.post("/{name}/rollback")
-def skill_rollback(name: str, _auth=Depends(require_auth)):
-    """Roll back to .bak file."""
+def skill_rollback(name: str, body: SkillRollbackRequest, _auth=Depends(require_auth)):
+    """Roll back a skill to a specific git commit, or to the .bak file if commit is empty."""
     if not _SKILL_NAME_RE.match(name):
         raise HTTPException(status_code=400, detail="invalid skill name")
     skill_file = _skill_path(name)
-    bak_path = skill_file.with_suffix(".bak")
-    if not bak_path.exists():
-        raise HTTPException(status_code=404, detail=f"no backup found for skill {name!r}")
-    tmp = skill_file.with_name(f"{skill_file.name}.tmp")
-    shutil.copy2(bak_path, tmp)
-    tmp.replace(skill_file)
-    return {"ok": True, "restored_from": str(bak_path)}
+
+    commit = body.commit.strip()
+    if commit:
+        # Restore from git history: compute relative path from skills_root
+        skills_root = _skills_root()
+        try:
+            rel_path = skill_file.relative_to(skills_root)
+        except ValueError:
+            rel_path = Path(name) / "SKILL.md"
+        try:
+            result = subprocess.run(
+                ["git", "show", f"{commit}:{rel_path}"],
+                capture_output=True,
+                text=True,
+                cwd=str(skills_root),
+                timeout=10,
+            )
+            if result.returncode != 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"commit {commit!r} not found or skill not in that commit",
+                )
+            restored_content = result.stdout
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"git show failed: {exc}") from exc
+
+        # Backup current before overwriting
+        bak_path = skill_file.with_suffix(".bak")
+        if skill_file.exists():
+            shutil.copy2(skill_file, bak_path)
+
+        tmp = skill_file.with_name(f"{skill_file.name}.tmp")
+        tmp.write_text(restored_content, encoding="utf-8")
+        tmp.replace(skill_file)
+        return {"ok": True, "restored_from": commit}
+    else:
+        # Fallback: restore from .bak file
+        bak_path = skill_file.with_suffix(".bak")
+        if not bak_path.exists():
+            raise HTTPException(status_code=404, detail=f"no backup found for skill {name!r}")
+        tmp = skill_file.with_name(f"{skill_file.name}.tmp")
+        shutil.copy2(bak_path, tmp)
+        tmp.replace(skill_file)
+        return {"ok": True, "restored_from": str(bak_path)}
 
 
 @router.post("/{name}/dry-run")

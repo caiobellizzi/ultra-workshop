@@ -32,12 +32,13 @@ async def _task_event_generator(request: Request, task_id: str) -> AsyncIterator
 
         try:
             task = get_task(task_id)
-            # Emit state if status changed
+            # Emit state if status changed — unnamed frame so es.onmessage fires
             if task.status != last_status:
                 last_status = task.status
                 yield {
-                    "event": "state",
                     "data": json.dumps({
+                        "ts": task.updated_at,
+                        "event": "state",
                         "task_id": task_id,
                         "status": task.status,
                         "next_stage": task.next_stage,
@@ -49,12 +50,12 @@ async def _task_event_generator(request: Request, task_id: str) -> AsyncIterator
         except Exception:
             pass
 
-        # Emit new progress entries
+        # Emit new progress entries — unnamed frames, entry already has ts+event
         try:
             progress = get_progress(task_id)
             if len(progress) > last_progress_count:
                 for entry in progress[last_progress_count:]:
-                    yield {"event": "progress", "data": json.dumps(entry)}
+                    yield {"data": json.dumps(entry)}
                 last_progress_count = len(progress)
         except Exception:
             pass
@@ -63,11 +64,12 @@ async def _task_event_generator(request: Request, task_id: str) -> AsyncIterator
 
 
 async def _log_event_generator(request: Request, task_id: str) -> AsyncIterator[dict[str, str]]:
-    """Tail aider_step_*.log files and yield SSE log-line events."""
+    """Tail aider_step_*.log files and yield SSE log-line events (unnamed frames)."""
     async for line in tail_aider_logs(task_id):
         if await request.is_disconnected():
             break
-        yield {"event": "log", "data": line}
+        # line is already a JSON string from log_tailer; emit as unnamed message
+        yield {"data": line}
 
 
 @router.get("/tasks/{task_id}/events")

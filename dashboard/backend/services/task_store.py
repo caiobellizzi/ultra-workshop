@@ -33,9 +33,13 @@ def list_tasks() -> list[TaskSummary]:
                     status=str(data.get("status", "unknown")),
                     goal=str(data.get("goal", "")),
                     repo=str(data.get("repo", "")),
-                    stage=str(data.get("next_stage", "")),
+                    next_stage=str(data.get("next_stage", "")),
                     created_at=str(data.get("created_at", "")),
                     updated_at=str(data.get("updated_at", "")),
+                    current_step=data.get("current_step"),
+                    total_steps=data.get("total_steps"),
+                    cost_cents_so_far=int(data.get("cost_cents_so_far", 0)),
+                    repo_full_name=str(data.get("repo_full_name", data.get("repo", ""))),
                 )
             )
         except Exception:
@@ -61,9 +65,16 @@ def get_task(task_id: str) -> TaskDetail:
         updated_at=str(data.get("updated_at", "")),
         stages=data.get("stages", {}),
         attempts=data.get("attempts", {}),
-        current_step=int(data.get("current_step", 0)),
-        approval_payload=data.get("approval_payload", {}),
-        timeout_payload=data.get("timeout_payload", {}),
+        current_step=data.get("current_step"),
+        total_steps=data.get("total_steps"),
+        cost_cents_so_far=int(data.get("cost_cents_so_far", 0)),
+        repo_full_name=str(data.get("repo_full_name", data.get("repo", ""))),
+        workspace_dir=str(data.get("workspace_dir", "")),
+        default_branch=str(data.get("default_branch", "")),
+        hitl_responses=data.get("hitl_responses", []),
+        recovery_decisions=data.get("recovery_decisions", []),
+        approval_payload=data.get("approval_payload") or None,
+        timeout_payload=data.get("timeout_payload") or None,
         clarifications=data.get("clarifications", []),
     )
 
