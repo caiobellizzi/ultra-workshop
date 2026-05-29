@@ -1,0 +1,4 @@
+uws ALL=(root) NOPASSWD: /usr/bin/systemctl restart uws-hermes.service
+uws ALL=(root) NOPASSWD: /usr/bin/systemctl reload uws-hermes.service
+uws ALL=(root) NOPASSWD: /usr/bin/systemctl restart uws-hermes-dashboard.service
+uws ALL=(root) NOPASSWD: /usr/bin/docker restart uws-litellm

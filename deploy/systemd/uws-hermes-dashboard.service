@@ -1,0 +1,34 @@
+[Unit]
+Description=ultra-workshop Dashboard backend
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=uws
+Group=uws
+WorkingDirectory=/opt/ultra-workshop
+EnvironmentFile=/etc/uws/env
+Environment=HOME=/home/uws
+Environment=XDG_RUNTIME_DIR=/run/user/997
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/997/bus
+Environment=PATH=/home/uws/.local/bin:/opt/ultra-workshop/hermes/venv/bin:/home/uws/.nvm/versions/node/v24.15.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/opt/ultra-workshop/hermes/venv/bin/uvicorn dashboard.backend.main:app --host 127.0.0.1 --port 7010 --workers 1
+Restart=always
+RestartSec=10
+MemoryMax=1G
+CPUQuota=100%
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/uws/.ultra-workshop /home/uws/.hermes /tmp /opt/ultra-workshop
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=uws-dashboard
+
+[Install]
+WantedBy=multi-user.target

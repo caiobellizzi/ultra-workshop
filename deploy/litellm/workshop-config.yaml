@@ -1,0 +1,149 @@
+# LiteLLM config — DEDICATED Workshop proxy (container uws-litellm, port 4001).
+#
+# This file is a copy of deploy/litellm/config.yaml with two additions:
+#   1. general_settings.spend_logs_url points to the dashboard's internal endpoint
+#      so LiteLLM POSTs per-request spend batches → spend.sqlite is updated in real time.
+#   2. The proxy listens on 127.0.0.1:4001 (set in docker-compose.workshop.yml).
+#
+# After editing this file, restart the container:
+#   sudo docker restart uws-litellm
+#
+# SPEND_LOGS_URL note: LiteLLM posts batched spend events to this URL after each request.
+# The dashboard's POST /internal/spend-update endpoint (no auth, loopback-only) receives
+# and persists them to spend.sqlite. If the dashboard is down, events are silently dropped
+# by LiteLLM — the markdown cost-ledger remains the fallback.
+
+model_list:
+  # Tier A — orchestrator: heavy model loaded in LM Studio
+  - model_name: orchestrator
+    litellm_params:
+      model: openai/google/gemma-4-e4b
+      api_base: os.environ/LM_STUDIO_API_BASE
+      api_key: os.environ/LM_STUDIO_API_KEY
+      timeout: 300
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  # Tier B — default worker: same model (or lighter one if loaded)
+  - model_name: default-worker
+    litellm_params:
+      model: openai/google/gemma-4-e4b
+      api_base: os.environ/LM_STUDIO_API_BASE
+      api_key: os.environ/LM_STUDIO_API_KEY
+      timeout: 300
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  # Tier C — cheap/fast worker: use LM_STUDIO_FAST_MODEL if you load a
+  # second lighter model in LM Studio; falls back to primary otherwise
+  - model_name: cheap-worker
+    litellm_params:
+      model: openai/google/gemma-4-e4b
+      api_base: os.environ/LM_STUDIO_API_BASE
+      api_key: os.environ/LM_STUDIO_API_KEY
+      timeout: 180
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  # Tier D — private (same endpoint, local only)
+  - model_name: private-worker
+    litellm_params:
+      model: openai/google/gemma-4-e4b
+      api_base: os.environ/LM_STUDIO_API_BASE
+      api_key: os.environ/LM_STUDIO_API_KEY
+      timeout: 30
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  # --- Per-stage NIM aliases (Phase 10) ---
+  # Provider: NVIDIA NIM — https://integrate.api.nvidia.com/v1
+  # Each alias has a cloud fallback for when NIM is unreachable.
+
+  - model_name: planner-reasoner
+    litellm_params:
+      model: openai/mistralai/mistral-large-3-675b-instruct-2512
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: os.environ/NVIDIA_API_KEY
+      request_timeout: 90
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  - model_name: coder-worker
+    litellm_params:
+      model: openai/deepseek-ai/deepseek-v4-flash
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: os.environ/NVIDIA_API_KEY
+      request_timeout: 90
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  - model_name: reviewer-model
+    litellm_params:
+      model: openai/nvidia/llama-3.3-nemotron-super-49b-v1
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: os.environ/NVIDIA_API_KEY
+      request_timeout: 90
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  - model_name: cheap-fast
+    litellm_params:
+      model: openai/meta/llama-3.1-8b-instruct
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: os.environ/NVIDIA_API_KEY
+      request_timeout: 90
+      max_retries: 1
+    model_info:
+      mode: chat
+
+  # Cloud fallbacks — only when LM Studio is unreachable
+  - model_name: cloud-sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+      timeout: 120
+      max_retries: 2
+    model_info:
+      mode: chat
+
+  - model_name: cloud-groq
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+      timeout: 90
+      max_retries: 2
+    model_info:
+      mode: chat
+
+litellm_settings:
+  request_timeout: 300
+  num_retries: 1
+  fallbacks:
+    - orchestrator: ["cloud-sonnet"]
+    - default-worker: ["cloud-sonnet", "cloud-groq"]
+    - cheap-worker: ["default-worker", "cloud-groq"]
+    - private-worker: ["cheap-worker"]
+    - planner-reasoner: ["cloud-sonnet"]
+    - coder-worker: ["cloud-sonnet"]
+    - reviewer-model: ["cloud-sonnet"]
+    - cheap-fast: ["cheap-worker", "cloud-groq"]
+  context_window_fallbacks:
+    - cheap-worker: ["default-worker"]
+    - default-worker: ["cloud-sonnet"]
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  disable_spend_logs: false
+  store_model_in_db: false
+  # SPEND_LOGS_URL: LiteLLM will POST spend batches to this endpoint after each request.
+  # The dashboard's /internal/spend-update handler (loopback-only, no auth) persists them
+  # to spend.sqlite. Set via SPEND_LOGS_URL env var in docker-compose.workshop.yml so the
+  # value is injected at container start rather than hardcoded here.
+  spend_logs_url: os.environ/SPEND_LOGS_URL

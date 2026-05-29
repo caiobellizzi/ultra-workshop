@@ -337,6 +337,7 @@ def _run_aider_runner(
     env: dict[str, str],
     idle_timeout: int = IDLE_TIMEOUT,
     step_max_timeout: int = STEP_MAX_TIMEOUT,
+    log_file: Optional[Path] = None,
 ) -> subprocess.CompletedProcess:
     """Run aider with idle watchdog.
 
@@ -397,6 +398,12 @@ def _run_aider_runner(
                     stdout_chunks.append(decoded)
                 else:
                     stderr_chunks.append(decoded)
+                if log_file is not None:
+                    try:
+                        log_file.write(decoded)
+                        log_file.flush()
+                    except OSError:
+                        pass
 
         # Check if process has exited
         if process.poll() is not None:
@@ -404,9 +411,23 @@ def _run_aider_runner(
             try:
                 remaining_out, remaining_err = process.communicate(timeout=5)
                 if remaining_out:
-                    stdout_chunks.append(remaining_out.decode("utf-8", errors="replace"))
+                    decoded_out = remaining_out.decode("utf-8", errors="replace")
+                    stdout_chunks.append(decoded_out)
+                    if log_file is not None:
+                        try:
+                            log_file.write(decoded_out)
+                            log_file.flush()
+                        except OSError:
+                            pass
                 if remaining_err:
-                    stderr_chunks.append(remaining_err.decode("utf-8", errors="replace"))
+                    decoded_err = remaining_err.decode("utf-8", errors="replace")
+                    stderr_chunks.append(decoded_err)
+                    if log_file is not None:
+                        try:
+                            log_file.write(decoded_err)
+                            log_file.flush()
+                        except OSError:
+                            pass
             except subprocess.TimeoutExpired:
                 pass
             break
@@ -475,7 +496,7 @@ def main() -> None:
     workspace_dir = query.get("workspace_dir") or f"/tmp/uws-sandbox-{task_id}/"
     goal = plan.get("goal", "")
     previous_review = query.get("previous_review") or {}
-    # model_alias for coder stage — injected by stage_policy.MODEL_ALIASES
+    # model_alias for coder stage — provided by the caller via stage_model_alias()
     model_alias = str(query.get("model_alias") or "coder-worker")
     # Resume cursor: which step index to start from
     start_step = int(query.get("current_step") or 0)
@@ -603,6 +624,19 @@ def main() -> None:
         gate_passed = False
         gate_output = ""
 
+        # Open per-step log file for tee (additive — dashboard tail via SSE).
+        # Non-blocking: failure to open the log does NOT abort the step.
+        _step_log_file = None
+        try:
+            from workshop.ledger import task_dir as _task_dir
+            _step_log_path = _task_dir(task_id) / f"aider_step_{step_idx}.log"
+            _step_log_file = _step_log_path.open("a", encoding="utf-8", errors="replace")
+        except Exception as _log_exc:
+            print(
+                f"[workshop_coder] WARNING: could not open step log: {_log_exc}",
+                file=sys.stderr, flush=True,
+            )
+
         for retry in range(MAX_STEP_RETRIES + 1):
             if retry > 0:
                 step_msg_retry = (
@@ -622,6 +656,7 @@ def main() -> None:
                     env={**os.environ.copy(), "LITELLM_API_KEY": litellm_api_key},
                     idle_timeout=IDLE_TIMEOUT,
                     step_max_timeout=STEP_MAX_TIMEOUT,
+                    log_file=_step_log_file,
                 )
             except subprocess.TimeoutExpired as exc:
                 print(
@@ -653,6 +688,13 @@ def main() -> None:
             )
             if retry >= MAX_STEP_RETRIES:
                 raise StepRetryExhausted(step_idx, step_id, gate_output)
+
+        # Close per-step log file (opened before the retry loop)
+        if _step_log_file is not None:
+            try:
+                _step_log_file.close()
+            except OSError:
+                pass
 
         # Sanitize unreviewable artifacts before committing
         sanitized = _sanitize_unreviewable_changes(workspace, step_head_before, allowed_paths)

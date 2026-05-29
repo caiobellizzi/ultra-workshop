@@ -1,0 +1,24 @@
+stage_policies:
+  brainstorm:   {timeout: 300, auto_retries: 0, hitl_on_timeout: true}
+  triage:       {timeout: 180, auto_retries: 1}
+  requirements: {timeout: 180, auto_retries: 1}
+  planner:      {timeout: 900, auto_retries: 1}
+  coder:        {timeout: 7200, tool_timeout: 7200, auto_retries: 0, hitl_on_timeout: false}
+  reviewer:     {timeout: 300, auto_retries: 1}
+model_aliases:
+  triage-specialist: cheap-fast
+  requirements-specialist: cheap-fast
+  planner-specialist: planner-reasoner
+  coder-specialist: coder-worker
+  reviewer-specialist: reviewer-model
+  correctness-reviewer: reviewer-model
+  security-reviewer: reviewer-model
+  python-reviewer: reviewer-model
+  typescript-reviewer: reviewer-model
+  reactjs-reviewer: reviewer-model
+  qa-reviewer: reviewer-model
+  docs-reviewer: reviewer-model
+  config-reviewer: reviewer-model
+  merge-agent: reviewer-model
+  brainstorm-specialist: default-worker
+  brainstorm: default-worker
