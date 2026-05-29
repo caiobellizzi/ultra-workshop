@@ -143,6 +143,35 @@ def test_run_specialist_raises_clarification_needed(monkeypatch):
     assert exc_info.value.request.source_stage == "requirements"
 
 
+def test_run_specialist_handles_planner_clarification_variant(monkeypatch):
+    """Regression: planner-specialist emits the variant shape
+    {"clarification_needed": true, "question": "..."} (wrong key + singular
+    question + missing required fields). run_specialist must surface it as
+    ClarificationNeeded instead of crashing on Plan schema validation."""
+    from workshop import orchestrator
+    from workshop.types import Plan
+
+    payload = {
+        "clarification_needed": True,
+        "question": "Which frontend framework should the dashboard use?",
+    }
+
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *a, **kw: _make_completed_process(stdout=json.dumps(payload), returncode=0),
+    )
+
+    with pytest.raises(orchestrator.ClarificationNeeded) as exc_info:
+        orchestrator.run_specialist("planner-specialist", '{"task_id": "ws-944907"}', Plan)
+
+    req = exc_info.value.request
+    assert req.source_stage == "planner"          # derived from skill_name
+    assert req.task_id == "ws-944907"             # pulled from query_json
+    assert len(req.questions) == 1                # singular "question" -> questions[]
+    assert "framework" in req.questions[0].question
+
+
 # ---------------------------------------------------------------------------
 # Test 6: _extract_json with clean JSON
 # ---------------------------------------------------------------------------

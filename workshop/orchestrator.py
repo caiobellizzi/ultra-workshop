@@ -68,6 +68,39 @@ def _extract_json(text: str, *, skill_name: str | None = None) -> str:
     return text[start : end + 1]
 
 
+def _coerce_clarification(
+    payload: object, *, skill_name: str, query_json: str
+) -> "ClarificationRequest | None":
+    """Normalize a specialist clarification payload into a ClarificationRequest.
+
+    Returns None when *payload* is not a clarification. Tolerates the
+    planner-specialist variant shape ``{"clarification_needed": true,
+    "question": "..."}`` — wrong key, singular ``question``, and missing the
+    fields the canonical schema requires — by mapping it onto the
+    ``needs_clarification`` schema. A legitimately-ambiguous goal then surfaces
+    as a HITL prompt instead of crashing run_specialist on output-schema
+    validation (the requirements-specialist already emits the canonical shape).
+    """
+    if not isinstance(payload, dict):
+        return None
+    if payload.get("needs_clarification") is not True and payload.get("clarification_needed") is not True:
+        return None
+    data = dict(payload)
+    data["needs_clarification"] = True
+    data.pop("clarification_needed", None)
+    if not data.get("questions"):
+        question = data.pop("question", None)
+        data["questions"] = [{"question": str(question)}] if question else []
+    if not data.get("task_id"):
+        try:
+            data["task_id"] = str(json.loads(query_json).get("task_id", ""))
+        except (ValueError, AttributeError):
+            data["task_id"] = ""
+    data.setdefault("source_stage", skill_name.removesuffix("-specialist"))
+    data.setdefault("reason", data.get("summary") or "Specialist requested clarification.")
+    return ClarificationRequest.model_validate(data)
+
+
 def run_specialist(
     skill_name: str,
     query_json: str,
@@ -103,6 +136,7 @@ def run_specialist(
 
     raw_json = _extract_json(result.stdout, skill_name=skill_name)
     payload = json.loads(raw_json)
-    if isinstance(payload, dict) and payload.get("needs_clarification") is True:
-        raise ClarificationNeeded(ClarificationRequest.model_validate(payload))
+    clarification = _coerce_clarification(payload, skill_name=skill_name, query_json=query_json)
+    if clarification is not None:
+        raise ClarificationNeeded(clarification)
     return output_schema.model_validate(payload)

@@ -46,7 +46,7 @@ Never do:
 - Never emit prose outside the Plan JSON object.
 
 Escalation behavior:
-- Emit `clarification_needed` only when no bounded plan can be produced without a human choice.
+- Emit `needs_clarification` only when no bounded plan can be produced without a human choice.
 - If workspace reads fail, fall back to the goal and mark the plan conservatively with the most likely existing paths from visible context.
 
 **Confirmed read-only tool IDs** (from VPS binary `/opt/ultra-workshop/hermes/toolsets.py`):
@@ -86,10 +86,22 @@ Escalation behavior:
 **If workspace_dir is empty or search_files returns no code files:** infer conventional paths from the tech stack and goal. For Python/FastAPI projects use paths like: app/main.py, app/models.py, app/services.py, tests/test_core.py, README.md, requirements.txt. Do NOT leave files empty for BUILD tasks -- always populate with inferred paths.
 
 **ClarificationNeeded:** If the goal is genuinely ambiguous and cannot be planned
-without more information, emit:
+without more information, emit exactly this shape (same schema the
+requirements-specialist uses — do NOT use `clarification_needed` or a singular
+`question` field):
 
 ```json
-{"clarification_needed": true, "question": "string — specific question for the user"}
+{
+  "needs_clarification": true,
+  "task_id": "string — pass through from query",
+  "source_stage": "planner",
+  "reason": "string — why no bounded plan can be produced",
+  "questions": [{"question": "string — specific question for the user", "options": [], "context": "string"}],
+  "options": [],
+  "allow_free_text": true,
+  "evidence": [],
+  "summary": "string"
+}
 ```
 
 This triggers the HITL path in `workshop_build.py` (raises `ClarificationNeeded`).
