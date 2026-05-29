@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import secrets
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from dashboard.backend.config import settings
+from dashboard.backend.deps import require_auth
 from dashboard.backend.models.api_models import LoginRequest, LoginResponse
 from dashboard.backend.security import clear_session_cookie, create_session_token, set_session_cookie
 
@@ -33,3 +34,9 @@ def login(body: LoginRequest, response: Response):
 def logout(response: Response):
     clear_session_cookie(response)
     return {"ok": True}
+
+
+@router.get("/me")
+def me(_auth=Depends(require_auth)):
+    """Return authenticated state for a valid session cookie (401 otherwise)."""
+    return {"authenticated": True}
