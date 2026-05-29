@@ -1,0 +1,80 @@
+"""Dashboard backend — FastAPI application factory + lifespan."""
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
+from dashboard.backend.config import settings
+from dashboard.backend.routers import (
+    auth,
+    config_api,
+    control,
+    cost,
+    health,
+    hitl,
+    internal,
+    repos,
+    skills,
+    sse,
+    tasks,
+)
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Startup: warm the config-loader cache so the first request is fast."""
+    try:
+        from workshop._config_loader import load_model_aliases, load_stage_policies
+        load_stage_policies()
+        load_model_aliases()
+    except Exception:
+        pass  # non-fatal — loader will fall back to hardcoded dicts
+    if settings.cookie_secret == "dev-secret-change-me":
+        import sys as _sys
+        print(
+            "[uws-dashboard] WARNING: UWS_DASH_COOKIE_SECRET is the insecure default — "
+            "set a real secret before exposing the dashboard.",
+            file=_sys.stderr,
+            flush=True,
+        )
+    yield
+    # Shutdown — nothing to clean up currently
+
+
+def create_app() -> FastAPI:
+    application = FastAPI(
+        title="Ultra-Workshop Dashboard",
+        description="Observability + control plane for the ultra-workshop agent pipeline.",
+        version="1.0.0",
+        lifespan=lifespan,
+    )
+
+    # Routers
+    application.include_router(auth.router)
+    application.include_router(tasks.router)
+    application.include_router(cost.router)
+    application.include_router(config_api.router)
+    application.include_router(skills.router)
+    application.include_router(hitl.router)
+    application.include_router(control.router)
+    application.include_router(repos.router)
+    application.include_router(sse.router)
+    application.include_router(health.router)
+    application.include_router(internal.router)  # no auth — loopback only
+
+    # Serve the built frontend SPA if the dist/ directory exists
+    frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+    if frontend_dist.is_dir():
+        application.mount(
+            "/",
+            StaticFiles(directory=str(frontend_dist), html=True),
+            name="frontend",
+        )
+
+    return application
+
+
+app = create_app()
