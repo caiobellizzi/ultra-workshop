@@ -1,3 +1,4 @@
+<!-- generated-by: gsd-doc-writer -->
 # Dashboard Deploy Runbook
 
 Human-executed steps. All commands run as `root` (or `sudo`) on the VPS unless noted.
@@ -147,16 +148,16 @@ systemctl restart uws-hermes-dashboard.service
 ```bash
 # From your laptop (on Tailscale)
 curl -s http://<tailscale-ip>:7010/api/health | python3 -m json.tool
-# Expected: {"status": "ok", ...}
+# Expected: {"ok": true, "services": [...], "queue_depth": 0, "disk_free_gb": 0.0}
 ```
 
 ### Cookie-auth check
 
 ```bash
-# POST to obtain a session cookie (replace TOKEN with value from /etc/uws/env UWS_DASH_API_TOKEN)
+# POST to obtain a session cookie (use value of UWS_DASH_LOGIN_PASSWORD from /etc/uws/env)
 curl -c /tmp/dash-cookies.txt -X POST http://<tailscale-ip>:7010/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"token": "<UWS_DASH_API_TOKEN>"}'
+  -d '{"password": "<UWS_DASH_LOGIN_PASSWORD>"}'
 
 # Use cookie to hit a protected endpoint
 curl -b /tmp/dash-cookies.txt http://<tailscale-ip>:7010/api/tasks | python3 -m json.tool
@@ -168,7 +169,7 @@ curl -b /tmp/dash-cookies.txt http://<tailscale-ip>:7010/api/tasks | python3 -m 
 
 - [ ] `systemctl is-active uws-hermes.service` → `active`
 - [ ] `systemctl is-active uws-hermes-dashboard.service` → `active`
-- [ ] `curl -s http://127.0.0.1:7010/api/health` returns JSON with `"status": "ok"`
+- [ ] `curl -s http://127.0.0.1:7010/api/health` returns JSON with `"ok": true`
 - [ ] `curl -s http://127.0.0.1:4001/health` returns 200 (LiteLLM proxy)
 - [ ] Dashboard UI loads at `http://<tailscale-ip>:7010/` (redirects to `/board`)
 - [ ] `/board` shows task list (may be empty if no tasks ran yet)
