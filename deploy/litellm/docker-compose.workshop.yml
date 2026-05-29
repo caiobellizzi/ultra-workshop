@@ -1,0 +1,35 @@
+version: "3.9"
+
+# Dedicated Workshop LiteLLM proxy.
+# Container name: uws-litellm   Port: 127.0.0.1:4001
+#
+# Usage:
+#   docker compose -f deploy/litellm/docker-compose.workshop.yml up -d
+#   sudo docker restart uws-litellm   (after config changes)
+#
+# Provider keys are read from /etc/uws/env on the host; mount it as env_file.
+# After starting this container, repoint hermes-config/config.yaml base_url to :4001
+# and update aider --openai-api-base / --user flags accordingly (see DASHBOARD-DEPLOY.md).
+
+services:
+  uws-litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: uws-litellm
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4001:4000"
+    env_file:
+      # Reuse the existing provider key env file (NVIDIA_API_KEY, ANTHROPIC_API_KEY,
+      # GROQ_API_KEY, LM_STUDIO_API_BASE, LM_STUDIO_API_KEY, LITELLM_MASTER_KEY).
+      - /etc/uws/env
+    environment:
+      SPEND_LOGS_URL: "http://127.0.0.1:7010/internal/spend-update"
+    volumes:
+      - ./workshop-config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
+    network_mode: host
+    # network_mode: host is required so the container can reach:
+    #   - 127.0.0.1:7010  (dashboard /internal/spend-update via SPEND_LOGS_URL)
+    #   - LM_STUDIO_API_BASE (typically 127.0.0.1:1234 or LM Link URL)
+    # The ports: mapping above is documented intent; with host networking the container
+    # binds directly to the host's 4001. Adjust if your deployment uses bridge networking.
