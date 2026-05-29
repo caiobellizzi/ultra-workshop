@@ -18,7 +18,8 @@ def login(body: LoginRequest, response: Response):
 
     In production, the cookie_secret is set via UWS_DASH_COOKIE_SECRET env var.
     """
-    if not secrets.compare_digest(body.password, settings.cookie_secret):
+    expected = settings.login_password or settings.cookie_secret
+    if not secrets.compare_digest(body.password, expected):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid password",

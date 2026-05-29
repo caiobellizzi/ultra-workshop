@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     cookie_secret: str = "dev-secret-change-me"
     # Optional API token for simple bearer auth
     api_token: str = ""
+    # Login password. Kept separate from cookie_secret (the HMAC signing key) so the
+    # password can be memorable without weakening cookie signing. Falls back to
+    # cookie_secret when unset (backward compatible).
+    login_password: str = ""
     # Session cookie name
     session_cookie_name: str = "uws_dash_session"
     # Send the session cookie only over HTTPS (set False only for local HTTP dev)
