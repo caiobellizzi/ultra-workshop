@@ -5,6 +5,7 @@ import json
 import shutil
 import subprocess
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -49,10 +50,12 @@ def _check_hermes_service() -> ServiceStatus:
 def _check_litellm() -> ServiceStatus:
     try:
         with urllib.request.urlopen(f"{settings.litellm_base_url}/health", timeout=3) as resp:
-            running = resp.status == 200
-        return ServiceStatus(name="litellm", running=running)
+            running = resp.status < 500
+    except urllib.error.HTTPError as e:
+        running = e.code < 500  # 401/403 means the proxy is up
     except Exception:
-        return ServiceStatus(name="litellm", running=False)
+        running = False
+    return ServiceStatus(name="litellm", running=running)
 
 
 def _check_spend_db() -> ServiceStatus:
