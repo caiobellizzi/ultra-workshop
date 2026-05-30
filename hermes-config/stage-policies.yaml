@@ -8,7 +8,7 @@ stage_policies:
 model_aliases:
   triage-specialist: cheap-fast
   requirements-specialist: cheap-fast
-  planner-specialist: planner-reasoner
+  planner-specialist: cloud-openai   # was planner-reasoner (absent from live proxy -> HTTP 400); cloud-openai=gpt-4o is reasoning-capable + confirmed reachable
   coder-specialist: coder-worker
   reviewer-specialist: reviewer-model
   correctness-reviewer: reviewer-model
