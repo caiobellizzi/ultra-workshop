@@ -89,3 +89,84 @@ def delete_repo(name: str, _auth=Depends(require_auth)):
         deactivate_repo(name, _registry_path())
     except Exception as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+@router.post("/sync-github", response_model=dict)
+def sync_github(_auth=Depends(require_auth)):
+    """Fetch all repos owned by the configured GitHub user and add new ones to the registry."""
+    import json as _json
+    import urllib.error
+    import urllib.request
+
+    pat = settings.github_pat
+    if not pat:
+        raise HTTPException(status_code=500, detail="GITHUB_PAT not configured (set UWS_DASH_GITHUB_PAT)")
+
+    # Paginate GitHub /user/repos?type=owner
+    all_repos: list[dict] = []
+    page = 1
+    while True:
+        url = f"https://api.github.com/user/repos?type=owner&per_page=100&page={page}"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Authorization": f"Bearer {pat}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                page_repos = _json.loads(resp.read())
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode(errors="replace")
+            raise HTTPException(status_code=502, detail=f"GitHub API error {exc.code}: {body}")
+
+        if not page_repos:
+            break
+        all_repos.extend(page_repos)
+        page += 1
+
+    # Filter to repos owned by caiobellizzi (guard against org repos leaking through)
+    owned = [r for r in all_repos if r.get("owner", {}).get("login", "").lower() == "caiobellizzi"]
+
+    # Load current registry to find already-registered names
+    from workshop.repo_registry import load_registry, upsert_repo
+
+    registry_p = _registry_path()
+    try:
+        existing_data = load_registry(registry_p)
+    except Exception:
+        existing_data = {"repos": []}
+    registered = {r["full_name"] for r in existing_data.get("repos", [])}
+
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+
+    imported = 0
+    skipped = 0
+    for gh in owned:
+        full_name = gh["full_name"]
+        if full_name in registered:
+            skipped += 1
+            continue
+        entry = {
+            "full_name": full_name,
+            "active": True,
+            "default_branch": gh.get("default_branch", "main"),
+            "visibility": gh.get("visibility", "unknown"),
+            "viewer_permission": "ADMIN",
+            "source": "github-sync",
+            "created_at": now,
+            "updated_at": now,
+            "last_used_at": None,
+        }
+        try:
+            upsert_repo(entry, registry_p)
+            imported += 1
+        except Exception as exc:
+            import sys
+            print(f"[sync-github] skipping {full_name}: {exc}", file=sys.stderr)
+            skipped += 1
+
+    return {"imported": imported, "skipped": skipped}
