@@ -48,7 +48,7 @@ def _check_hermes_service() -> ServiceStatus:
 
 def _check_litellm() -> ServiceStatus:
     try:
-        with urllib.request.urlopen("http://127.0.0.1:4001/health", timeout=3) as resp:
+        with urllib.request.urlopen(f"{settings.litellm_base_url}/health", timeout=3) as resp:
             running = resp.status == 200
         return ServiceStatus(name="litellm", running=running)
     except Exception:
