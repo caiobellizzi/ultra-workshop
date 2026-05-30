@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     # Mirrors hermes-config/config.yaml base_url (without /v1 path).
     litellm_base_url: str = "http://127.0.0.1:4000"
 
+    # --- GitHub ---
+    # Personal access token for GitHub API calls (read:repo scope required).
+    github_pat: str = ""
+
     # --- Workshop binary paths ---
     workshop_build_py: str = "/opt/ultra-workshop/hermes-skills/workshop_build.py"
     workshop_continue_py: str = "/opt/ultra-workshop/hermes-skills/workshop_continue.py"
