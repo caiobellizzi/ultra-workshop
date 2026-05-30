@@ -29,7 +29,7 @@ graph TD
         TELEGRAM[Telegram Bot\nHITL approval]
     end
 
-    PIPELINE -->|POST /agents/&#123;id&#125;/runs| BRAIN
+    PIPELINE -->|"POST /agents/{id}/runs"| BRAIN
     BRAIN -->|vault frontmatter polling| VAULT
     VAULT -->|cron sync 5 min| PIPELINE
     PIPELINE --> AIDER
