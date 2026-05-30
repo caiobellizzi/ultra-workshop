@@ -10,26 +10,26 @@ ultra-workshop is a Tier 2 autonomous coding agent system that receives task req
 ```mermaid
 graph TD
     subgraph "Tier 1 — ultra-agents-brain"
-        BRAIN[Agno 2.6.7 Brain\nHTTP :7000]
-        VAULT[(~/second-brain\ngit repo)]
+        BRAIN[Agno 2.6.7 Brain<br/>HTTP :7000]
+        VAULT[(~/second-brain<br/>git repo)]
     end
 
     subgraph "Tier 2 — ultra-workshop (VPS)"
-        HERMES[Hermes Gateway\nuws-hermes.service]
-        PIPELINE[Pipeline Orchestrator\nworkshop_build.py]
-        AIDER[Aider Subprocess\ncoder stage]
-        WORKTREES[Git Worktrees\nparallel review]
-        HITL_DB[(pending_hitl.db\nSQLite)]
-        TASK_LEDGER[(~/.ultra-workshop/tasks/\ntask_ledger.md + progress_log.jsonl)]
+        HERMES[Hermes Gateway<br/>uws-hermes.service]
+        PIPELINE[Pipeline Orchestrator<br/>workshop_build.py]
+        AIDER[Aider Subprocess<br/>coder stage]
+        WORKTREES[Git Worktrees<br/>parallel review]
+        HITL_DB[(pending_hitl.db<br/>SQLite)]
+        TASK_LEDGER[(~/.ultra-workshop/tasks/<br/>task_ledger.md + progress_log.jsonl)]
     end
 
     subgraph "Infrastructure"
-        LITELLM[LiteLLM Proxy\n127.0.0.1:4000]
-        DASHBOARD[Dashboard\nFastAPI :7010]
-        TELEGRAM[Telegram Bot\nHITL approval]
+        LITELLM[LiteLLM Proxy<br/>127.0.0.1:4000]
+        DASHBOARD[Dashboard<br/>FastAPI :7010]
+        TELEGRAM[Telegram Bot<br/>HITL approval]
     end
 
-    PIPELINE -->|POST /agents/{id}/runs| BRAIN
+    PIPELINE -->|POST /agents/:id/runs| BRAIN
     BRAIN -->|vault frontmatter polling| VAULT
     VAULT -->|cron sync 5 min| PIPELINE
     PIPELINE --> AIDER
@@ -51,10 +51,10 @@ The pipeline is implemented in `hermes-skills/workshop_build.py`. Each stage is 
 
 ```mermaid
 graph LR
-    S0[Stage 0\nBrainstorm HITL] --> S1[Stage 1\nTriage]
-    S1 --> S2[Stage 2\nRequirements]
-    S2 --> S3[Stage 3\nPlanner]
-    S3 --> S4[Stage 4\nCoder]
+    S0[Stage 0<br/>Brainstorm HITL] --> S1[Stage 1<br/>Triage]
+    S1 --> S2[Stage 2<br/>Requirements]
+    S2 --> S3[Stage 3<br/>Planner]
+    S3 --> S4[Stage 4<br/>Coder]
     S4 --> S5A[correctness]
     S4 --> S5B[security]
     S4 --> S5C[python]
@@ -63,9 +63,9 @@ graph LR
     S4 --> S5F[qa]
     S4 --> S5G[docs]
     S4 --> S5H[config]
-    S5A & S5B & S5C & S5D & S5E & S5F & S5G & S5H --> S6[Stage 6\nMerge Agent]
-    S6 --> S7[Stage 7\nHITL]
-    S7 -->|Approved| S8[Stage 8\nPush + PR]
+    S5A & S5B & S5C & S5D & S5E & S5F & S5G & S5H --> S6[Stage 6<br/>Merge Agent]
+    S6 --> S7[Stage 7<br/>HITL]
+    S7 -->|Approved| S8[Stage 8<br/>Push + PR]
     S7 -->|Rejected| END([abort])
 ```
 
