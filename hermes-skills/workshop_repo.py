@@ -146,6 +146,14 @@ def main() -> None:
         if args.command == "add":
             entry = entry_from_gh_metadata(_repo_metadata(full_name), source="add")
             upsert_repo(entry, path)
+            try:
+                subprocess.Popen([
+                    sys.executable,
+                    str(Path(__file__).parent / "workshop_bootstrap_digest.py"),
+                    "--repo", entry["full_name"],
+                ])
+            except Exception:
+                pass  # non-blocking, fail-open
             print(f"[workshop_repo] added {entry['full_name']}", flush=True)
             return
 
@@ -162,6 +170,14 @@ def main() -> None:
                 sys.exit(create.returncode)
             entry = entry_from_gh_metadata(_repo_metadata(full_name), source="create")
             upsert_repo(entry, path)
+            try:
+                subprocess.Popen([
+                    sys.executable,
+                    str(Path(__file__).parent / "workshop_bootstrap_digest.py"),
+                    "--repo", entry["full_name"],
+                ])
+            except Exception:
+                pass  # non-blocking, fail-open
             print(f"[workshop_repo] created {entry['full_name']}", flush=True)
             return
 
