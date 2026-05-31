@@ -154,7 +154,7 @@ def _build_merge_report(wave_reports: list) -> Any:
     )
 
 
-def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict]) -> list:
+def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict], repo_full_name: str = "") -> list:
     """Dispatch parallel reviewer wave using ThreadPoolExecutor(max_workers=8).
 
     T-09-03-02: Each reviewer has a per-reviewer timeout; wave-level timeout is
@@ -210,13 +210,21 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict]) -> lis
         except RoleBudgetWarning:
             print(f"[workshop] WARNING: role {role!r} approaching budget cap", file=sys.stderr, flush=True)
 
-        reviewer_query = json.dumps({
+        reviewer_query_dict: dict = {
             "task_id": task_id,
             "role": role,
             "plan": plan.model_dump() if hasattr(plan, "model_dump") else {},
             "diff": diff.model_dump() if hasattr(diff, "model_dump") else {},
             "model_alias": model_alias,
-        })
+        }
+        try:
+            from workshop.brain_context import build_brain_context
+            reviewer_brain_ctx = build_brain_context(f"reviewer:{role}", repo_full_name)
+            if reviewer_brain_ctx:
+                reviewer_query_dict["context"] = reviewer_query_dict.get("context", "") + "\n\n" + reviewer_brain_ctx
+        except Exception:
+            pass  # fail-open
+        reviewer_query = json.dumps(reviewer_query_dict)
 
         try:
             # CR-03: dispatch isolation:true roles via delegate_task (fresh context window)
@@ -701,6 +709,16 @@ def main() -> None:
     def run_stage(stage: str, skill_name: str, query_json: str, output_schema: type[T]) -> T:
         policy_data = _stage_policy_payload(state, stage, stage_policy)
         auto_retries = int(policy_data["auto_retries"])
+        # Inject brain digest context into query before dispatch
+        try:
+            from workshop.brain_context import build_brain_context
+            brain_ctx = build_brain_context(stage, repo_full_name)
+            if brain_ctx:
+                query = json.loads(query_json)
+                query["context"] = query.get("context", "") + "\n\n" + brain_ctx
+                query_json = json.dumps(query)
+        except Exception:
+            pass  # fail-open
         for retry_index in range(auto_retries + 1):
             attempts = state.setdefault("attempts", {})
             attempt = int(attempts.get(stage, 0)) + 1
@@ -1043,7 +1061,7 @@ def main() -> None:
                 save_task_state(state)
 
                 roster = load_review_roster()
-                wave_reports = wave_dispatch(diff, plan, task_id, roster)
+                wave_reports = wave_dispatch(diff, plan, task_id, roster, repo_full_name)
                 # WR-01: enforce merge budget cap before consolidation
                 try:
                     check_role_budget("merge")
