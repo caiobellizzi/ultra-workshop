@@ -47,6 +47,13 @@ Exhaustion behavior (D-09): substitute cheap-fast fallback model when budget is 
 7. Set `passed: true` if no Critical findings exist.
 8. Emit the Output Schema JSON to stdout.
 
+## Using Pre-Injected Brain Context
+
+When the `context` field contains a `## Brain: Repo Digest` block:
+- Extract the relevant sections and apply them as constraints on your output
+- DO NOT make a separate brain-query call — the digest is already pre-injected
+- If a section is absent from the context, proceed without it (fail-open)
+
 ## Output Schema
 
 Emit exactly this JSON object to stdout (no surrounding text):
