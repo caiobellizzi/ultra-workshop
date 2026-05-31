@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 import py_compile
 import re
-import importlib.util
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -29,43 +27,8 @@ _SHELL_COMMAND_PREFIXES = (
     "python ",
     "sh ",
 )
-_BRAIN_HTTP = Path(__file__).resolve().parent.parent / "hermes-skills" / "brain_http.py"
-_brain_http = None
-try:
-    _spec = importlib.util.spec_from_file_location("brain_http", _BRAIN_HTTP)
-    if _spec and _spec.loader:
-        _brain_http = importlib.util.module_from_spec(_spec)
-        _spec.loader.exec_module(_brain_http)
-except Exception:
-    _brain_http = None
-
-
 def _issue(file: str, problem: str, required_fix: str) -> ReviewIssue:
     return ReviewIssue(file=file or "*", problem=problem, required_fix=required_fix)
-
-
-def _query_review_memory(repo_full_name: str) -> str:
-    if _brain_http is None or not repo_full_name:
-        return ""
-    try:
-        result = _brain_http.call_agent(
-            "query",
-            f"project review rules and prior incident ADRs for {repo_full_name}",
-        )
-        content = str(result.get("content") or result)
-        print(
-            f"[workshop_reviewer] brain-query review context loaded for {repo_full_name}",
-            file=sys.stderr,
-            flush=True,
-        )
-        return content
-    except Exception as exc:
-        print(
-            f"[workshop_reviewer] WARNING: brain-query failed: {exc}",
-            file=sys.stderr,
-            flush=True,
-        )
-        return ""
 
 
 def _planned_files(plan: Plan) -> set[str]:
@@ -138,7 +101,6 @@ def review_query(query_json: str) -> Review | ClarificationRequest:
     clarifications = normalize_clarifications(query.get("clarifications"))
     repo = query.get("repo") if isinstance(query.get("repo"), dict) else {}
     repo_full_name = str(repo.get("full_name") or query.get("repo_full_name") or "").strip()
-    _query_review_memory(repo_full_name)
 
     clarification = maybe_clarification_request(
         task_id,
