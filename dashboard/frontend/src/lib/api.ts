@@ -245,6 +245,10 @@ export const repos = {
     request<void>(`/api/repos/${encodeURIComponent(fullName)}`, {
       method: "DELETE",
     }),
+  syncGithub: () =>
+    request<{ imported: number; skipped: number }>("/api/repos/sync-github", {
+      method: "POST",
+    }),
 };
 
 // ---------------------------------------------------------------------------
