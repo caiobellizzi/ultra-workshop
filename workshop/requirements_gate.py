@@ -1,55 +1,12 @@
 from __future__ import annotations
 
-import importlib.util
 import json
 import re
-import sys
-from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from workshop.brain_context import _append_digest_section
 from workshop.types import ClarificationQuestion, ClarificationRequest
-
-# Load brain_http via importlib (mirrors pattern from workshop/reviewer.py and workshop/cost.py)
-_BRAIN_HTTP_FILE = Path("/opt/ultra-workshop/hermes-skills/brain_http.py")
-_brain_http = None
-try:
-    _spec = importlib.util.spec_from_file_location("brain_http", _BRAIN_HTTP_FILE)
-    if _spec and _spec.loader:
-        _brain_http = importlib.util.module_from_spec(_spec)
-        _spec.loader.exec_module(_brain_http)  # type: ignore[union-attr]
-except Exception:
-    _brain_http = None  # type: ignore[assignment]
-
-
-def _query_prior_clarifications(repo_full_name: str) -> str:
-    """Query brain for prior clarifications on this repo. Fail-open: returns '' on any failure.
-
-    B7: Injects prior context into requirements evaluation to avoid re-asking known questions.
-    T-09-03-04: Result goes into planning_notes only, never overrides current task requirements.
-    """
-    if _brain_http is None or not repo_full_name:
-        return ""
-    try:
-        result = _brain_http.call_agent(
-            "query",
-            f"prior clarifications for {repo_full_name}",
-        )
-        content = str(result.get("content") or result)
-        if content and content != str(result):
-            print(
-                f"[requirements_gate] brain prior-clarification context loaded for {repo_full_name}",
-                file=sys.stderr,
-                flush=True,
-            )
-        return content
-    except Exception as exc:
-        print(
-            f"[requirements_gate] brain query failed (non-blocking): {exc}",
-            file=sys.stderr,
-            flush=True,
-        )
-        return ""
 
 
 _TWELVE_FACTORY_RE = re.compile(
@@ -145,11 +102,17 @@ def evaluate_requirements(query_json: str) -> RequirementsDecision | Clarificati
     if not task_id or not goal:
         raise ValueError("requirements query missing task_id or goal")
 
-    # B7: Query brain for prior clarifications before ambiguity detection.
+    # B7: Extract prior clarifications from pre-injected brain context.
     # T-09-03-04: Result injected into planning_notes only — never overrides current task spec.
     repo = query.get("repo") or {}
     repo_full_name = str(repo.get("full_name") or query.get("repo_full_name") or "").strip()
-    prior_context = _query_prior_clarifications(repo_full_name)
+    raw_context = query.get("context", "")
+    prior_context = ""
+    if "Prior Clarifications" in raw_context:
+        parts = raw_context.split("## Prior Clarifications")
+        if len(parts) > 1:
+            section = parts[1].split("## ")[0].strip()
+            prior_context = section
 
     clarifications = normalize_clarifications(query.get("clarifications"))
     clarification = maybe_clarification_request(
@@ -159,6 +122,12 @@ def evaluate_requirements(query_json: str) -> RequirementsDecision | Clarificati
         clarifications=clarifications,
     )
     if clarification is not None:
+        try:
+            question = clarification.questions[0].question if clarification.questions else ""
+            if repo_full_name and question:
+                _append_digest_section(repo_full_name, "Prior Clarifications", question)
+        except Exception:
+            pass  # fail-open
         return clarification
 
     notes: list[str] = []
