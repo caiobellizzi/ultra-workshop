@@ -95,3 +95,10 @@ If `--dry-run` appears in the trigger, emit the following hardcoded example and 
 ```json
 {"summary": "dry-run coder", "changes": [], "branch": "workshop/dry-run", "workspace_dir": "/tmp/uws-sandbox-dry-run", "repo_full_name": "caiobellizzi/test-workshop-sandbox", "default_branch": "main", "build_passed": true, "test_passed": true, "output_tail": "dry-run"}
 ```
+
+## Using Pre-Injected Brain Context
+
+When the `context` field contains a `## Brain: Repo Digest` block:
+- Extract the relevant sections and apply them as constraints on your output
+- DO NOT make a separate brain-query call — the digest is already pre-injected
+- If a section is absent from the context, proceed without it (fail-open)
