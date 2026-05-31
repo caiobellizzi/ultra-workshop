@@ -165,6 +165,13 @@ def main() -> None:
             flush=True,
         )
 
+    # STEP 4 — incremental brain digest append (fire-and-forget)
+    try:
+        from workshop.brain_context import _append_digest_section
+        _append_digest_section(repo_full_name, "Decisions", f"PR merged: {plan_goal}\n{pr_url}")
+    except Exception:
+        pass  # fail-open
+
     print(f"[workshop_push] done — pr_url={pr_url}", flush=True)
 
 

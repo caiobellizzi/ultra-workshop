@@ -107,6 +107,12 @@ def _run_repo_tests(repo: dict, brain_http) -> None:
             f"{result_summary}"
         )
         brain_http.call_agent("ingest", ingest_payload)
+        # incremental brain digest append (fire-and-forget)
+        try:
+            from workshop.brain_context import _append_digest_section
+            _append_digest_section(full_name, "Incidents", f"Test failure: {result_summary}")
+        except Exception:
+            pass  # fail-open
         print(
             f"[nightly-tests] {full_name} FAILED (exit {proc.returncode}) — ingested to vault",
             flush=True,
