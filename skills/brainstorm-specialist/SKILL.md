@@ -40,6 +40,12 @@ Prohibited behavior:
 
 Before asking the first scoping question, scan Brain for prior clarifications on the repository: call brain_http.call_agent('query', f'prior clarifications for {repo_full_name}'). If the brain returns relevant prior clarifications, treat them as resolved context — skip questions already answered.
 
+## Brain Context Fallback
+
+Prefer the injected `## Brain: Repo Digest` block in `context` when present.
+Only fall back to an explicit brain-query call when no digest block is present in context.
+This avoids redundant brain calls and saves turns against MAX_TURNS.
+
 ## Behavior
 
 1. Receive task description from the pipeline (JSON with keys: `task_id`, `goal`, `repo_full_name`, optional `context`).
