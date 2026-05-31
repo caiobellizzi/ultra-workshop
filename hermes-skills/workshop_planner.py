@@ -10,6 +10,29 @@ sys.path.insert(0, str(Path(__file__).parent.parent))  # adds /opt/ultra-worksho
 
 from workshop.planner import build_plan
 
+try:
+    import brain_http as _brain_http  # type: ignore[import]
+except ImportError:
+    _brain_http = None  # type: ignore[assignment]
+
+
+def _inject_brain_context(query_json: str) -> str:
+    """Enrich planner query with brain context (repo conventions + ADRs). Fail-open."""
+    if _brain_http is None:
+        return query_json
+    try:
+        query = json.loads(query_json)
+        repo_full_name = str((query.get("repo") or {}).get("full_name") or "")
+        if not repo_full_name:
+            return query_json
+        result = _brain_http.call_agent("query", f"repo conventions and relevant ADRs for {repo_full_name}")
+        brain_content = str(result.get("content") or "")
+        if brain_content:
+            query["context"] = (query.get("context") or "") + "\n\n" + brain_content
+        return json.dumps(query)
+    except Exception:
+        return query_json
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Deterministic workshop planner")

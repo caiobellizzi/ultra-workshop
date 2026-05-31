@@ -8,6 +8,22 @@ from pydantic import BaseModel, Field
 from workshop.brain_context import _append_digest_section
 from workshop.types import ClarificationQuestion, ClarificationRequest
 
+try:
+    import brain_http as _brain_http  # type: ignore[import]
+except ImportError:
+    _brain_http = None  # type: ignore[assignment]
+
+
+def _query_prior_clarifications(repo: str) -> str:
+    """Query brain for prior clarifications on this repo. Returns '' on any failure."""
+    if _brain_http is None:
+        return ""
+    try:
+        result = _brain_http.call_agent("query", f"prior clarifications for repo {repo}")
+        return str(result.get("content") or "")
+    except Exception:
+        return ""
+
 
 _TWELVE_FACTORY_RE = re.compile(
     r"\b(?:12|twelve)[-\s]+factory\s+practices?\b",
