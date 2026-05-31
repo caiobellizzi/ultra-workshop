@@ -102,10 +102,11 @@ def sync_github(_auth=Depends(require_auth)):
     if not pat:
         raise HTTPException(status_code=500, detail="GITHUB_PAT not configured (set UWS_DASH_GITHUB_PAT)")
 
-    # Paginate GitHub /user/repos?type=owner
+    # Paginate GitHub /user/repos?type=owner (max 20 pages = 2,000 repos)
     all_repos: list[dict] = []
     page = 1
-    while True:
+    max_pages = 20
+    while page <= max_pages:
         url = f"https://api.github.com/user/repos?type=owner&per_page=100&page={page}"
         req = urllib.request.Request(
             url,
@@ -120,7 +121,9 @@ def sync_github(_auth=Depends(require_auth)):
                 page_repos = _json.loads(resp.read())
         except urllib.error.HTTPError as exc:
             body = exc.read().decode(errors="replace")
-            raise HTTPException(status_code=502, detail=f"GitHub API error {exc.code}: {body}")
+            import sys
+            print(f"[sync-github] GitHub {exc.code}: {body}", file=sys.stderr)
+            raise HTTPException(status_code=502, detail=f"GitHub API error {exc.code}")
 
         if not page_repos:
             break
