@@ -14,7 +14,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from dashboard.backend.config import settings
 from dashboard.backend.deps import require_auth
-from dashboard.backend.services.log_tailer import tail_aider_logs
+
 
 router = APIRouter(prefix="/api/sse", tags=["sse"])
 
@@ -64,12 +64,53 @@ async def _task_event_generator(request: Request, task_id: str) -> AsyncIterator
 
 
 async def _log_event_generator(request: Request, task_id: str) -> AsyncIterator[dict[str, str]]:
-    """Tail aider_step_*.log files and yield SSE log-line events (unnamed frames)."""
-    async for line in tail_aider_logs(task_id):
+    """Stream progress_log.jsonl (replay + follow) and aider_step_*.log files."""
+    from datetime import datetime, timezone
+    task_path = Path(settings.tasks_base) / task_id
+    progress_file = task_path / "progress_log.jsonl"
+    progress_offset = 0
+    aider_offsets: dict[Path, int] = {}
+    idle_seconds = 0
+
+    while idle_seconds < 120:
         if await request.is_disconnected():
             break
-        # line is already a JSON string from log_tailer; emit as unnamed message
-        yield {"data": line}
+
+        any_new = False
+
+        # Progress log: replay all existing entries on first pass, then follow new ones
+        if progress_file.exists():
+            try:
+                raw = progress_file.read_bytes()
+                if len(raw) > progress_offset:
+                    for line in raw[progress_offset:].decode("utf-8", errors="replace").splitlines():
+                        line = line.strip()
+                        if line:
+                            yield {"data": line}
+                    progress_offset = len(raw)
+                    any_new = True
+            except OSError:
+                pass
+
+        # Aider step logs: only present during coder stage
+        for log_file in sorted(task_path.glob("aider_step_*.log")):
+            offset = aider_offsets.get(log_file, 0)
+            try:
+                raw = log_file.read_bytes()
+            except OSError:
+                continue
+            if len(raw) > offset:
+                for line in raw[offset:].decode("utf-8", errors="replace").splitlines():
+                    yield {"data": json.dumps({
+                        "ts": datetime.now(timezone.utc).isoformat(),
+                        "event": "log",
+                        "msg": line,
+                    })}
+                aider_offsets[log_file] = len(raw)
+                any_new = True
+
+        idle_seconds = 0 if any_new else idle_seconds + 1
+        await asyncio.sleep(1.0)
 
 
 @router.get("/tasks/{task_id}/events")
