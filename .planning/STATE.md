@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Phase 05 complete (4/4) — ready to discuss Phase 06
-last_updated: 2026-05-28T19:55:01.414Z
-last_activity: 2026-05-28 -- Phase 05 execution started
+status: planning
+stopped_at: Phase 10.1 context gathered
+last_updated: "2026-05-31T23:05:26.780Z"
+last_activity: 2026-05-28
 progress:
-  total_phases: 10
-  completed_phases: 9
+  total_phases: 11
+  completed_phases: 10
   total_plans: 36
   completed_plans: 36
-  percent: 90
+  percent: 91
 ---
 
 # Project State
@@ -55,6 +55,7 @@ Progress: [██████████] 97%
 ### Roadmap Evolution
 
 - Phase 7 added (2026-05-25): Agentic Repo-Aware Planner — upgrade the planner from a blind keyword-heuristic to an LLM planner that reads a pre-cloned repo + resolved reference docs (prd.md via repo/vault/Brain). Keeps subprocess + HERMES_HOME transport and the deterministic state machine; no `delegate_task`. Motivated by analysis that confirmed the subprocess orchestration is correct for this fixed, HITL-gated, budget-capped pipeline (delegate_task would regress reliability, cost, and restart-resilience), leaving per-role intelligence as the only genuine "more agentic" opportunity.
+- Phase 10.1 inserted after Phase 10: Close gap: REQ-ws-020 — link_orphans.py + standard-poll dispatch fix + mint REQ-ws-035..050 (URGENT)
 
 ### Decisions
 
@@ -102,6 +103,6 @@ Key decisions affecting first plans:
 
 ## Session Continuity
 
-Last session: 2026-05-27T06:08:25.134Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-advanced-agent-architecture/09-CONTEXT.md
+Last session: 2026-05-31T23:05:26.774Z
+Stopped at: Phase 10.1 context gathered
+Resume file: .planning/phases/10.1-close-gap-req-ws-020-link-orphans-py-standard-poll-dispatch-/10.1-CONTEXT.md
