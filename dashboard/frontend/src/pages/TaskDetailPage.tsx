@@ -33,11 +33,12 @@ export function TaskDetailPage() {
     );
   }
 
+  const hitlPayload = task.approval_payload ?? (task.timeout_payload as typeof task.approval_payload);
   const isHitl =
     task.status !== "running" &&
     task.status !== "pushed" &&
     task.status !== "stopped" &&
-    task.approval_payload != null;
+    hitlPayload != null;
 
   return (
     <div className="flex flex-col h-full">
@@ -99,10 +100,10 @@ export function TaskDetailPage() {
         </div>
 
         {/* Right panel: HITL (conditional) */}
-        {isHitl && task.approval_payload && (
+        {isHitl && hitlPayload && (
           <aside className="w-96 shrink-0 border-l overflow-y-auto p-4">
             <h3 className="text-sm font-semibold mb-3">Action Required</h3>
-            <HITLCard taskId={taskId} payload={task.approval_payload} />
+            <HITLCard taskId={taskId} payload={hitlPayload} />
           </aside>
         )}
       </div>
