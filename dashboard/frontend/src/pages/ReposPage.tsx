@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Plus, Trash2, ExternalLink } from "lucide-react";
+import { Loader2, Plus, Trash2, ExternalLink, Github } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +33,18 @@ export function ReposPage() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["repos"] }),
   });
 
+  const syncMutation = useMutation({
+    mutationFn: () => reposApi.syncGithub(),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: ["repos"] });
+      toast({
+        title: "GitHub sync complete",
+        description: `${result.imported} repos imported, ${result.skipped} already registered`,
+      });
+    },
+    onError: (e) => toast({ variant: "destructive", title: "Sync failed", description: String(e) }),
+  });
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader title="Repos" description="Workshop repo registry" />
@@ -50,6 +62,18 @@ export function ReposPage() {
           >
             {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Add
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => syncMutation.mutate()}
+            disabled={syncMutation.isPending}
+          >
+            {syncMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Github className="h-4 w-4" />
+            )}
+            Sync GitHub
           </Button>
         </div>
 
