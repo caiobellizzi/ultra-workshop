@@ -40,13 +40,13 @@ def launch_build(task_id: str, repo: str, goal: str, brainstorm: bool = False) -
 
 
 def launch_fix(task_id: str) -> None:
-    """Resume a stopped/failed task via workshop_fix.py or workshop_continue.py."""
-    workshop_fix = Path(settings.workshop_root) / "hermes-skills" / "workshop_fix.py"
-    if not workshop_fix.exists():
+    """Resume a stopped/failed task by re-running workshop_build.py --resume."""
+    workshop_build = Path(settings.workshop_build_py)
+    if not workshop_build.exists():
         repo_root = Path(__file__).parent.parent.parent.parent
-        workshop_fix = repo_root / "hermes-skills" / "workshop_fix.py"
+        workshop_build = repo_root / "hermes-skills" / "workshop_build.py"
 
-    cmd = [sys.executable, str(workshop_fix), "--task-id", task_id]
+    cmd = [sys.executable, str(workshop_build), "--task-id", task_id, "--resume"]
 
     def _run() -> None:
         try:
