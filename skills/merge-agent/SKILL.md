@@ -110,3 +110,10 @@ If `--dry-run` appears in the trigger, emit the following hardcoded example and 
 ```json
 {"role": "merge-agent", "block_push": false, "findings": [], "auto_fixed": [], "hitl_summary": "", "tokens_used": 0, "cost_cents": 0}
 ```
+
+## Using Pre-Injected Brain Context
+
+When the `context` field contains a `## Brain: Repo Digest` block:
+- Extract the relevant sections and apply them as constraints on your output
+- DO NOT make a separate brain-query call — the digest is already pre-injected
+- If a section is absent from the context, proceed without it (fail-open)
