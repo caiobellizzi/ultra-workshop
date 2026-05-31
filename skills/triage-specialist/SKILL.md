@@ -70,3 +70,10 @@ If `--dry-run` appears in the trigger, emit the following hardcoded example and 
 ```json
 {"task_type": "BUILD", "summary": "dry-run result", "complexity": "low"}
 ```
+
+## Using Pre-Injected Brain Context
+
+When the `context` field contains a `## Brain: Repo Digest` block:
+- Extract the relevant sections and apply them as constraints on your output
+- DO NOT make a separate brain-query call — the digest is already pre-injected
+- If a section is absent from the context, proceed without it (fail-open)
