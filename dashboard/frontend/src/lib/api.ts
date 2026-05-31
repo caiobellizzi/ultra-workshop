@@ -50,6 +50,7 @@ async function request<T>(
       ...(init.headers as Record<string, string> | undefined),
     },
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(15_000),
   });
   if (res.status === 401) {
     // Let the auth layer handle redirect
