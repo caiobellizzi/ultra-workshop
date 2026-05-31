@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSkill, useSaveSkill } from "@/hooks/useSkills";
 import { toast } from "@/hooks/use-toast";
+import { useTheme } from "@/components/ThemeProvider";
 
 // Monaco loaded lazily to avoid large bundle on other pages
 const MonacoEditor = lazy(() =>
@@ -20,6 +21,7 @@ export function SkillEditorPage() {
   const { data, isLoading } = useSkill(skillName);
   const saveMutation = useSaveSkill(skillName);
 
+  const { theme: currentTheme } = useTheme();
   const [content, setContent] = useState<string | null>(null);
   const [schemaWarning, setSchemaWarning] = useState(false);
 
@@ -75,7 +77,12 @@ export function SkillEditorPage() {
                 Discard
               </Button>
             )}
-            <Button size="sm" onClick={handleSave} disabled={!isDirty || saveMutation.isPending}>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={!isDirty || saveMutation.isPending}
+              className="bg-[--accent] text-[--bg] font-bold font-mono text-xs"
+            >
               {saveMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -88,7 +95,7 @@ export function SkillEditorPage() {
       />
 
       {schemaWarning && (
-        <div className="flex items-center gap-2 bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm text-amber-700">
+        <div className="flex items-center gap-2 bg-[--warn-bg] border border-[--warn-bd] px-4 py-2 text-[--warning] font-mono text-xs">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           Modifying the Output Schema may break the pipeline stage that consumes this skill&apos;s output.
           Verify all callers.
@@ -120,7 +127,7 @@ export function SkillEditorPage() {
                 fontSize: 13,
                 scrollBeyondLastLine: false,
               }}
-              theme="vs-light"
+              theme={currentTheme === "dark" ? "vs-dark" : "vs"}
             />
           </Suspense>
         </div>

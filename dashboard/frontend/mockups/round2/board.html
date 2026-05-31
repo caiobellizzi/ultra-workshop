@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop — Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── DESIGN SYSTEM ─── */
+  :root {
+    --bg: #0a0a0f; --surface: #0f0f17; --surface-r: #141420;
+    --border: #1e1e2e; --border-s: #2e2e45;
+    --text: #e5e7eb; --text-m: #6b7280; --text-d: #4b5563;
+    --accent: #f59e0b; --accent-bg: #1a1000; --accent-bd: #78350f; --accent-dim: #92400e;
+    --success: #22c55e; --success-bg: #052e16; --success-bd: #14532d;
+    --danger: #ef4444; --danger-bg: #1c0a0a; --danger-bd: #7f1d1d;
+    --warning: #fbbf24; --warn-bg: #1a1000; --warn-bd: #92400e;
+    --info: #60a5fa; --info-bg: #0c1a30; --info-bd: #1e3a5f;
+    --log-bg: #050508; --log-ts: #f59e0b; --log-src: #9ca3af; --log-text: #d1d5db;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 160px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; height: 100vh; }
+  .sidebar-brand { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .12em; padding: 0 12px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .nav-link { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 36px; font-size: 12px; color: var(--text-m); cursor: pointer; border-left: 2px solid transparent; white-space: nowrap; }
+  .nav-link:hover { color: var(--text); }
+  .nav-link.active { background: var(--accent-bg); border-left-color: var(--accent); color: var(--accent); }
+  .nav-prefix { font-size: 10px; width: 10px; }
+  .nav-section { font-size: 10px; letter-spacing: .08em; color: var(--text-d); padding: 12px 12px 4px; text-transform: uppercase; }
+  .nav-link.sub { padding-left: 24px; font-size: 11px; }
+  .nav-badge { margin-left: auto; background: var(--danger-bg); border: 1px solid var(--danger-bd); color: var(--danger); font-size: 9px; padding: 0 5px; border-radius: 2px; }
+  .sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+  .theme-toggle { font-size: 11px; color: var(--text-d); cursor: pointer; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0; }
+  .topbar-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  .content::-webkit-scrollbar { width: 3px; } .content::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); }
+  .badge-running { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-bd); }
+  .badge-pushed { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
+  .badge-danger { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-bd); }
+  .badge-warning { color: var(--warning); background: var(--warn-bg); border-color: var(--warn-bd); }
+  .badge-info { color: var(--info); background: var(--info-bg); border-color: var(--info-bd); }
+  .badge-muted { color: var(--text-m); background: var(--surface-r); border-color: var(--border); }
+  .section-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 12px; }
+  .btn { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-weight: 500; border: 1px solid; }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+  .btn-secondary { background: transparent; color: var(--text-m); border-color: var(--border-s); }
+  .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger-bd); }
+  .table-wrap { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead { background: var(--surface); }
+  th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-d); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-m); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(245,158,11,.03); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
+  input[type=text], textarea, select { background: var(--surface-r); border: 1px solid var(--border-s); border-radius: 2px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none; width: 100%; }
+  input[type=text]:focus, textarea:focus, select:focus { border-color: var(--accent-bd); }
+  label { font-size: 11px; color: var(--text-m); display: block; margin-bottom: 4px; }
+
+  /* ─── PAGE-SPECIFIC: BOARD ─── */
+
+  /* live dot */
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    flex-shrink: 0;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+  .live-label { font-size: 11px; color: var(--text-d); letter-spacing: .04em; }
+
+  /* topbar filter chips */
+  .filter-chip {
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 3px 9px;
+    border-radius: 2px;
+    border: 1px solid var(--border-s);
+    color: var(--text-d);
+    cursor: pointer;
+    background: transparent;
+    letter-spacing: .04em;
+    white-space: nowrap;
+  }
+  .filter-chip.active-chip {
+    border-color: var(--accent-bd);
+    color: var(--accent);
+    background: var(--accent-bg);
+  }
+
+  /* divider */
+  .topbar-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+  /* ── board layout ── */
+  .board-wrap {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 20px 24px 24px;
+  }
+  .board-wrap::-webkit-scrollbar { height: 4px; }
+  .board-wrap::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+
+  .board {
+    display: flex;
+    gap: 12px;
+    height: 100%;
+    min-width: max-content;
+    align-items: flex-start;
+  }
+
+  /* ── column ── */
+  .col {
+    width: 210px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+  }
+
+  .col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+    flex-shrink: 0;
+  }
+
+  .col-label-wrap { display: flex; align-items: center; gap: 6px; }
+
+  .col-pip {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .pip-neutral  { background: var(--text-d); }
+  .pip-running  { background: var(--accent); animation: pulse 2s ease-in-out infinite; }
+  .pip-hitl     { background: var(--warning); }
+  .pip-success  { background: var(--success); }
+  .pip-danger   { background: var(--danger); }
+
+  .col-label {
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-d);
+  }
+
+  .col-count {
+    font-size: 10px;
+    color: var(--text-d);
+    background: var(--surface-r);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 0 5px;
+    min-width: 18px;
+    text-align: center;
+  }
+  .col-count.has-items { color: var(--text-m); border-color: var(--border-s); }
+
+  .col-cards {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 4px;
+    min-height: 60px;
+  }
+  .col-cards::-webkit-scrollbar { width: 2px; }
+  .col-cards::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+
+  /* ── task card ── */
+  .tcard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 10px 10px 9px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: border-color .12s;
+  }
+  .tcard:hover { border-color: var(--border-s); }
+  .tcard:hover .tcard-goal { color: var(--text); }
+
+  .tcard.st-running  { border-left-color: var(--accent); }
+  .tcard.st-hitl     { border-left-color: var(--warning); }
+  .tcard.st-pushed   { border-left-color: var(--success); }
+  .tcard.st-failed   { border-left-color: var(--danger); }
+  .tcard.st-idle     { border-left-color: var(--border-s); }
+
+  .tcard-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  .tcard-id {
+    font-size: 9px;
+    color: var(--text-d);
+    letter-spacing: .04em;
+  }
+
+  .tcard-goal {
+    font-size: 11px;
+    color: var(--text-m);
+    line-height: 1.45;
+    margin-bottom: 7px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .tcard-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .tcard-repo {
+    font-size: 9px;
+    color: var(--text-d);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+    flex-shrink: 1;
+  }
+
+  .tcard-cost {
+    font-size: 9px;
+    color: var(--text-d);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* inline progress bar for running cards */
+  .tcard-progress {
+    height: 2px;
+    background: var(--border);
+    border-radius: 1px;
+    margin-bottom: 7px;
+    overflow: hidden;
+  }
+  .tcard-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 1px;
+  }
+
+  /* empty state */
+  .col-empty {
+    border: 1px dashed var(--border);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-d);
+    font-size: 10px;
+    height: 56px;
+    letter-spacing: .04em;
+  }
+
+  /* ── summary strip below topbar ── */
+  .board-meta {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .meta-stat { display: flex; align-items: baseline; gap: 6px; }
+  .meta-val  { font-size: 18px; font-weight: 700; color: var(--text); }
+  .meta-lbl  { font-size: 10px; color: var(--text-d); letter-spacing: .06em; text-transform: uppercase; }
+  .meta-sep  { width: 1px; height: 28px; background: var(--border); }
+  .meta-mini { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-m); }
+  .meta-dot  { width: 6px; height: 6px; border-radius: 50%; }
+  .meta-spacer { flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- ─── SIDEBAR ─── -->
+<nav class="sidebar">
+  <div class="sidebar-brand">◆ WORKSHOP</div>
+  <a class="nav-link active"><span class="nav-prefix">▶</span> Board</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> HITL Queue</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Cost</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Health</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Skills</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Repos</a>
+  <div class="nav-section">Config</div>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Models</a>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Reviewers</a>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Policies</a>
+  <div class="sidebar-bottom"><div class="theme-toggle">◑ light mode</div></div>
+</nav>
+
+<!-- ─── MAIN ─── -->
+<div class="main">
+
+  <!-- topbar -->
+  <div class="topbar">
+    <span class="topbar-title">Workshop Board</span>
+    <div class="live-dot"></div>
+    <span class="live-label">live</span>
+    <div class="topbar-divider"></div>
+    <button class="filter-chip active-chip">All</button>
+    <button class="filter-chip">Running</button>
+    <button class="filter-chip">HITL</button>
+    <button class="filter-chip">Failed</button>
+    <div class="topbar-divider"></div>
+    <button class="btn btn-primary">▶ LAUNCH TASK</button>
+  </div>
+
+  <!-- summary strip -->
+  <div class="board-meta">
+    <div class="meta-stat">
+      <span class="meta-val" style="color:var(--accent)">6</span>
+      <span class="meta-lbl">Running</span>
+    </div>
+    <div class="meta-sep"></div>
+    <div class="meta-stat">
+      <span class="meta-val" style="color:var(--warning)">3</span>
+      <span class="meta-lbl">HITL</span>
+    </div>
+    <div class="meta-sep"></div>
+    <div class="meta-stat">
+      <span class="meta-val" style="color:var(--success)">4</span>
+      <span class="meta-lbl">Pushed</span>
+    </div>
+    <div class="meta-sep"></div>
+    <div class="meta-stat">
+      <span class="meta-val" style="color:var(--danger)">1</span>
+      <span class="meta-lbl">Failed</span>
+    </div>
+    <div class="meta-sep"></div>
+    <div class="meta-stat">
+      <span class="meta-val">14</span>
+      <span class="meta-lbl">Total</span>
+    </div>
+    <div class="meta-spacer"></div>
+    <div class="meta-mini"><div class="meta-dot" style="background:var(--accent)"></div>claude-sonnet-4-6 × 6</div>
+    <div class="meta-mini"><div class="meta-dot" style="background:var(--info)"></div>claude-haiku-4-5 × 2</div>
+    <div class="meta-mini" style="color:var(--text-d)">session $4.12</div>
+  </div>
+
+  <!-- board -->
+  <div class="board-wrap">
+    <div class="board">
+
+      <!-- ── BRAINSTORM ── -->
+      <div class="col">
+        <div class="col-header">
+          <div class="col-label-wrap">
+            <div class="col-pip pip-neutral"></div>
+            <span class="col-label">Brainstorm</span>
+          </div>
+          <span class="col-count">1</span>
+        </div>
+        <div class="col-cards">
+          <div class="tcard st-idle">
+            <div class="tcard-top">
+              <span class="tcard-id">#d4e12c77</span>
+              <span class="badge badge-muted">idle</span>
+            </div>
+            <div class="tcard-goal">Investigate replacing REST with tRPC on the admin panel service</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/admin-panel</span>
+              <span class="tcard-cost">$0.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TRIAGE ── -->
+      <div class="col">
+        <div class="col-header">
+          <div class="col-label-wrap">
+            <div class="col-pip pip-running"></div>
+            <span class="col-label">Triage</span>
+          </div>
+          <span class="col-count has-items">2</span>
+        </div>
+        <div class="col-cards">
+          <div class="tcard st-running">
+            <div class="tcard-top">
+              <span class="tcard-id">#a0b98f99</span>
+              <span class="badge badge-running">● running</span>
+            </div>
+            <div class="tcard-progress"><div class="tcard-progress-fill" style="width:22%"></div></div>
+            <div class="tcard-goal">Migrate PostgreSQL tables to use UUID primary keys across all services</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/prod-db</span>
+              <span class="tcard-cost">$0.06</span>
+            </div>
+          </div>
+          <div class="tcard st-idle">
+            <div class="tcard-top">
+              <span class="tcard-id">#b3c77a12</span>
+              <span class="badge badge-muted">queued</span>
+            </div>
+            <div class="tcard-goal">Audit all S3 bucket policies for public-read exposure</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/infra-tf</span>
+              <span class="tcard-cost">$0.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── REQUIREMENTS ── -->
+      <div class="col">
+        <div class="col-header">
+          <div class="col-label-wrap">
+            <div class="col-pip pip-running"></div>
+            <span class="col-label">Requirements</span>
+          </div>
+          <span class="col-count has-items">1</span>
+        </div>
+        <div class="col-cards">
+          <div class="tcard st-running">
+            <div class="tcard-top">
+              <span class="tcard-id">#c9f04e55</span>
+              <span class="badge badge-running">● running</span>
+            </div>
+            <div class="tcard-progress"><div class="tcard-progress-fill" style="width:61%"></div></div>
+            <div class="tcard-goal">Document acceptance criteria for the new billing webhook retry logic</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/billing-svc</span>
+              <span class="tcard-cost">$0.11</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PLANNER ── -->
+      <div class="col">
+        <div class="col-header">
+          <div class="col-label-wrap">
+            <div class="col-pip pip-running"></div>
+            <span class="col-label">Planner</span>
+          </div>
+          <span class="col-count has-items">2</span>
+        </div>
+        <div class="col-cards">
+          <div class="tcard st-running">
+            <div class="tcard-top">
+              <span class="tcard-id">#f1e3ab80</span>
+              <span class="badge badge-running">● running</span>
+            </div>
+            <div class="tcard-progress"><div class="tcard-progress-fill" style="width:47%"></div></div>
+            <div class="tcard-goal">Add Stripe webhook handler for subscription created/cancelled events</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/billing-svc</span>
+              <span class="tcard-cost">$0.19</span>
+            </div>
+          </div>
+          <div class="tcard st-running">
+            <div class="tcard-top">
+              <span class="tcard-id">#e8221d4f</span>
+              <span class="badge badge-running">● running</span>
+            </div>
+            <div class="tcard-progress"><div class="tcard-progress-fill" style="width:12%"></div></div>
+            <div class="tcard-goal">Design caching layer for the search API using Redis sorted sets</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/search-svc</span>
+              <span class="tcard-cost">$0.08</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CODER ── -->
+      <div class="col">
+        <div class="col-header">
+          <div class="col-label-wrap">
+            <div class="col-pip pip-hitl"></div>
+            <span class="col-label">Coder</span>
+          </div>
+          <span class="col-count has-items">3</span>
+        </div>
+        <div class="col-cards">
+          <div class="tcard st-running">
+            <div class="tcard-top">
+              <span class="tcard-id">#7de94c01</span>
+              <span class="badge badge-running">● running</span>
+            </div>
+            <div class="tcard-progress"><div class="tcard-progress-fill" style="width:78%"></div></div>
+            <div class="tcard-goal">Add OAuth2 login with Google and GitHub, fix settings page crash on mobile</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/my-saas-app</span>
+              <span class="tcard-cost">$0.44</span>
+            </div>
+          </div>
+          <div class="tcard st-hitl">
+            <div class="tcard-top">
+              <span class="tcard-id">#3a5f8b20</span>
+              <span class="badge badge-warning">⌛ needs_approval</span>
+            </div>
+            <div class="tcard-goal">Refactor API rate limiter to use Redis sliding-window algorithm</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/api-gateway</span>
+              <span class="tcard-cost">$0.71</span>
+            </div>
+          </div>
+          <div class="tcard st-hitl">
+            <div class="tcard-top">
+              <span class="tcard-id">#5c190fe3</span>
+              <span class="badge badge-warning">⌛ needs_clarification</span>
+            </div>
+            <div class="tcard-goal">Add dark mode toggle — should persist via localStorage or user profile?</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/landing</span>
+              <span class="tcard-cost">$0.14</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── REVIEWER ── -->
+      <div class="col">
+        <div class="col-header">
+          <div class="col-label-wrap">
+            <div class="col-pip pip-hitl"></div>
+            <span class="col-label">Reviewer</span>
+          </div>
+          <span class="col-count has-items">2</span>
+        </div>
+        <div class="col-cards">
+          <div class="tcard st-running">
+            <div class="tcard-top">
+              <span class="tcard-id">#82b4d907</span>
+              <span class="badge badge-running">● running</span>
+            </div>
+            <div class="tcard-progress"><div class="tcard-progress-fill" style="width:35%"></div></div>
+            <div class="tcard-goal">Replace lodash with native ES2022 equivalents across the web-app monorepo</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/web-app</span>
+              <span class="tcard-cost">$1.24</span>
+            </div>
+          </div>
+          <div class="tcard st-hitl">
+            <div class="tcard-top">
+              <span class="tcard-id">#0df67c44</span>
+              <span class="badge badge-warning">⌛ timeout_recovery</span>
+            </div>
+            <div class="tcard-goal">Add CSRF protection to all form submission and mutation endpoints</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/backend</span>
+              <span class="tcard-cost">$0.88</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── APPROVAL ── -->
+      <div class="col">
+        <div class="col-header">
+          <div class="col-label-wrap">
+            <div class="col-pip pip-running"></div>
+            <span class="col-label">Approval</span>
+          </div>
+          <span class="col-count has-items">1</span>
+        </div>
+        <div class="col-cards">
+          <div class="tcard st-running">
+            <div class="tcard-top">
+              <span class="tcard-id">#19ac50bd</span>
+              <span class="badge badge-info">↑ pushing</span>
+            </div>
+            <div class="tcard-progress"><div class="tcard-progress-fill" style="width:91%; background:var(--info)"></div></div>
+            <div class="tcard-goal">Implement email verification flow with 24h token expiry and resend throttle</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/auth-svc</span>
+              <span class="tcard-cost">$0.56</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PUSHED ── -->
+      <div class="col">
+        <div class="col-header">
+          <div class="col-label-wrap">
+            <div class="col-pip pip-success"></div>
+            <span class="col-label">Pushed</span>
+          </div>
+          <span class="col-count has-items">4</span>
+        </div>
+        <div class="col-cards">
+          <div class="tcard st-pushed">
+            <div class="tcard-top">
+              <span class="tcard-id">#6e8a1c29</span>
+              <span class="badge badge-pushed">✓ pushed</span>
+            </div>
+            <div class="tcard-goal">Fix N+1 query in the dashboard activity feed endpoint</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/web-app</span>
+              <span class="tcard-cost">$0.43 · 2h ago</span>
+            </div>
+          </div>
+          <div class="tcard st-pushed">
+            <div class="tcard-top">
+              <span class="tcard-id">#2b3fc860</span>
+              <span class="badge badge-pushed">✓ pushed</span>
+            </div>
+            <div class="tcard-goal">Add cursor-based pagination to the admin user list endpoint</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/admin-api</span>
+              <span class="tcard-cost">$0.21 · 5h ago</span>
+            </div>
+          </div>
+          <div class="tcard st-pushed">
+            <div class="tcard-top">
+              <span class="tcard-id">#a4d02e71</span>
+              <span class="badge badge-pushed">✓ pushed</span>
+            </div>
+            <div class="tcard-goal">Resolve CVE-2024-38816 — upgrade spring-webmvc to 6.1.14</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/java-svc</span>
+              <span class="tcard-cost">$0.09 · 7h ago</span>
+            </div>
+          </div>
+          <div class="tcard st-pushed">
+            <div class="tcard-top">
+              <span class="tcard-id">#cc91b5e0</span>
+              <span class="badge badge-pushed">✓ pushed</span>
+            </div>
+            <div class="tcard-goal">Extract shared Zod schemas into a standalone @company/validators package</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/my-saas-app</span>
+              <span class="tcard-cost">$0.37 · 1d ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── FAILED ── -->
+      <div class="col">
+        <div class="col-header">
+          <div class="col-label-wrap">
+            <div class="col-pip pip-danger"></div>
+            <span class="col-label">Failed</span>
+          </div>
+          <span class="col-count has-items">1</span>
+        </div>
+        <div class="col-cards">
+          <div class="tcard st-failed">
+            <div class="tcard-top">
+              <span class="tcard-id">#f7a23c18</span>
+              <span class="badge badge-danger">✗ push_failed</span>
+            </div>
+            <div class="tcard-goal">Upgrade React 17 → 18 with concurrent features and new root API</div>
+            <div class="tcard-footer">
+              <span class="tcard-repo">caiobellizzi/legacy-app</span>
+              <span class="tcard-cost">$1.87 · 1d ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /board -->
+  </div><!-- /board-wrap -->
+
+</div><!-- /main -->
+
+</body>
+</html>

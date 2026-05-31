@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { StepRetryPayload } from "@/types/task";
 
@@ -13,33 +12,72 @@ export function StepRecoveryCard({
   loading?: boolean;
 }) {
   const [selected, setSelected] = useState<string>("");
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Step Recovery Needed</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm">
-          <span className="font-medium">Step {payload.step_idx}:</span> {payload.step_desc}
+    <div
+      className="rounded-sm"
+      style={{
+        border: "1px solid var(--warning-border)",
+        borderTop: "2px solid var(--warning)",
+        backgroundColor: "var(--surface)",
+      }}
+    >
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2">
+        <span
+          className="text-xs tracking-widest uppercase font-mono"
+          style={{ color: "var(--warning)" }}
+        >
+          ⌛ ACTION REQUIRED
+        </span>
+      </div>
+
+      {/* Content */}
+      <div className="px-4 pb-4 space-y-3">
+        <p className="text-sm font-mono" style={{ color: "var(--text)" }}>
+          <span className="font-bold">Step {payload.step_idx}:</span> {payload.step_desc}
         </p>
-        {payload.reason && <p className="text-sm text-muted-foreground">{payload.reason}</p>}
+        {payload.reason && (
+          <p className="text-sm font-sans" style={{ color: "var(--text-muted)" }}>
+            {payload.reason}
+          </p>
+        )}
         <div className="space-y-2">
           {payload.options.map((opt, i) => (
-            <button
+            <Button
               key={i}
-              className={`w-full text-left text-sm border rounded-md px-3 py-2 transition-colors ${
-                selected === opt ? "border-primary bg-primary/10" : "hover:bg-muted"
-              }`}
+              variant="outline"
               onClick={() => setSelected(opt)}
+              className="w-full justify-start font-mono text-xs rounded-sm"
+              style={
+                selected === opt
+                  ? {
+                      backgroundColor: "var(--accent-bg)",
+                      borderColor: "var(--accent)",
+                      color: "var(--accent)",
+                    }
+                  : {
+                      borderColor: "var(--border-s)",
+                      color: "var(--text-m)",
+                    }
+              }
             >
               {opt}
-            </button>
+            </Button>
           ))}
         </div>
-        <Button disabled={!selected || loading} onClick={() => onResolve(selected)}>
+        <Button
+          disabled={!selected || loading}
+          onClick={() => onResolve(selected)}
+          className="font-bold font-mono text-xs rounded-sm"
+          style={{
+            backgroundColor: "var(--accent)",
+            color: "var(--bg)",
+          }}
+        >
           Submit
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

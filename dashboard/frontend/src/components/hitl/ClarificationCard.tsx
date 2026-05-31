@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import type { ClarificationPayload } from "@/types/task";
 
@@ -22,27 +22,57 @@ export function ClarificationCard({ payload, onResolve, loading }: Clarification
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          Clarification Needed
-          <Badge variant="outline">{request.source_stage}</Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{request.reason}</p>
+    <div
+      className="rounded-sm"
+      style={{
+        border: "1px solid var(--warning-border)",
+        borderTop: "2px solid var(--warning)",
+        backgroundColor: "var(--surface)",
+      }}
+    >
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+        <span
+          className="text-xs tracking-widest uppercase font-mono"
+          style={{ color: "var(--warning)" }}
+        >
+          ⌛ ACTION REQUIRED
+        </span>
+        <Badge variant="outline">{request.source_stage}</Badge>
+      </div>
+
+      {/* Content */}
+      <div className="px-4 pb-4 space-y-4">
+        <p className="text-sm font-sans" style={{ color: "var(--text-muted)" }}>
+          {request.reason}
+        </p>
 
         {request.questions.map((q, i) => (
           <div key={i} className="space-y-2">
-            <p className="text-sm font-medium">{q}</p>
+            <p className="text-sm font-mono" style={{ color: "var(--text)" }}>
+              {q}
+            </p>
             {request.options[i]?.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {request.options[i].map((opt) => (
                   <Button
                     key={opt}
                     size="sm"
-                    variant={answers[i] === opt ? "default" : "outline"}
+                    variant="outline"
                     onClick={() => setAnswers((prev) => ({ ...prev, [i]: opt }))}
+                    className="font-mono text-xs rounded-sm"
+                    style={
+                      answers[i] === opt
+                        ? {
+                            backgroundColor: "var(--accent-bg)",
+                            borderColor: "var(--accent)",
+                            color: "var(--accent)",
+                          }
+                        : {
+                            borderColor: "var(--border-s)",
+                            color: "var(--text-m)",
+                          }
+                    }
                   >
                     {opt}
                   </Button>
@@ -53,18 +83,25 @@ export function ClarificationCard({ payload, onResolve, loading }: Clarification
         ))}
 
         {request.allow_free_text && (
-          <textarea
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm min-h-[80px]"
+          <Textarea
             placeholder="Additional context…"
             value={freeText}
             onChange={(e) => setFreeText(e.target.value)}
           />
         )}
 
-        <Button onClick={handleSubmit} disabled={loading}>
+        <Button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="font-bold font-mono text-xs rounded-sm"
+          style={{
+            backgroundColor: "var(--accent)",
+            color: "var(--bg)",
+          }}
+        >
           Submit
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

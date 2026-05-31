@@ -1,11 +1,19 @@
 import { useState } from "react";
-import { Loader2, Plus, Trash2, ExternalLink, Github } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { repos as reposApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
@@ -45,10 +53,13 @@ export function ReposPage() {
     onError: (e) => toast({ variant: "destructive", title: "Sync failed", description: String(e) }),
   });
 
+  const repos = data?.repos ?? [];
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader title="Repos" description="Workshop repo registry" />
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {/* Add repo + sync row */}
         <div className="flex gap-2 max-w-md">
           <Input
             placeholder="owner/repo"
@@ -56,83 +67,220 @@ export function ReposPage() {
             onChange={(e) => setNewRepo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addMutation.mutate(newRepo)}
           />
-          <Button
+          {/* btn-primary: amber accent bg */}
+          <button
             onClick={() => addMutation.mutate(newRepo)}
             disabled={!newRepo || addMutation.isPending}
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-sm)",
+              backgroundColor: "var(--accent)",
+              color: "var(--background)",
+              border: "1px solid var(--accent-border)",
+              borderRadius: "var(--radius-sm)",
+              padding: "4px 12px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              cursor: "pointer",
+              opacity: !newRepo || addMutation.isPending ? 0.5 : 1,
+            }}
           >
-            {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Add
-          </Button>
-          <Button
-            variant="outline"
+            {addMutation.isPending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              "+"
+            )}
+            Add Repo
+          </button>
+          {/* btn-secondary: surface bg, border */}
+          <button
             onClick={() => syncMutation.mutate()}
             disabled={syncMutation.isPending}
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-sm)",
+              backgroundColor: "var(--surface)",
+              color: "var(--text)",
+              border: "1px solid var(--border-strong)",
+              borderRadius: "var(--radius-sm)",
+              padding: "4px 12px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              cursor: "pointer",
+              opacity: syncMutation.isPending ? 0.5 : 1,
+            }}
           >
             {syncMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
-              <Github className="h-4 w-4" />
+              "↑"
             )}
             Sync GitHub
-          </Button>
+          </button>
         </div>
 
         {isLoading ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2
+              className="h-6 w-6 animate-spin"
+              style={{ color: "var(--text-muted)" }}
+            />
+          </div>
+        ) : repos.length === 0 ? (
+          /* Empty state: dashed border box */
+          <div
+            style={{
+              border: "1px dashed var(--border)",
+              borderRadius: "var(--radius-sm)",
+              padding: "48px 24px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-xs)",
+                color: "var(--text-dim)",
+              }}
+            >
+              -- no repos configured --
+            </span>
           </div>
         ) : (
-          <Card>
-            <CardContent className="p-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="p-3 font-medium text-muted-foreground">Repo</th>
-                    <th className="p-3 font-medium text-muted-foreground">Branch</th>
-                    <th className="p-3 font-medium text-muted-foreground">Status</th>
-                    <th className="p-3 font-medium text-muted-foreground">Last Used</th>
-                    <th className="p-3" />
+          /* Shared table pattern */
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+            }}
+          >
+            <table className="w-full" style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)" }}>
+              <thead>
+                <tr style={{ backgroundColor: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                  <th
+                    className="text-left"
+                    style={{ padding: "8px 12px", color: "var(--text-dim)", fontWeight: "var(--font-medium)", letterSpacing: "var(--tracking-wide)", textTransform: "uppercase" }}
+                  >
+                    Repo
+                  </th>
+                  <th
+                    className="text-left"
+                    style={{ padding: "8px 12px", color: "var(--text-dim)", fontWeight: "var(--font-medium)", letterSpacing: "var(--tracking-wide)", textTransform: "uppercase" }}
+                  >
+                    Branch
+                  </th>
+                  <th
+                    className="text-left"
+                    style={{ padding: "8px 12px", color: "var(--text-dim)", fontWeight: "var(--font-medium)", letterSpacing: "var(--tracking-wide)", textTransform: "uppercase" }}
+                  >
+                    Status
+                  </th>
+                  <th
+                    className="text-left"
+                    style={{ padding: "8px 12px", color: "var(--text-dim)", fontWeight: "var(--font-medium)", letterSpacing: "var(--tracking-wide)", textTransform: "uppercase" }}
+                  >
+                    Last Used
+                  </th>
+                  <th style={{ padding: "8px 12px" }} />
+                </tr>
+              </thead>
+              <tbody>
+                {repos.map((repo) => (
+                  <tr
+                    key={repo.full_name}
+                    style={{ borderBottom: "1px solid var(--border)" }}
+                  >
+                    <td style={{ padding: "8px 12px" }}>
+                      <a
+                        href={`https://github.com/${repo.full_name}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1"
+                        style={{ color: "var(--accent)", textDecoration: "none" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                      >
+                        {repo.full_name}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>
+                      {repo.default_branch}
+                    </td>
+                    <td style={{ padding: "8px 12px" }}>
+                      {/* Token-safe badge — no variant="success" */}
+                      <span
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "var(--text-xs)",
+                          padding: "2px 6px",
+                          borderRadius: "var(--radius-sm)",
+                          border: "1px solid",
+                          ...(repo.active
+                            ? {
+                                color: "var(--success)",
+                                backgroundColor: "var(--success-bg)",
+                                borderColor: "var(--success-border)",
+                              }
+                            : {
+                                color: "var(--text-muted)",
+                                backgroundColor: "var(--surface-raised)",
+                                borderColor: "var(--border)",
+                              }),
+                        }}
+                      >
+                        {repo.active ? "✓ active" : "○ inactive"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>
+                      {repo.last_used ? new Date(repo.last_used).toLocaleDateString() : "never"}
+                    </td>
+                    <td style={{ padding: "8px 12px" }}>
+                      {/* Delete with AlertDialog confirmation */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              fontSize: "var(--text-xs)",
+                              color: "var(--danger)",
+                              backgroundColor: "transparent",
+                              border: "1px solid var(--danger-border)",
+                              borderRadius: "var(--radius-sm)",
+                              padding: "2px 8px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            delete
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove repo?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {repo.full_name} will be removed from the workshop registry. Existing tasks referencing this repo are not affected.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => removeMutation.mutate(repo.full_name)}
+                            >
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {data?.repos.map((repo) => (
-                    <tr key={repo.full_name} className="border-b last:border-0">
-                      <td className="p-3">
-                        <a
-                          href={`https://github.com/${repo.full_name}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary hover:underline font-mono text-xs"
-                        >
-                          {repo.full_name}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </td>
-                      <td className="p-3 text-xs">{repo.default_branch}</td>
-                      <td className="p-3">
-                        <Badge variant={repo.active ? "success" : "secondary"}>
-                          {repo.active ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-xs text-muted-foreground">
-                        {repo.last_used ? new Date(repo.last_used).toLocaleDateString() : "Never"}
-                      </td>
-                      <td className="p-3">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0"
-                          onClick={() => removeMutation.mutate(repo.full_name)}
-                        >
-                          <Trash2 className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

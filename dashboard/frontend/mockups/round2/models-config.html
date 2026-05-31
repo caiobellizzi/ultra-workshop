@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Models Config — Workshop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #0f0f17; --surface-r: #141420;
+      --border: #1e1e2e; --border-s: #2e2e45;
+      --text: #e5e7eb; --text-m: #6b7280; --text-d: #4b5563;
+      --accent: #f59e0b; --accent-bg: #1a1000; --accent-bd: #78350f; --accent-dim: #92400e;
+      --success: #22c55e; --success-bg: #052e16; --success-bd: #14532d;
+      --danger: #ef4444; --danger-bg: #1c0a0a; --danger-bd: #7f1d1d;
+      --warning: #fbbf24; --warn-bg: #1a1000; --warn-bd: #92400e;
+      --info: #60a5fa; --info-bg: #0c1a30; --info-bd: #1e3a5f;
+      --log-bg: #050508; --log-ts: #f59e0b; --log-src: #9ca3af; --log-text: #d1d5db;
+      --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 160px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; height: 100vh; }
+    .sidebar-brand { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .12em; padding: 0 12px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+    .nav-link { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 36px; font-size: 12px; color: var(--text-m); cursor: pointer; border-left: 2px solid transparent; white-space: nowrap; }
+    .nav-link.active { background: var(--accent-bg); border-left-color: var(--accent); color: var(--accent); }
+    .nav-prefix { font-size: 10px; width: 10px; }
+    .nav-section { font-size: 10px; letter-spacing: .08em; color: var(--text-d); padding: 12px 12px 4px; text-transform: uppercase; }
+    .nav-link.sub { padding-left: 24px; font-size: 11px; }
+    .nav-badge { margin-left: auto; background: var(--danger-bg); border: 1px solid var(--danger-bd); color: var(--danger); font-size: 9px; padding: 0 5px; border-radius: 2px; }
+    .sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+    .theme-toggle { font-size: 11px; color: var(--text-d); cursor: pointer; }
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0; }
+    .topbar-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+    .content::-webkit-scrollbar { width: 3px; } .content::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); }
+    .badge-running { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-bd); }
+    .badge-pushed { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
+    .badge-danger { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-bd); }
+    .badge-warning { color: var(--warning); background: var(--warn-bg); border-color: var(--warn-bd); }
+    .badge-info { color: var(--info); background: var(--info-bg); border-color: var(--info-bd); }
+    .badge-muted { color: var(--text-m); background: var(--surface-r); border-color: var(--border); }
+    .section-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 12px; }
+    .btn { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-weight: 500; border: 1px solid; }
+    .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+    .btn-secondary { background: transparent; color: var(--text-m); border-color: var(--border-s); }
+    .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger-bd); }
+    .table-wrap { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead { background: var(--surface); }
+    th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-d); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-m); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(245,158,11,.03); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
+    input[type=text], textarea, select { background: var(--surface-r); border: 1px solid var(--border-s); border-radius: 2px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none; width: 100%; }
+    input[type=text]:focus, textarea:focus, select:focus { border-color: var(--accent-bd); }
+    label { font-size: 11px; color: var(--text-m); display: block; margin-bottom: 4px; }
+
+    /* Page-specific */
+    .page-sections { display: flex; flex-direction: column; gap: 28px; }
+    .section-block { display: flex; flex-direction: column; gap: 0; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .section-title { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); }
+    .section-desc { font-size: 11px; color: var(--text-d); margin-top: 2px; }
+    .model-id { font-family: var(--mono); font-size: 11px; color: var(--text); }
+    .stage-name { font-family: var(--mono); font-size: 12px; color: var(--text); font-weight: 500; }
+    .alias-tag { font-family: var(--mono); font-size: 11px; color: var(--accent); background: var(--accent-bg); border: 1px solid var(--accent-bd); padding: 1px 7px; border-radius: 2px; display: inline-block; }
+    .provider-tag { font-family: var(--mono); font-size: 10px; color: var(--info); background: var(--info-bg); border: 1px solid var(--info-bd); padding: 1px 7px; border-radius: 2px; display: inline-block; }
+    .temp-val { font-family: var(--mono); font-size: 12px; color: var(--text-m); }
+    .edit-inline { background: var(--surface-r); border: 1px solid var(--border-s); border-radius: 2px; color: var(--text); font-family: var(--mono); font-size: 11px; padding: 4px 8px; width: 100%; outline: none; }
+    .edit-inline:focus { border-color: var(--accent-bd); }
+    .save-row { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
+    .unsaved-indicator { font-size: 11px; color: var(--warning); display: flex; align-items: center; gap: 6px; }
+    .dot-warn { width: 6px; height: 6px; border-radius: 50%; background: var(--warning); display: inline-block; }
+    .td-action { width: 60px; text-align: right; }
+    .btn-xs { font-family: var(--mono); font-size: 10px; padding: 3px 9px; border-radius: 2px; cursor: pointer; border: 1px solid; background: transparent; }
+    .btn-xs-edit { color: var(--text-m); border-color: var(--border-s); }
+    .btn-xs-edit:hover { color: var(--accent); border-color: var(--accent-bd); }
+    .topbar-meta { font-size: 11px; color: var(--text-d); display: flex; align-items: center; gap: 6px; }
+    .topbar-sep { color: var(--border-s); }
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">◆ WORKSHOP</div>
+  <a class="nav-link"><span class="nav-prefix">○</span> Board</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> HITL Queue</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Cost</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Health</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Skills</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Repos</a>
+  <div class="nav-section">Config</div>
+  <a class="nav-link sub active"><span class="nav-prefix">●</span> Models</a>
+  <a class="nav-link sub"><span class="nav-prefix">○</span> Reviewers</a>
+  <a class="nav-link sub"><span class="nav-prefix">○</span> Policies</a>
+  <div class="sidebar-bottom"><div class="theme-toggle">◑ light mode</div></div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">Models Config</div>
+    <div class="topbar-meta">
+      <span>config/models.yaml</span>
+      <span class="topbar-sep">·</span>
+      <span style="color: var(--warning);">● 2 unsaved</span>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="page-sections">
+
+      <!-- Section 1: Stage-to-model routing -->
+      <div class="section-block">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Stage → Model Routing</div>
+            <div class="section-desc">Which model alias each pipeline stage uses</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:180px;">Stage</th>
+                <th style="width:160px;">Alias</th>
+                <th>Model ID</th>
+                <th style="width:60px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="stage-name">discuss</span></td>
+                <td><span class="alias-tag">fast</span></td>
+                <td><span class="model-id">claude-haiku-4-6</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit">edit</button></td>
+              </tr>
+              <tr>
+                <td><span class="stage-name">plan</span></td>
+                <td><span class="alias-tag">smart</span></td>
+                <td><span class="model-id">claude-sonnet-4-6</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit">edit</button></td>
+              </tr>
+              <tr>
+                <td><span class="stage-name">execute</span></td>
+                <td><span class="alias-tag">smart</span></td>
+                <td><span class="model-id">claude-sonnet-4-6</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit">edit</button></td>
+              </tr>
+              <tr>
+                <td><span class="stage-name">review</span></td>
+                <td><span class="alias-tag">powerful</span></td>
+                <td><span class="model-id">claude-opus-4-8</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit">edit</button></td>
+              </tr>
+              <tr>
+                <td><span class="stage-name">hitl_check</span></td>
+                <td><span class="alias-tag">fast</span></td>
+                <td><span class="model-id">claude-haiku-4-6</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit">edit</button></td>
+              </tr>
+              <tr>
+                <td><span class="stage-name">verify</span></td>
+                <td><span class="alias-tag">smart</span></td>
+                <td><span class="model-id">claude-sonnet-4-6</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit">edit</button></td>
+              </tr>
+              <tr>
+                <td><span class="stage-name">summarize</span></td>
+                <td><span class="alias-tag">fast</span></td>
+                <td><span class="model-id">claude-haiku-4-6</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit">edit</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section 2: Model aliases -->
+      <div class="section-block">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Model Aliases</div>
+            <div class="section-desc">Named model definitions referenced by stage routing</div>
+          </div>
+          <button class="btn btn-secondary" style="font-size:10px; padding:4px 10px;">+ add alias</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:120px;">Alias</th>
+                <th style="width:240px;">Model ID</th>
+                <th style="width:120px;">Provider</th>
+                <th style="width:110px;">Temperature</th>
+                <th style="width:120px;">Max Tokens</th>
+                <th style="width:60px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="alias-tag">fast</span></td>
+                <td><span class="model-id">claude-haiku-4-6</span></td>
+                <td><span class="provider-tag">anthropic</span></td>
+                <td><span class="temp-val">0.3</span></td>
+                <td><span class="temp-val">4096</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit">edit</button></td>
+              </tr>
+              <tr>
+                <td><span class="alias-tag">smart</span></td>
+                <td><span class="model-id">claude-sonnet-4-6</span></td>
+                <td><span class="provider-tag">anthropic</span></td>
+                <td><span class="temp-val">0.5</span></td>
+                <td><span class="temp-val">8192</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit">edit</button></td>
+              </tr>
+              <tr>
+                <td><span class="alias-tag">powerful</span></td>
+                <td>
+                  <input class="edit-inline" type="text" value="claude-opus-4-8" style="border-color: var(--accent-bd);">
+                </td>
+                <td><span class="provider-tag">anthropic</span></td>
+                <td>
+                  <input class="edit-inline" type="text" value="0.7" style="width:70px; border-color: var(--accent-bd);">
+                </td>
+                <td><span class="temp-val">16384</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit" style="color:var(--accent); border-color:var(--accent-bd);">save</button></td>
+              </tr>
+              <tr>
+                <td><span class="alias-tag">mini</span></td>
+                <td><span class="model-id">gpt-4o-mini</span></td>
+                <td><span class="provider-tag" style="color: var(--success); background: var(--success-bg); border-color: var(--success-bd);">openai</span></td>
+                <td><span class="temp-val">0.2</span></td>
+                <td><span class="temp-val">2048</span></td>
+                <td class="td-action"><button class="btn-xs btn-xs-edit">edit</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Save bar -->
+      <div class="save-row">
+        <button class="btn btn-primary">Save Changes</button>
+        <button class="btn btn-secondary">Reset</button>
+        <div class="unsaved-indicator">
+          <span class="dot-warn"></span>
+          2 unsaved changes · last saved 14 min ago
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

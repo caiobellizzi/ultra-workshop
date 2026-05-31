@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Loader2, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSkillList } from "@/hooks/useSkills";
 
@@ -14,7 +13,7 @@ export function SkillsPage() {
   const filtered = data?.skills.filter(
     (s) =>
       !search ||
-      s.name.includes(search.toLowerCase()) ||
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.description.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -30,12 +29,14 @@ export function SkillsPage() {
     <div className="flex flex-col h-full">
       <PageHeader title="Skills" description="SKILL.md editor" />
       <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="p-4 border-b">
+        <div className="p-4 border-b border-[--border]">
           <div className="relative max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[--text-d] text-xs pointer-events-none">
+              ⌕
+            </span>
             <Input
-              className="pl-8"
-              placeholder="Search skills…"
+              className="pl-7 font-mono bg-[--surface-r] border-[--border-s] text-[--text] placeholder:text-[--text-d] text-xs rounded-sm focus:border-[--border-s] focus-visible:ring-0 focus-visible:ring-offset-0"
+              placeholder="search skills…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -43,31 +44,72 @@ export function SkillsPage() {
         </div>
         {isLoading ? (
           <div className="flex flex-1 justify-center items-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="text-[--text-d] font-mono text-xs animate-pulse">loading…</span>
+          </div>
+        ) : !filtered?.length ? (
+          <div className="flex flex-1 justify-center items-center">
+            <span className="text-[--text-d] font-mono text-sm">-- no skills found --</span>
           </div>
         ) : (
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 p-6">
             {Object.entries(groups).map(([group, skills]) => (
-              <div key={group} className="mb-6">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <div key={group} className="mb-8">
+                <div className="text-[--text-d] text-xs font-mono uppercase tracking-[0.08em] mb-3">
                   {group}
-                </h3>
-                <div className="space-y-1">
+                </div>
+                <div className="grid grid-cols-1 gap-2">
                   {skills?.map((skill) => (
-                    <Link
+                    <div
                       key={skill.name}
-                      to="/skills/$skillName"
-                      params={{ skillName: skill.name }}
-                      className="flex items-start gap-3 rounded-md px-3 py-2 hover:bg-accent transition-colors"
+                      className="bg-[--surface] border border-[--border] rounded-sm hover:border-[--border-s] p-4 transition-colors"
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{skill.name}</span>
-                          <Badge variant="outline" className="text-xs">v{skill.version}</Badge>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[--accent] font-mono font-medium text-sm mb-1">
+                            {skill.name}
+                          </div>
+                          <p className="text-[--text-m] font-mono text-xs truncate mb-2">
+                            {skill.description}
+                          </p>
+                          <div className="flex items-center gap-4">
+                            <span className="text-[--text-d] text-xs font-mono">
+                              v{skill.version}
+                            </span>
+                            <span className="text-[--text-d] text-xs font-mono truncate max-w-[240px]">
+                              {skill.path}
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">{skill.description}</p>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="border-[--border-s] text-[--text-m] font-mono text-xs rounded-sm h-7 px-3 hover:border-[--border-s] hover:text-[--text] bg-transparent"
+                          >
+                            <Link
+                              to="/skills/$skillName"
+                              params={{ skillName: skill.name }}
+                            >
+                              View
+                            </Link>
+                          </Button>
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="border-[--border-s] text-[--text-m] font-mono text-xs rounded-sm h-7 px-3 hover:border-[--border-s] hover:text-[--text] bg-transparent"
+                          >
+                            <Link
+                              to="/skills/$skillName"
+                              params={{ skillName: skill.name }}
+                            >
+                              Edit
+                            </Link>
+                          </Button>
+                        </div>
                       </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               </div>

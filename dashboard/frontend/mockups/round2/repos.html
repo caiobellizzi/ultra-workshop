@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Repos — Workshop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #0f0f17; --surface-r: #141420;
+      --border: #1e1e2e; --border-s: #2e2e45;
+      --text: #e5e7eb; --text-m: #6b7280; --text-d: #4b5563;
+      --accent: #f59e0b; --accent-bg: #1a1000; --accent-bd: #78350f; --accent-dim: #92400e;
+      --success: #22c55e; --success-bg: #052e16; --success-bd: #14532d;
+      --danger: #ef4444; --danger-bg: #1c0a0a; --danger-bd: #7f1d1d;
+      --warning: #fbbf24; --warn-bg: #1a1000; --warn-bd: #92400e;
+      --info: #60a5fa; --info-bg: #0c1a30; --info-bd: #1e3a5f;
+      --log-bg: #050508; --log-ts: #f59e0b; --log-src: #9ca3af; --log-text: #d1d5db;
+      --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 160px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; height: 100vh; }
+    .sidebar-brand { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .12em; padding: 0 12px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+    .nav-link { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 36px; font-size: 12px; color: var(--text-m); cursor: pointer; border-left: 2px solid transparent; white-space: nowrap; text-decoration: none; }
+    .nav-link.active { background: var(--accent-bg); border-left-color: var(--accent); color: var(--accent); }
+    .nav-prefix { font-size: 10px; width: 10px; }
+    .nav-section { font-size: 10px; letter-spacing: .08em; color: var(--text-d); padding: 12px 12px 4px; text-transform: uppercase; }
+    .nav-link.sub { padding-left: 24px; font-size: 11px; }
+    .nav-badge { margin-left: auto; background: var(--danger-bg); border: 1px solid var(--danger-bd); color: var(--danger); font-size: 9px; padding: 0 5px; border-radius: 2px; }
+    .sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+    .theme-toggle { font-size: 11px; color: var(--text-d); cursor: pointer; }
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0; }
+    .topbar-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+    .content::-webkit-scrollbar { width: 3px; } .content::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); }
+    .badge-running { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-bd); }
+    .badge-pushed { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
+    .badge-danger { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-bd); }
+    .badge-warning { color: var(--warning); background: var(--warn-bg); border-color: var(--warn-bd); }
+    .badge-info { color: var(--info); background: var(--info-bg); border-color: var(--info-bd); }
+    .badge-muted { color: var(--text-m); background: var(--surface-r); border-color: var(--border); }
+    .section-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 12px; }
+    .btn { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-weight: 500; border: 1px solid; }
+    .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+    .btn-secondary { background: transparent; color: var(--text-m); border-color: var(--border-s); }
+    .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger-bd); }
+    .table-wrap { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead { background: var(--surface); }
+    th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-d); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-m); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(245,158,11,.03); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
+    input[type=text], textarea, select { background: var(--surface-r); border: 1px solid var(--border-s); border-radius: 2px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none; width: 100%; }
+    input[type=text]:focus, textarea:focus, select:focus { border-color: var(--accent-bd); }
+    label { font-size: 11px; color: var(--text-m); display: block; margin-bottom: 4px; }
+
+    /* Page-specific styles */
+    .repo-name { color: var(--text); font-weight: 500; }
+    .repo-name span { color: var(--text-d); font-weight: 400; }
+    .branch-chip { font-size: 10px; color: var(--info); background: var(--info-bg); border: 1px solid var(--info-bd); padding: 2px 7px; border-radius: 2px; font-family: var(--mono); }
+    .task-count { font-size: 12px; font-variant-numeric: tabular-nums; }
+    .task-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .task-bar { height: 3px; background: var(--border-s); border-radius: 1px; flex: 1; max-width: 80px; overflow: hidden; }
+    .task-bar-fill { height: 100%; background: var(--accent); border-radius: 1px; }
+    .timestamp { font-size: 11px; color: var(--text-d); font-variant-numeric: tabular-nums; }
+    .delete-btn { font-family: var(--mono); font-size: 10px; padding: 3px 10px; border-radius: 2px; cursor: pointer; background: transparent; color: var(--danger); border: 1px solid var(--danger-bd); letter-spacing: .04em; }
+    .delete-btn:hover { background: var(--danger-bg); }
+    .sync-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-d); }
+    .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); display: inline-block; }
+    .empty-state { border: 1px dashed var(--border-s); border-radius: 2px; padding: 40px 24px; text-align: center; margin-top: 12px; }
+    .empty-state-text { color: var(--text-d); font-size: 12px; margin-bottom: 16px; }
+    .empty-icon { font-size: 20px; margin-bottom: 12px; color: var(--border-s); }
+    .topbar-meta { font-size: 11px; color: var(--text-d); display: flex; align-items: center; gap: 6px; }
+
+    /* Modal overlay */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(10,10,15,.85); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .modal { background: var(--surface); border: 1px solid var(--border-s); border-radius: 2px; width: 420px; padding: 24px; }
+    .modal-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .modal-sub { font-size: 11px; color: var(--text-d); margin-bottom: 20px; }
+    .form-row { margin-bottom: 14px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+    /* Confirm dialog */
+    .confirm-overlay { position: fixed; inset: 0; background: rgba(10,10,15,.85); display: flex; align-items: center; justify-content: center; z-index: 200; }
+    .confirm-box { background: var(--surface); border: 1px solid var(--danger-bd); border-radius: 2px; width: 360px; padding: 20px; }
+    .confirm-title { font-size: 12px; font-weight: 700; color: var(--danger); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .confirm-body { font-size: 11px; color: var(--text-m); margin-bottom: 16px; line-height: 1.6; }
+    .confirm-repo { color: var(--text); font-weight: 500; }
+    .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    .stats-row { display: flex; gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 12px 16px; flex: 1; }
+    .stat-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 6px; }
+    .stat-value { font-size: 20px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+    .stat-sub { font-size: 10px; color: var(--text-d); margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">◆ WORKSHOP</div>
+    <a class="nav-link "><span class="nav-prefix">○</span> Board</a>
+    <a class="nav-link "><span class="nav-prefix">○</span> HITL Queue</a>
+    <a class="nav-link "><span class="nav-prefix">○</span> Cost</a>
+    <a class="nav-link "><span class="nav-prefix">○</span> Health</a>
+    <a class="nav-link "><span class="nav-prefix">○</span> Skills</a>
+    <a class="nav-link active"><span class="nav-prefix">▶</span> Repos</a>
+    <div class="nav-section">Config</div>
+    <a class="nav-link sub "><span class="nav-prefix">○</span> Models</a>
+    <a class="nav-link sub "><span class="nav-prefix">○</span> Reviewers</a>
+    <a class="nav-link sub "><span class="nav-prefix">○</span> Policies</a>
+    <div class="sidebar-bottom"><div class="theme-toggle">◑ light mode</div></div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-title">Repos</div>
+      <div class="topbar-meta">
+        <span class="sync-dot"></span>
+        <span>synced 3m ago</span>
+      </div>
+      <button class="btn btn-secondary" onclick="document.getElementById('syncModal').style.display='none'">⟳ Sync GitHub</button>
+      <button class="btn btn-primary" onclick="document.getElementById('addModal').style.display='flex'">+ Add Repo</button>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Stats row -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Registered</div>
+          <div class="stat-value">5</div>
+          <div class="stat-sub">repos tracked</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Tasks</div>
+          <div class="stat-value">142</div>
+          <div class="stat-sub">across all repos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active Now</div>
+          <div class="stat-value">3</div>
+          <div class="stat-sub">tasks running</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Last Activity</div>
+          <div class="stat-value" style="font-size:14px; padding-top:3px;">2m ago</div>
+          <div class="stat-sub">caiobellizzi/my-saas-app</div>
+        </div>
+      </div>
+
+      <!-- Repo table -->
+      <div class="section-label">Registered Repositories</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Repository</th>
+              <th>Default Branch</th>
+              <th>Last Task</th>
+              <th>Tasks</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr>
+              <td>
+                <div class="repo-name"><span>caiobellizzi/</span>my-saas-app</div>
+                <div style="font-size:10px; color:var(--text-d); margin-top:3px;">github.com · private</div>
+              </td>
+              <td><span class="branch-chip">main</span></td>
+              <td><span class="timestamp">2026-05-31 14:32</span></td>
+              <td>
+                <div class="task-bar-wrap">
+                  <span class="task-count" style="color:var(--text); min-width:24px;">47</span>
+                  <div class="task-bar"><div class="task-bar-fill" style="width:100%"></div></div>
+                </div>
+              </td>
+              <td><span class="badge badge-running">● running</span></td>
+              <td>
+                <button class="delete-btn" onclick="showConfirm('caiobellizzi/my-saas-app')">✕ delete</button>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="repo-name"><span>caiobellizzi/</span>ultra-workshop</div>
+                <div style="font-size:10px; color:var(--text-d); margin-top:3px;">github.com · private</div>
+              </td>
+              <td><span class="branch-chip">master</span></td>
+              <td><span class="timestamp">2026-05-31 11:08</span></td>
+              <td>
+                <div class="task-bar-wrap">
+                  <span class="task-count" style="color:var(--text); min-width:24px;">38</span>
+                  <div class="task-bar"><div class="task-bar-fill" style="width:81%"></div></div>
+                </div>
+              </td>
+              <td><span class="badge badge-running">● running</span></td>
+              <td>
+                <button class="delete-btn" onclick="showConfirm('caiobellizzi/ultra-workshop')">✕ delete</button>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="repo-name"><span>caiobellizzi/</span>second-brain</div>
+                <div style="font-size:10px; color:var(--text-d); margin-top:3px;">github.com · private</div>
+              </td>
+              <td><span class="branch-chip">main</span></td>
+              <td><span class="timestamp">2026-05-30 22:47</span></td>
+              <td>
+                <div class="task-bar-wrap">
+                  <span class="task-count" style="color:var(--text); min-width:24px;">29</span>
+                  <div class="task-bar"><div class="task-bar-fill" style="width:62%"></div></div>
+                </div>
+              </td>
+              <td><span class="badge badge-pushed">✓ idle</span></td>
+              <td>
+                <button class="delete-btn" onclick="showConfirm('caiobellizzi/second-brain')">✕ delete</button>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="repo-name"><span>caiobellizzi/</span>api-gateway</div>
+                <div style="font-size:10px; color:var(--text-d); margin-top:3px;">github.com · private</div>
+              </td>
+              <td><span class="branch-chip">develop</span></td>
+              <td><span class="timestamp">2026-05-29 16:12</span></td>
+              <td>
+                <div class="task-bar-wrap">
+                  <span class="task-count" style="color:var(--text); min-width:24px;">21</span>
+                  <div class="task-bar"><div class="task-bar-fill" style="width:45%"></div></div>
+                </div>
+              </td>
+              <td><span class="badge badge-running">● running</span></td>
+              <td>
+                <button class="delete-btn" onclick="showConfirm('caiobellizzi/api-gateway')">✕ delete</button>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="repo-name"><span>caiobellizzi/</span>infra-configs</div>
+                <div style="font-size:10px; color:var(--text-d); margin-top:3px;">github.com · private</div>
+              </td>
+              <td><span class="branch-chip">main</span></td>
+              <td><span class="timestamp">2026-05-27 09:55</span></td>
+              <td>
+                <div class="task-bar-wrap">
+                  <span class="task-count" style="color:var(--text); min-width:24px;">7</span>
+                  <div class="task-bar"><div class="task-bar-fill" style="width:15%"></div></div>
+                </div>
+              </td>
+              <td><span class="badge badge-muted">— idle</span></td>
+              <td>
+                <button class="delete-btn" onclick="showConfirm('caiobellizzi/infra-configs')">✕ delete</button>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty state (shown below as reference / secondary variant) -->
+      <div style="margin-top: 32px;">
+        <div class="section-label">Empty State (reference)</div>
+        <div class="empty-state">
+          <div class="empty-icon">◻</div>
+          <div class="empty-state-text">No repos registered — add one to get started</div>
+          <button class="btn btn-primary" onclick="document.getElementById('addModal').style.display='flex'">+ Add Repo</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Add Repo Modal -->
+  <div id="addModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal">
+      <div class="modal-title">Add Repository</div>
+      <div class="modal-sub">Register a GitHub repository to track tasks and activity.</div>
+
+      <div class="form-row">
+        <label>GitHub URL or full name</label>
+        <input type="text" placeholder="e.g. caiobellizzi/my-saas-app" />
+      </div>
+      <div class="form-row">
+        <label>Default branch</label>
+        <input type="text" placeholder="main" />
+      </div>
+      <div class="form-row">
+        <label>Access token (optional)</label>
+        <input type="text" placeholder="ghp_••••••••••••••••" />
+        <div style="font-size:10px; color:var(--text-d); margin-top:4px;">Leave blank to use the global token from settings.</div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="document.getElementById('addModal').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" onclick="document.getElementById('addModal').style.display='none'">Add Repo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div id="confirmModal" class="confirm-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+    <div class="confirm-box">
+      <div class="confirm-title">⚠ Confirm Deletion</div>
+      <div class="confirm-body">
+        Remove <span id="confirmRepoName" class="confirm-repo">caiobellizzi/my-saas-app</span> from the registry?
+        <br><br>
+        All associated task history and configuration will be permanently deleted. Running tasks will be terminated.
+      </div>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" onclick="document.getElementById('confirmModal').style.display='none'">Cancel</button>
+        <button class="btn btn-danger" onclick="document.getElementById('confirmModal').style.display='none'">Delete Repo</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showConfirm(repoName) {
+      document.getElementById('confirmRepoName').textContent = repoName;
+      document.getElementById('confirmModal').style.display = 'flex';
+    }
+  </script>
+
+</body>
+</html>

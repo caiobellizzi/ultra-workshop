@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop — Launch Task</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #0f0f17; --surface-r: #141420;
+    --border: #1e1e2e; --border-s: #2e2e45;
+    --text: #e5e7eb; --text-m: #6b7280; --text-d: #4b5563;
+    --accent: #f59e0b; --accent-bg: #1a1000; --accent-bd: #78350f; --accent-dim: #92400e;
+    --success: #22c55e; --success-bg: #052e16; --success-bd: #14532d;
+    --danger: #ef4444; --danger-bg: #1c0a0a; --danger-bd: #7f1d1d;
+    --warning: #fbbf24; --warn-bg: #1a1000; --warn-bd: #92400e;
+    --info: #60a5fa; --info-bg: #0c1a30; --info-bd: #1e3a5f;
+    --log-bg: #050508; --log-ts: #f59e0b; --log-src: #9ca3af; --log-text: #d1d5db;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 160px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; height: 100vh; }
+  .sidebar-brand { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .12em; padding: 0 12px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .nav-link { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 36px; font-size: 12px; color: var(--text-m); cursor: pointer; border-left: 2px solid transparent; white-space: nowrap; text-decoration: none; }
+  .nav-link.active { background: var(--accent-bg); border-left-color: var(--accent); color: var(--accent); }
+  .nav-prefix { font-size: 10px; width: 10px; }
+  .nav-section { font-size: 10px; letter-spacing: .08em; color: var(--text-d); padding: 12px 12px 4px; text-transform: uppercase; }
+  .nav-link.sub { padding-left: 24px; font-size: 11px; }
+  .nav-badge { margin-left: auto; background: var(--danger-bg); border: 1px solid var(--danger-bd); color: var(--danger); font-size: 9px; padding: 0 5px; border-radius: 2px; }
+  .sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+  .theme-toggle { font-size: 11px; color: var(--text-d); cursor: pointer; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0; }
+  .topbar-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  .content::-webkit-scrollbar { width: 3px; } .content::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); }
+  .badge-running { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-bd); }
+  .badge-pushed { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
+  .badge-danger { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-bd); }
+  .badge-warning { color: var(--warning); background: var(--warn-bg); border-color: var(--warn-bd); }
+  .badge-info { color: var(--info); background: var(--info-bg); border-color: var(--info-bd); }
+  .badge-muted { color: var(--text-m); background: var(--surface-r); border-color: var(--border); }
+  .section-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 12px; }
+  .btn { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-weight: 500; border: 1px solid; }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+  .btn-secondary { background: transparent; color: var(--text-m); border-color: var(--border-s); }
+  .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger-bd); }
+  .table-wrap { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead { background: var(--surface); }
+  th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-d); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-m); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(245,158,11,.03); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
+  input[type=text], textarea, select { background: var(--surface-r); border: 1px solid var(--border-s); border-radius: 2px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none; width: 100%; }
+  input[type=text]:focus, textarea:focus, select:focus { border-color: var(--accent-bd); }
+  label { font-size: 11px; color: var(--text-m); display: block; margin-bottom: 4px; }
+
+  /* ── Page-specific ── */
+  .launch-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .form-group { margin-bottom: 18px; }
+
+  textarea.goal-input {
+    resize: vertical;
+    min-height: 160px;
+    line-height: 1.6;
+    font-size: 12px;
+  }
+
+  .option-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    margin-bottom: 0;
+  }
+
+  .checkbox-label input[type=checkbox] {
+    width: 14px;
+    height: 14px;
+    min-width: 14px;
+    accent-color: var(--accent);
+    margin-top: 1px;
+    cursor: pointer;
+  }
+
+  .checkbox-text { display: flex; flex-direction: column; gap: 2px; }
+  .checkbox-title { font-size: 12px; color: var(--text); font-family: var(--mono); }
+  .checkbox-desc { font-size: 10px; color: var(--text-d); font-family: var(--mono); line-height: 1.4; }
+
+  .launch-btn-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 4px;
+  }
+
+  .btn-primary.launch-btn {
+    font-size: 12px;
+    padding: 9px 20px;
+    letter-spacing: .04em;
+  }
+
+  .btn-secondary.reset-btn {
+    font-size: 11px;
+    padding: 8px 14px;
+  }
+
+  /* Recent tasks sidebar */
+  .recent-task {
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: var(--surface-r);
+    cursor: pointer;
+    transition: border-color .1s;
+  }
+  .recent-task:hover { border-color: var(--border-s); }
+  .recent-task:last-child { margin-bottom: 0; }
+
+  .recent-task-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .task-id {
+    font-size: 10px;
+    color: var(--text-d);
+    font-family: var(--mono);
+    letter-spacing: .04em;
+  }
+
+  .recent-task-goal {
+    font-size: 11px;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .recent-task-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .meta-chip {
+    font-size: 10px;
+    color: var(--text-d);
+    font-family: var(--mono);
+  }
+
+  .divider { width: 1px; height: 10px; background: var(--border); }
+
+  .form-hint {
+    font-size: 10px;
+    color: var(--text-d);
+    margin-top: 5px;
+    line-height: 1.4;
+  }
+
+  .topbar-sub {
+    font-size: 11px;
+    color: var(--text-d);
+    font-family: var(--mono);
+  }
+
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    color: var(--text-d);
+    background: var(--surface-r);
+    border: 1px solid var(--border-s);
+    border-radius: 2px;
+    padding: 1px 5px;
+    font-family: var(--mono);
+  }
+
+  .select-wrapper {
+    position: relative;
+  }
+  .select-wrapper::after {
+    content: '▾';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-d);
+    font-size: 10px;
+    pointer-events: none;
+  }
+  .select-wrapper select {
+    appearance: none;
+    padding-right: 28px;
+  }
+
+  .inline-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+
+  .recent-link {
+    font-size: 10px;
+    color: var(--accent-dim);
+    text-decoration: none;
+    font-family: var(--mono);
+  }
+  .recent-link:hover { color: var(--accent); }
+
+  .right-col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-brand">◆ WORKSHOP</div>
+  <a class="nav-link "><span class="nav-prefix">○</span> Board</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> HITL Queue</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Cost</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Health</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Skills</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Repos</a>
+  <div class="nav-section">Config</div>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Models</a>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Reviewers</a>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Policies</a>
+  <div class="sidebar-bottom"><div class="theme-toggle">◑ light mode</div></div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">Launch Task</div>
+    <span class="topbar-sub">dispatch a new agent job</span>
+    <span class="kbd">⌘ K</span>
+  </div>
+
+  <div class="content">
+    <div class="launch-layout">
+
+      <!-- LEFT: form -->
+      <div>
+        <div class="section-label">Task definition</div>
+
+        <div class="card">
+          <!-- Goal -->
+          <div class="form-group">
+            <label>Goal <span style="color:var(--danger);margin-left:2px">*</span></label>
+            <textarea class="goal-input" placeholder="Describe the task for the AI coder...
+
+Examples:
+  • Refactor the auth middleware to use JWT RS256 instead of HS256
+  • Add pagination to the /api/v1/transactions endpoint
+  • Fix the race condition in the job queue processor when two workers claim the same task"></textarea>
+            <div class="form-hint">Be specific. Include acceptance criteria, constraints, and relevant file paths when known.</div>
+          </div>
+
+          <hr class="section-divider">
+
+          <!-- Repo + Branch -->
+          <div class="inline-row form-group">
+            <div>
+              <label>Repository</label>
+              <div class="select-wrapper">
+                <select>
+                  <option>caiobellizzi/my-saas-app</option>
+                  <option>caiobellizzi/billing-service</option>
+                  <option>caiobellizzi/analytics-pipeline</option>
+                  <option>caiobellizzi/infra-terraform</option>
+                  <option>caiobellizzi/design-system</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label>Base Branch</label>
+              <div class="select-wrapper">
+                <select>
+                  <option>main</option>
+                  <option>develop</option>
+                  <option>staging</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Model + Reviewer -->
+          <div class="inline-row form-group">
+            <div>
+              <label>Coder model</label>
+              <div class="select-wrapper">
+                <select>
+                  <option>claude-sonnet-4-5</option>
+                  <option>claude-opus-4</option>
+                  <option>claude-haiku-3-5</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label>Skill profile</label>
+              <div class="select-wrapper">
+                <select>
+                  <option>default</option>
+                  <option>backend-api</option>
+                  <option>frontend-react</option>
+                  <option>infra-terraform</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <hr class="section-divider">
+
+          <!-- Options -->
+          <div class="form-group" style="margin-bottom:0">
+            <label style="margin-bottom:10px">Options</label>
+            <div class="option-row">
+              <label class="checkbox-label">
+                <input type="checkbox" checked>
+                <div class="checkbox-text">
+                  <span class="checkbox-title">Enable HITL approval step</span>
+                  <span class="checkbox-desc">Pause before push for human review. Required when policy = strict.</span>
+                </div>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" checked>
+                <div class="checkbox-text">
+                  <span class="checkbox-title">Run reviewer after coder</span>
+                  <span class="checkbox-desc">Spawn a reviewer agent to critique the diff before the HITL gate.</span>
+                </div>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox">
+                <div class="checkbox-text">
+                  <span class="checkbox-title">Dry run (plan only)</span>
+                  <span class="checkbox-desc">Agent outputs a plan and diff preview — no commits, no branch creation.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="launch-btn-row" style="margin-top:16px">
+          <button class="btn btn-primary launch-btn">▶ LAUNCH</button>
+          <button class="btn btn-secondary reset-btn">✕ clear</button>
+          <span style="margin-left:auto;font-size:10px;color:var(--text-d)">
+            model cost est. <span style="color:var(--text-m)">~$0.08 – $0.40</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- RIGHT: recent tasks -->
+      <div>
+        <div class="right-col-header">
+          <div class="section-label" style="margin-bottom:0">Recent tasks</div>
+          <a class="recent-link" href="#">view all →</a>
+        </div>
+
+        <!-- Task 1 — running -->
+        <div class="recent-task">
+          <div class="recent-task-header">
+            <span class="task-id">#a0b98f99</span>
+            <span class="badge badge-running">● running</span>
+          </div>
+          <div class="recent-task-goal">Refactor the Stripe webhook handler to use idempotency keys and deduplicate payment_intent events</div>
+          <div class="recent-task-meta">
+            <span class="meta-chip">my-saas-app</span>
+            <div class="divider"></div>
+            <span class="meta-chip">main</span>
+            <div class="divider"></div>
+            <span class="meta-chip">3m ago</span>
+          </div>
+        </div>
+
+        <!-- Task 2 — awaiting review -->
+        <div class="recent-task">
+          <div class="recent-task-header">
+            <span class="task-id">#3c71de04</span>
+            <span class="badge badge-warning">⏸ hitl</span>
+          </div>
+          <div class="recent-task-goal">Add rate limiting middleware to all public API routes using Redis sliding window</div>
+          <div class="recent-task-meta">
+            <span class="meta-chip">billing-service</span>
+            <div class="divider"></div>
+            <span class="meta-chip">develop</span>
+            <div class="divider"></div>
+            <span class="meta-chip">18m ago</span>
+          </div>
+        </div>
+
+        <!-- Task 3 — pushed -->
+        <div class="recent-task">
+          <div class="recent-task-header">
+            <span class="task-id">#f2a553b1</span>
+            <span class="badge badge-pushed">✓ pushed</span>
+          </div>
+          <div class="recent-task-goal">Fix N+1 query in the orders list endpoint by adding eager-loading for line items and product metadata</div>
+          <div class="recent-task-meta">
+            <span class="meta-chip">my-saas-app</span>
+            <div class="divider"></div>
+            <span class="meta-chip">main</span>
+            <div class="divider"></div>
+            <span class="meta-chip">1h ago</span>
+          </div>
+        </div>
+
+        <!-- Divider + queue stats -->
+        <hr class="section-divider" style="margin:16px 0">
+
+        <div class="section-label">Queue</div>
+        <div class="card" style="padding:12px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;color:var(--text-d)">running</span>
+              <span style="font-size:12px;color:var(--accent)">2</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;color:var(--text-d)">queued</span>
+              <span style="font-size:12px;color:var(--text-m)">1</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;color:var(--text-d)">hitl pending</span>
+              <span style="font-size:12px;color:var(--warning)">1</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;color:var(--text-d)">max concurrency</span>
+              <span style="font-size:12px;color:var(--text-m)">4</span>
+            </div>
+          </div>
+
+          <!-- Concurrency bar -->
+          <div style="margin-top:12px">
+            <div style="font-size:10px;color:var(--text-d);margin-bottom:5px">concurrency 2 / 4</div>
+            <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:50%;background:var(--accent);border-radius:2px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Policies note -->
+        <div style="margin-top:12px;padding:10px;border:1px solid var(--warn-bd);background:var(--warn-bg);border-radius:2px">
+          <div style="font-size:10px;color:var(--warning);margin-bottom:3px">● policy: strict</div>
+          <div style="font-size:10px;color:var(--text-d);line-height:1.5">HITL approval is enforced for all tasks on <span style="color:var(--text-m)">my-saas-app/main</span>.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

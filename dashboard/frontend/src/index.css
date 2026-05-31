@@ -2,51 +2,163 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-  }
+/* ─── Terminal Forge Design System ─────────────────────────────────────── */
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-  }
+:root {
+  /* Background layers */
+  --background:      #0a0a0f;  /* Page bg — near void */
+  --surface:         #0f0f17;  /* Cards, sidebar, panels */
+  --surface-raised:  #141420;  /* Dropdowns, popovers */
+  --surface-r:       #141420;  /* Alias for surface-raised */
+  --border:          #1e1e2e;  /* All dividers */
+  --border-strong:   #2e2e45;  /* Focused/hovered borders */
+  --border-s:        #2e2e45;  /* Alias for border-strong */
+
+  /* Text */
+  --text:            #e5e7eb;  /* Primary text */
+  --text-muted:      #6b7280;  /* Secondary, metadata */
+  --text-m:          #6b7280;  /* Alias for text-muted */
+  --text-dim:        #4b5563;  /* Labels, inactive timestamps */
+  --text-d:          #4b5563;  /* Alias for text-dim */
+
+  /* Amber — primary accent */
+  --accent:          #f59e0b;  /* Active nav, primary CTA, running badge */
+  --accent-bg:       #1a1000;  /* Badge background */
+  --accent-border:   #78350f;  /* Badge border */
+  --accent-bd:       #78350f;  /* Alias for accent-border */
+  --accent-dim:      #92400e;  /* Hover states */
+
+  /* Green — success */
+  --success:         #22c55e;  /* pushed, build passed, check icons */
+  --success-bg:      #052e16;  /* Badge background */
+  --success-border:  #14532d;  /* Badge border */
+  --success-bd:      #14532d;  /* Alias for success-border */
+
+  /* Red — danger/error */
+  --danger:          #ef4444;  /* failed, critical findings, reject */
+  --danger-bg:       #1c0a0a;  /* Badge background */
+  --danger-border:   #7f1d1d;  /* Badge border */
+  --danger-bd:       #7f1d1d;  /* Alias for danger-border */
+
+  /* Yellow — warning/HITL */
+  --warning:         #fbbf24;  /* needs_approval, needs_clarification, HITL */
+  --warning-bg:      #1a1000;  /* Badge background */
+  --warning-border:  #92400e;  /* Badge border */
+  --warn-bg:         #1a1000;  /* Alias for warning-bg */
+  --warn-bd:         #92400e;  /* Alias for warning-border */
+
+  /* Blue — info */
+  --info:            #60a5fa;  /* Reviewer waves, info states */
+  --info-bg:         #0c1a30;  /* Badge background */
+  --info-border:     #1e3a5f;  /* Badge border */
+  --info-bd:         #1e3a5f;  /* Alias for info-border */
+
+  /* Pipeline stage dots */
+  --stage-pending:   #4b5563;  /* Pending stage dot */
+  --stage-running:   #f59e0b;  /* Active stage dot — animate-pulse */
+  --stage-success:   #22c55e;  /* Completed stage dot */
+  --stage-paused:    #fbbf24;  /* HITL-paused stage dot */
+  --stage-failed:    #ef4444;  /* Failed stage dot */
+
+  /* Log stream */
+  --log-timestamp:   #f59e0b;  /* Timestamps in log lines */
+  --log-source:      #9ca3af;  /* Source label (aider/llm) */
+  --log-text:        #d1d5db;  /* Log line body text */
+  --log-bg:          #050508;  /* Log panel background — always dark */
+
+  /* Sidebar */
+  --sidebar-bg:      15 15 23;  /* hsl-compatible surface for sidebar */
+
+  /* Typography */
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  --text-xs:   10px;
+  --text-sm:   12px;
+  --text-base: 13px;
+  --text-md:   14px;
+  --text-lg:   16px;
+  --text-xl:   20px;
+
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-bold:   700;
+
+  --tracking-wide:  0.08em;
+  --tracking-tight: -0.01em;
+
+  /* Radius */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius: 0.25rem;
+
+  /* Shadcn compat tokens */
+  --foreground:      #e5e7eb;
+  --card:            #0f0f17;
+  --card-foreground: #e5e7eb;
+  --popover:         #141420;
+  --popover-foreground: #e5e7eb;
+  --primary:         #f59e0b;
+  --primary-foreground: #0a0a0f;
+  --secondary:       #1e1e2e;
+  --secondary-foreground: #e5e7eb;
+  --muted:           #1e1e2e;
+  --muted-foreground: #6b7280;
+  --input:           #1e1e2e;
+  --ring:            #f59e0b;
+  --destructive:     #ef4444;
+  --destructive-foreground: #e5e7eb;
+}
+
+/* Light mode — paper-white, same hard-edge / border-only depth */
+.light {
+  --background:      #fafaf8;
+  --surface:         #f4f3f0;
+  --surface-raised:  #eeede9;
+  --surface-r:       #eeede9;
+  --border:          #d4d2cc;
+  --border-strong:   #b8b5ae;
+  --border-s:        #b8b5ae;
+  --text:            #1a1a14;
+  --text-muted:      #6b6b5e;
+  --text-m:          #6b6b5e;
+  --text-dim:        #9e9b92;
+  --text-d:          #9e9b92;
+  --accent:          #b45309;
+  --accent-bg:       #fef3c7;
+  --accent-border:   #d97706;
+  --accent-bd:       #d97706;
+  --accent-dim:      #a16207;
+
+  /* Log panel intentionally stays dark in light mode */
+  --log-bg:          #1a1a14;
+  --log-timestamp:   #f59e0b;
+  --log-text:        #d1d5db;
+
+  /* Sidebar */
+  --sidebar-bg:      244 243 240;
+
+  /* Shadcn compat tokens */
+  --foreground:      #1a1a14;
+  --card:            #f4f3f0;
+  --card-foreground: #1a1a14;
+  --popover:         #eeede9;
+  --popover-foreground: #1a1a14;
+  --primary:         #b45309;
+  --primary-foreground: #fafaf8;
+  --secondary:       #d4d2cc;
+  --secondary-foreground: #1a1a14;
+  --muted:           #d4d2cc;
+  --muted-foreground: #6b6b5e;
+  --input:           #d4d2cc;
+  --ring:            #b45309;
+  --destructive:     #ef4444;
+  --destructive-foreground: #fafaf8;
+}
+
+@keyframes alertDialogIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @layer base {
@@ -54,6 +166,9 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    background-color: var(--background);
+    color: var(--text);
   }
 }

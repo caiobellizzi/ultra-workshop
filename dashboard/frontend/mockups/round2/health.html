@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Health — Workshop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #0f0f17; --surface-r: #141420;
+      --border: #1e1e2e; --border-s: #2e2e45;
+      --text: #e5e7eb; --text-m: #6b7280; --text-d: #4b5563;
+      --accent: #f59e0b; --accent-bg: #1a1000; --accent-bd: #78350f; --accent-dim: #92400e;
+      --success: #22c55e; --success-bg: #052e16; --success-bd: #14532d;
+      --danger: #ef4444; --danger-bg: #1c0a0a; --danger-bd: #7f1d1d;
+      --warning: #fbbf24; --warn-bg: #1a1000; --warn-bd: #92400e;
+      --info: #60a5fa; --info-bg: #0c1a30; --info-bd: #1e3a5f;
+      --log-bg: #050508; --log-ts: #f59e0b; --log-src: #9ca3af; --log-text: #d1d5db;
+      --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 160px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; height: 100vh; }
+    .sidebar-brand { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .12em; padding: 0 12px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+    .nav-link { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 36px; font-size: 12px; color: var(--text-m); cursor: pointer; border-left: 2px solid transparent; white-space: nowrap; text-decoration: none; }
+    .nav-link.active { background: var(--accent-bg); border-left-color: var(--accent); color: var(--accent); }
+    .nav-prefix { font-size: 10px; width: 10px; }
+    .nav-section { font-size: 10px; letter-spacing: .08em; color: var(--text-d); padding: 12px 12px 4px; text-transform: uppercase; }
+    .nav-link.sub { padding-left: 24px; font-size: 11px; }
+    .nav-badge { margin-left: auto; background: var(--danger-bg); border: 1px solid var(--danger-bd); color: var(--danger); font-size: 9px; padding: 0 5px; border-radius: 2px; }
+    .sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+    .theme-toggle { font-size: 11px; color: var(--text-d); cursor: pointer; }
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0; }
+    .topbar-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+    .content::-webkit-scrollbar { width: 3px; } .content::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); }
+    .badge-running { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-bd); }
+    .badge-pushed { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
+    .badge-danger { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-bd); }
+    .badge-warning { color: var(--warning); background: var(--warn-bg); border-color: var(--warn-bd); }
+    .badge-info { color: var(--info); background: var(--info-bg); border-color: var(--info-bd); }
+    .badge-muted { color: var(--text-m); background: var(--surface-r); border-color: var(--border); }
+    .section-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 12px; }
+    .btn { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-weight: 500; border: 1px solid; }
+    .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+    .btn-secondary { background: transparent; color: var(--text-m); border-color: var(--border-s); }
+    .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger-bd); }
+    .table-wrap { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead { background: var(--surface); }
+    th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-d); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-m); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(245,158,11,.03); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
+    input[type=text], textarea, select { background: var(--surface-r); border: 1px solid var(--border-s); border-radius: 2px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none; width: 100%; }
+    input[type=text]:focus, textarea:focus, select:focus { border-color: var(--accent-bd); }
+    label { font-size: 11px; color: var(--text-m); display: block; margin-bottom: 4px; }
+
+    /* Page-specific */
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    .service-card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 16px; position: relative; }
+    .service-card.running { border-left: 3px solid var(--success); }
+    .service-card.stopped { border-left: 3px solid var(--danger); }
+    .service-card.degraded { border-left: 3px solid var(--warning); }
+    .service-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .service-name { font-size: 12px; font-weight: 700; color: var(--text); letter-spacing: .02em; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot-red { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .dot-yellow { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+    .service-meta { display: flex; flex-direction: column; gap: 6px; }
+    .meta-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .meta-key { font-size: 10px; color: var(--text-d); letter-spacing: .04em; text-transform: uppercase; }
+    .meta-val { font-size: 11px; color: var(--text-m); font-weight: 500; }
+    .meta-val.green { color: var(--success); }
+    .meta-val.red { color: var(--danger); }
+    .meta-val.yellow { color: var(--warning); }
+    .meta-val.pid { color: var(--info); }
+
+    .section-block { margin-bottom: 24px; }
+    .stages-list { display: flex; flex-direction: column; gap: 8px; }
+    .stage-row { display: flex; align-items: center; gap: 12px; }
+    .stage-name { font-size: 11px; color: var(--text-m); width: 130px; flex-shrink: 0; }
+    .stage-bar-track { flex: 1; height: 6px; background: var(--surface-r); border-radius: 1px; overflow: hidden; border: 1px solid var(--border); }
+    .stage-bar-fill { height: 100%; border-radius: 1px; transition: width .3s; }
+    .fill-success { background: var(--success); }
+    .fill-warning { background: var(--warning); }
+    .fill-danger { background: var(--danger); }
+    .stage-pct { font-size: 10px; width: 36px; text-align: right; flex-shrink: 0; }
+    .stage-counts { font-size: 10px; color: var(--text-d); width: 70px; flex-shrink: 0; text-align: right; }
+
+    .log-table .ts { color: var(--log-ts); font-size: 11px; white-space: nowrap; }
+    .log-table .stage-cell { color: var(--log-src); font-size: 11px; }
+    .log-table .msg-cell { color: var(--log-text); font-size: 11px; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .log-table .task-cell { color: var(--info); font-size: 11px; font-family: var(--mono); }
+    .log-table td { padding: 7px 12px; }
+
+    .topbar-actions { display: flex; align-items: center; gap: 8px; }
+    .last-check { font-size: 10px; color: var(--text-d); }
+
+    .uptime-chip { font-size: 10px; }
+
+    /* 2-col layout for lower sections */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .col-span-2 { grid-column: span 2; }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .section-header-right { display: flex; align-items: center; gap: 8px; }
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">◆ WORKSHOP</div>
+  <a class="nav-link "><span class="nav-prefix">○</span> Board</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> HITL Queue</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Cost</a>
+  <a class="nav-link active"><span class="nav-prefix">▶</span> Health</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Skills</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Repos</a>
+  <div class="nav-section">Config</div>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Models</a>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Reviewers</a>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Policies</a>
+  <div class="sidebar-bottom"><div class="theme-toggle">◑ light mode</div></div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">System Health</div>
+    <div class="topbar-actions">
+      <span class="last-check">last check: 14s ago</span>
+      <button class="btn btn-secondary">↺ refresh</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Service Cards -->
+    <div class="section-label">Services</div>
+    <div class="grid-4">
+
+      <!-- hermes -->
+      <div class="service-card running">
+        <div class="service-header">
+          <span class="service-name">hermes</span>
+          <span class="status-dot dot-green"></span>
+        </div>
+        <div class="service-meta">
+          <div class="meta-row">
+            <span class="meta-key">status</span>
+            <span class="meta-val green">running</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">uptime</span>
+            <span class="meta-val">6d 14h 22m</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">pid</span>
+            <span class="meta-val pid">83142</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">mem</span>
+            <span class="meta-val">188 MB</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">port</span>
+            <span class="meta-val">4000</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- hermes-dashboard -->
+      <div class="service-card running">
+        <div class="service-header">
+          <span class="service-name">hermes-dashboard</span>
+          <span class="status-dot dot-green"></span>
+        </div>
+        <div class="service-meta">
+          <div class="meta-row">
+            <span class="meta-key">status</span>
+            <span class="meta-val green">running</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">uptime</span>
+            <span class="meta-val">6d 14h 18m</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">pid</span>
+            <span class="meta-val pid">83291</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">mem</span>
+            <span class="meta-val">74 MB</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">port</span>
+            <span class="meta-val">7010</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- bug-scan-fastpoll -->
+      <div class="service-card degraded">
+        <div class="service-header">
+          <span class="service-name">bug-scan-fastpoll</span>
+          <span class="status-dot dot-yellow"></span>
+        </div>
+        <div class="service-meta">
+          <div class="meta-row">
+            <span class="meta-key">status</span>
+            <span class="meta-val yellow">degraded</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">uptime</span>
+            <span class="meta-val">0d 2h 05m</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">pid</span>
+            <span class="meta-val pid">91047</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">mem</span>
+            <span class="meta-val">31 MB</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">restarts</span>
+            <span class="meta-val yellow">3×</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- brain -->
+      <div class="service-card stopped">
+        <div class="service-header">
+          <span class="service-name">brain</span>
+          <span class="status-dot dot-red"></span>
+        </div>
+        <div class="service-meta">
+          <div class="meta-row">
+            <span class="meta-key">status</span>
+            <span class="meta-val red">stopped</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">uptime</span>
+            <span class="meta-val">—</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">pid</span>
+            <span class="meta-val red">—</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">last exit</span>
+            <span class="meta-val red">code 1</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">port</span>
+            <span class="meta-val">5100</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Stage Success Rates + Error Log side by side on wider screens -->
+    <div class="grid-2">
+
+      <!-- Stage success rates -->
+      <div class="section-block" style="margin-bottom:0">
+        <div class="section-header">
+          <div class="section-label" style="margin-bottom:0">Stage Pass Rates</div>
+          <span class="last-check" style="font-size:10px; color:var(--text-d)">last 100 tasks</span>
+        </div>
+        <div class="card" style="padding: 14px 16px;">
+          <div class="stages-list">
+
+            <div class="stage-row">
+              <span class="stage-name">brainstorm</span>
+              <div class="stage-bar-track">
+                <div class="stage-bar-fill fill-success" style="width:96%"></div>
+              </div>
+              <span class="stage-pct" style="color:var(--success)">96%</span>
+              <span class="stage-counts">96 / 100</span>
+            </div>
+
+            <div class="stage-row">
+              <span class="stage-name">triage</span>
+              <div class="stage-bar-track">
+                <div class="stage-bar-fill fill-success" style="width:94%"></div>
+              </div>
+              <span class="stage-pct" style="color:var(--success)">94%</span>
+              <span class="stage-counts">94 / 100</span>
+            </div>
+
+            <div class="stage-row">
+              <span class="stage-name">spec_phase</span>
+              <div class="stage-bar-track">
+                <div class="stage-bar-fill fill-success" style="width:91%"></div>
+              </div>
+              <span class="stage-pct" style="color:var(--success)">91%</span>
+              <span class="stage-counts">91 / 100</span>
+            </div>
+
+            <div class="stage-row">
+              <span class="stage-name">plan_phase</span>
+              <div class="stage-bar-track">
+                <div class="stage-bar-fill fill-success" style="width:89%"></div>
+              </div>
+              <span class="stage-pct" style="color:var(--success)">89%</span>
+              <span class="stage-counts">89 / 100</span>
+            </div>
+
+            <div class="stage-row">
+              <span class="stage-name">execute_phase</span>
+              <div class="stage-bar-track">
+                <div class="stage-bar-fill fill-warning" style="width:77%"></div>
+              </div>
+              <span class="stage-pct" style="color:var(--warning)">77%</span>
+              <span class="stage-counts">77 / 100</span>
+            </div>
+
+            <div class="stage-row">
+              <span class="stage-name">code_review</span>
+              <div class="stage-bar-track">
+                <div class="stage-bar-fill fill-warning" style="width:82%"></div>
+              </div>
+              <span class="stage-pct" style="color:var(--warning)">82%</span>
+              <span class="stage-counts">82 / 100</span>
+            </div>
+
+            <div class="stage-row">
+              <span class="stage-name">build_trigger</span>
+              <div class="stage-bar-track">
+                <div class="stage-bar-fill fill-warning" style="width:75%"></div>
+              </div>
+              <span class="stage-pct" style="color:var(--warning)">75%</span>
+              <span class="stage-counts">75 / 100</span>
+            </div>
+
+            <div class="stage-row">
+              <span class="stage-name">push_pr</span>
+              <div class="stage-bar-track">
+                <div class="stage-bar-fill fill-danger" style="width:61%"></div>
+              </div>
+              <span class="stage-pct" style="color:var(--danger)">61%</span>
+              <span class="stage-counts">61 / 100</span>
+            </div>
+
+            <div class="stage-row">
+              <span class="stage-name">verify_work</span>
+              <div class="stage-bar-track">
+                <div class="stage-bar-fill fill-success" style="width:88%"></div>
+              </div>
+              <span class="stage-pct" style="color:var(--success)">88%</span>
+              <span class="stage-counts">88 / 100</span>
+            </div>
+
+            <div class="stage-row">
+              <span class="stage-name">hitl_review</span>
+              <div class="stage-bar-track">
+                <div class="stage-bar-fill fill-success" style="width:93%"></div>
+              </div>
+              <span class="stage-pct" style="color:var(--success)">93%</span>
+              <span class="stage-counts">93 / 100</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Process / Worker Info -->
+      <div class="section-block" style="margin-bottom:0">
+        <div class="section-header">
+          <div class="section-label" style="margin-bottom:0">Worker Pool</div>
+          <span class="badge badge-pushed">3 active</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>worker</th>
+                <th>task</th>
+                <th>stage</th>
+                <th>cpu</th>
+                <th>mem</th>
+                <th>age</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="color:var(--text); font-size:11px;">worker-0</td>
+                <td style="color:var(--info); font-size:11px; font-family:var(--mono)">a0b98f99</td>
+                <td><span class="badge badge-running">execute_phase</span></td>
+                <td style="color:var(--text-m)">38%</td>
+                <td style="color:var(--text-m)">212 MB</td>
+                <td style="color:var(--text-d)">14m 22s</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text); font-size:11px;">worker-1</td>
+                <td style="color:var(--info); font-size:11px; font-family:var(--mono)">c3d72e14</td>
+                <td><span class="badge badge-info">code_review</span></td>
+                <td style="color:var(--text-m)">12%</td>
+                <td style="color:var(--text-m)">156 MB</td>
+                <td style="color:var(--text-d)">4m 08s</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text); font-size:11px;">worker-2</td>
+                <td style="color:var(--info); font-size:11px; font-family:var(--mono)">f8a01b55</td>
+                <td><span class="badge badge-warning">build_trigger</span></td>
+                <td style="color:var(--text-m)">5%</td>
+                <td style="color:var(--text-m)">98 MB</td>
+                <td style="color:var(--text-d)">1m 47s</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text-d); font-size:11px;">worker-3</td>
+                <td style="color:var(--text-d); font-size:11px;">—</td>
+                <td><span class="badge badge-muted">idle</span></td>
+                <td style="color:var(--text-d)">0%</td>
+                <td style="color:var(--text-d)">22 MB</td>
+                <td style="color:var(--text-d)">—</td>
+              </tr>
+              <tr>
+                <td style="color:var(--text-d); font-size:11px;">worker-4</td>
+                <td style="color:var(--text-d); font-size:11px;">—</td>
+                <td><span class="badge badge-muted">idle</span></td>
+                <td style="color:var(--text-d)">0%</td>
+                <td style="color:var(--text-d)">22 MB</td>
+                <td style="color:var(--text-d)">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Queue snapshot -->
+        <div style="margin-top: 12px;">
+          <div class="section-label" style="margin-bottom:8px">Queue Snapshot</div>
+          <div class="card" style="padding:12px 16px;">
+            <div style="display:grid; grid-template-columns: repeat(4,1fr); gap:12px;">
+              <div>
+                <div class="meta-key" style="font-size:10px; color:var(--text-d); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px">pending</div>
+                <div style="font-size:22px; font-weight:700; color:var(--accent)">7</div>
+              </div>
+              <div>
+                <div class="meta-key" style="font-size:10px; color:var(--text-d); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px">running</div>
+                <div style="font-size:22px; font-weight:700; color:var(--success)">3</div>
+              </div>
+              <div>
+                <div class="meta-key" style="font-size:10px; color:var(--text-d); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px">hitl wait</div>
+                <div style="font-size:22px; font-weight:700; color:var(--warning)">2</div>
+              </div>
+              <div>
+                <div class="meta-key" style="font-size:10px; color:var(--text-d); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px">failed</div>
+                <div style="font-size:22px; font-weight:700; color:var(--danger)">1</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Error Log -->
+    <div class="section-block">
+      <div class="section-header">
+        <div class="section-label" style="margin-bottom:0">Recent Errors</div>
+        <div class="section-header-right">
+          <span class="last-check">last 24h · 9 errors</span>
+          <button class="btn btn-secondary">view full log</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>timestamp</th>
+              <th>stage</th>
+              <th>task id</th>
+              <th>error</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="ts">14:38:02</td>
+              <td class="stage-cell">push_pr</td>
+              <td class="task-cell">a0b98f99</td>
+              <td class="msg-cell">gh pr create failed: remote ref already exists for refs/heads/fix/auth-token-refresh</td>
+            </tr>
+            <tr>
+              <td class="ts">14:21:47</td>
+              <td class="stage-cell">build_trigger</td>
+              <td class="task-cell">b1c04d30</td>
+              <td class="msg-cell">workshop_build exited with code 2: tsc type error in src/lib/api.ts:88</td>
+            </tr>
+            <tr>
+              <td class="ts">13:55:19</td>
+              <td class="stage-cell">execute_phase</td>
+              <td class="task-cell">d9e77a12</td>
+              <td class="msg-cell">subagent timeout after 600s — stage execute_phase did not complete within deadline</td>
+            </tr>
+            <tr>
+              <td class="ts">13:40:08</td>
+              <td class="stage-cell">push_pr</td>
+              <td class="task-cell">e2f33c88</td>
+              <td class="msg-cell">branch caiobellizzi/my-saas-app:feat/csv-export-v2 conflicts with open PR #114</td>
+            </tr>
+            <tr>
+              <td class="ts">12:58:33</td>
+              <td class="stage-cell">build_trigger</td>
+              <td class="task-cell">f8a01b55</td>
+              <td class="msg-cell">pnpm install: ENOTFOUND registry.npmjs.org — network unreachable during install step</td>
+            </tr>
+            <tr>
+              <td class="ts">11:44:52</td>
+              <td class="stage-cell">code_review</td>
+              <td class="task-cell">07ab56e1</td>
+              <td class="msg-cell">reviewer agent exited 0 but produced no REVIEW.md — output missing from workspace</td>
+            </tr>
+            <tr>
+              <td class="ts">10:29:17</td>
+              <td class="stage-cell">execute_phase</td>
+              <td class="task-cell">19cc2d04</td>
+              <td class="msg-cell">Edit tool rejected: old_string not found in src/components/DataTable.tsx after 3 retries</td>
+            </tr>
+            <tr>
+              <td class="ts">09:12:41</td>
+              <td class="stage-cell">push_pr</td>
+              <td class="task-cell">2ab8f719</td>
+              <td class="msg-cell">git push denied: protected branch policy blocks force-push to main on caiobellizzi/my-saas-app</td>
+            </tr>
+            <tr>
+              <td class="ts">08:03:05</td>
+              <td class="stage-cell">build_trigger</td>
+              <td class="task-cell">3bc7e022</td>
+              <td class="msg-cell">launch_fix: workshop_build --resume returned non-zero after 2 fix attempts, giving up</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

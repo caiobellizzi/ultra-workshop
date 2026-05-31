@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop — Skills</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #0f0f17; --surface-r: #141420;
+    --border: #1e1e2e; --border-s: #2e2e45;
+    --text: #e5e7eb; --text-m: #6b7280; --text-d: #4b5563;
+    --accent: #f59e0b; --accent-bg: #1a1000; --accent-bd: #78350f; --accent-dim: #92400e;
+    --success: #22c55e; --success-bg: #052e16; --success-bd: #14532d;
+    --danger: #ef4444; --danger-bg: #1c0a0a; --danger-bd: #7f1d1d;
+    --warning: #fbbf24; --warn-bg: #1a1000; --warn-bd: #92400e;
+    --info: #60a5fa; --info-bg: #0c1a30; --info-bd: #1e3a5f;
+    --log-bg: #050508; --log-ts: #f59e0b; --log-src: #9ca3af; --log-text: #d1d5db;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 160px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; height: 100vh; }
+  .sidebar-brand { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .12em; padding: 0 12px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .nav-link { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 36px; font-size: 12px; color: var(--text-m); cursor: pointer; border-left: 2px solid transparent; white-space: nowrap; text-decoration: none; }
+  .nav-link.active { background: var(--accent-bg); border-left-color: var(--accent); color: var(--accent); }
+  .nav-prefix { font-size: 10px; width: 10px; }
+  .nav-section { font-size: 10px; letter-spacing: .08em; color: var(--text-d); padding: 12px 12px 4px; text-transform: uppercase; }
+  .nav-link.sub { padding-left: 24px; font-size: 11px; }
+  .nav-badge { margin-left: auto; background: var(--danger-bg); border: 1px solid var(--danger-bd); color: var(--danger); font-size: 9px; padding: 0 5px; border-radius: 2px; }
+  .sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+  .theme-toggle { font-size: 11px; color: var(--text-d); cursor: pointer; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0; }
+  .topbar-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  .content::-webkit-scrollbar { width: 3px; } .content::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); }
+  .badge-running { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-bd); }
+  .badge-pushed { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
+  .badge-danger { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-bd); }
+  .badge-warning { color: var(--warning); background: var(--warn-bg); border-color: var(--warn-bd); }
+  .badge-info { color: var(--info); background: var(--info-bg); border-color: var(--info-bd); }
+  .badge-muted { color: var(--text-m); background: var(--surface-r); border-color: var(--border); }
+  .section-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 12px; }
+  .btn { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-weight: 500; border: 1px solid; }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+  .btn-secondary { background: transparent; color: var(--text-m); border-color: var(--border-s); }
+  .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger-bd); }
+  .table-wrap { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead { background: var(--surface); }
+  th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-d); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-m); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(245,158,11,.03); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
+  input[type=text], textarea, select { background: var(--surface-r); border: 1px solid var(--border-s); border-radius: 2px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none; width: 100%; }
+  input[type=text]:focus, textarea:focus, select:focus { border-color: var(--accent-bd); }
+  label { font-size: 11px; color: var(--text-m); display: block; margin-bottom: 4px; }
+
+  /* ── Page-specific ── */
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .toolbar .search-wrap { flex: 1; max-width: 360px; position: relative; }
+  .toolbar .search-wrap input { padding-left: 28px; }
+  .search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--text-d); font-size: 11px; pointer-events: none; }
+  .filter-row { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end; }
+  .filter-row select { width: auto; font-size: 11px; padding: 6px 10px; }
+
+  .skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .skill-card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 16px; display: flex; flex-direction: column; gap: 10px; transition: border-color .15s; }
+  .skill-card:hover { border-color: var(--border-s); }
+  .skill-card.disabled { opacity: .55; }
+
+  .skill-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .skill-name { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .01em; line-height: 1.3; }
+  .skill-badges { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
+
+  .skill-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+  .skill-meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .skill-meta-key { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-d); }
+  .skill-meta-val { font-size: 11px; color: var(--text-m); }
+
+  .skill-desc { font-size: 11px; color: var(--text-m); line-height: 1.6; border-top: 1px solid var(--border); padding-top: 10px; }
+
+  .skill-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; border-top: 1px solid var(--border); margin-top: auto; }
+  .skill-runs { font-size: 10px; color: var(--text-d); }
+  .skill-actions { display: flex; gap: 6px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 12px 16px; }
+  .stat-label { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-d); margin-bottom: 6px; }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stat-sub { font-size: 10px; color: var(--text-d); margin-top: 4px; }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .dot-success { background: var(--success); }
+  .dot-muted { background: var(--border-s); }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">◆ WORKSHOP</div>
+  <a class="nav-link "><span class="nav-prefix">○</span> Board</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> HITL Queue</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Cost</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Health</a>
+  <a class="nav-link active"><span class="nav-prefix">▶</span> Skills</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Repos</a>
+  <div class="nav-section">Config</div>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Models</a>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Reviewers</a>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Policies</a>
+  <div class="sidebar-bottom"><div class="theme-toggle">◑ light mode</div></div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">Skills</div>
+    <button class="btn btn-secondary">↓ Import SKILL.md</button>
+    <button class="btn btn-primary">+ Register Skill</button>
+  </div>
+
+  <div class="content">
+
+    <!-- Stats row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Skills</div>
+        <div class="stat-value">8</div>
+        <div class="stat-sub">6 enabled · 2 disabled</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Runs Today</div>
+        <div class="stat-value">47</div>
+        <div class="stat-sub">+12 from yesterday</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Duration</div>
+        <div class="stat-value">4m 12s</div>
+        <div class="stat-sub">across all skill types</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Last Updated</div>
+        <div class="stat-value" style="font-size:15px;">2h ago</div>
+        <div class="stat-sub">workshop-build · v0.9.3</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" placeholder="search skills…" value="">
+      </div>
+      <div class="filter-row">
+        <span class="section-label" style="margin:0;">Filter:</span>
+        <select>
+          <option>All types</option>
+          <option>build</option>
+          <option>review</option>
+          <option>triage</option>
+          <option>cron</option>
+          <option>brainstorm</option>
+        </select>
+        <select>
+          <option>All status</option>
+          <option>Enabled</option>
+          <option>Disabled</option>
+        </select>
+        <select>
+          <option>Updated: newest</option>
+          <option>Updated: oldest</option>
+          <option>Name A–Z</option>
+          <option>Runs: most</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Skills grid -->
+    <div class="skills-grid">
+
+      <!-- workshop-build -->
+      <div class="skill-card">
+        <div class="skill-header">
+          <div class="skill-name">workshop-build</div>
+          <div class="skill-badges">
+            <span class="badge badge-pushed"><span class="dot dot-success"></span> enabled</span>
+            <span class="badge badge-muted">build</span>
+          </div>
+        </div>
+        <div class="skill-meta">
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">version</span>
+            <span class="skill-meta-val">v0.9.3</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">last updated</span>
+            <span class="skill-meta-val">2025-05-31 09:14</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">model</span>
+            <span class="skill-meta-val">claude-sonnet-4</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">timeout</span>
+            <span class="skill-meta-val">20 min</span>
+          </div>
+        </div>
+        <div class="skill-desc">
+          Orchestrates the full build pipeline: dependency install, lint, typecheck, test, and artifact packaging. Emits structured progress_log.jsonl. Supports --resume to continue from last checkpoint after a failure.
+        </div>
+        <div class="skill-footer">
+          <span class="skill-runs">47 runs · last 30d</span>
+          <div class="skill-actions">
+            <button class="btn btn-secondary">View</button>
+            <button class="btn btn-secondary">Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- workshop-coder -->
+      <div class="skill-card">
+        <div class="skill-header">
+          <div class="skill-name">workshop-coder</div>
+          <div class="skill-badges">
+            <span class="badge badge-pushed"><span class="dot dot-success"></span> enabled</span>
+            <span class="badge badge-muted">code</span>
+          </div>
+        </div>
+        <div class="skill-meta">
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">version</span>
+            <span class="skill-meta-val">v1.2.1</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">last updated</span>
+            <span class="skill-meta-val">2025-05-29 16:52</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">model</span>
+            <span class="skill-meta-val">claude-opus-4</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">timeout</span>
+            <span class="skill-meta-val">45 min</span>
+          </div>
+        </div>
+        <div class="skill-desc">
+          Core implementation skill. Receives a scoped task spec, reads relevant source files, writes changes with surgical precision, runs tests to verify. Enforces coding-discipline rules from CLAUDE.md.
+        </div>
+        <div class="skill-footer">
+          <span class="skill-runs">183 runs · last 30d</span>
+          <div class="skill-actions">
+            <button class="btn btn-secondary">View</button>
+            <button class="btn btn-secondary">Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- triage-specialist -->
+      <div class="skill-card">
+        <div class="skill-header">
+          <div class="skill-name">triage-specialist</div>
+          <div class="skill-badges">
+            <span class="badge badge-pushed"><span class="dot dot-success"></span> enabled</span>
+            <span class="badge badge-muted">triage</span>
+          </div>
+        </div>
+        <div class="skill-meta">
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">version</span>
+            <span class="skill-meta-val">v0.6.0</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">last updated</span>
+            <span class="skill-meta-val">2025-05-27 11:03</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">model</span>
+            <span class="skill-meta-val">claude-haiku-4</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">timeout</span>
+            <span class="skill-meta-val">5 min</span>
+          </div>
+        </div>
+        <div class="skill-desc">
+          Processes incoming GitHub issues via a label-based state machine. Classifies severity, extracts reproduction steps, assigns priority tags, and routes to the appropriate downstream skill or HITL queue.
+        </div>
+        <div class="skill-footer">
+          <span class="skill-runs">94 runs · last 30d</span>
+          <div class="skill-actions">
+            <button class="btn btn-secondary">View</button>
+            <button class="btn btn-secondary">Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- reviewer-security -->
+      <div class="skill-card">
+        <div class="skill-header">
+          <div class="skill-name">reviewer-security</div>
+          <div class="skill-badges">
+            <span class="badge badge-pushed"><span class="dot dot-success"></span> enabled</span>
+            <span class="badge badge-muted">review</span>
+          </div>
+        </div>
+        <div class="skill-meta">
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">version</span>
+            <span class="skill-meta-val">v0.4.2</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">last updated</span>
+            <span class="skill-meta-val">2025-05-24 08:37</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">model</span>
+            <span class="skill-meta-val">claude-sonnet-4</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">timeout</span>
+            <span class="skill-meta-val">15 min</span>
+          </div>
+        </div>
+        <div class="skill-desc">
+          Audits diffs for OWASP Top 10 vulnerabilities, hardcoded secrets, SQL injection vectors, and missing auth guards. Emits structured findings with severity scores. Blocks merge on CRITICAL findings.
+        </div>
+        <div class="skill-footer">
+          <span class="skill-runs">61 runs · last 30d</span>
+          <div class="skill-actions">
+            <button class="btn btn-secondary">View</button>
+            <button class="btn btn-secondary">Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- cron-daily-research -->
+      <div class="skill-card">
+        <div class="skill-header">
+          <div class="skill-name">cron-daily-research</div>
+          <div class="skill-badges">
+            <span class="badge badge-pushed"><span class="dot dot-success"></span> enabled</span>
+            <span class="badge badge-muted">cron</span>
+          </div>
+        </div>
+        <div class="skill-meta">
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">version</span>
+            <span class="skill-meta-val">v0.3.1</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">last updated</span>
+            <span class="skill-meta-val">2025-05-20 00:00</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">schedule</span>
+            <span class="skill-meta-val">0 6 * * *</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">timeout</span>
+            <span class="skill-meta-val">30 min</span>
+          </div>
+        </div>
+        <div class="skill-desc">
+          Runs at 06:00 UTC daily. Crawls watched RSS feeds, GitHub trending, and HN top-30. Summarises relevant items and appends a digest to the Obsidian vault under daily-notes/. Flags items requiring follow-up.
+        </div>
+        <div class="skill-footer">
+          <span class="skill-runs">11 runs · last 30d</span>
+          <div class="skill-actions">
+            <button class="btn btn-secondary">View</button>
+            <button class="btn btn-secondary">Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- brainstorm-specialist -->
+      <div class="skill-card">
+        <div class="skill-header">
+          <div class="skill-name">brainstorm-specialist</div>
+          <div class="skill-badges">
+            <span class="badge badge-pushed"><span class="dot dot-success"></span> enabled</span>
+            <span class="badge badge-muted">brainstorm</span>
+          </div>
+        </div>
+        <div class="skill-meta">
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">version</span>
+            <span class="skill-meta-val">v0.2.0</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">last updated</span>
+            <span class="skill-meta-val">2025-05-18 14:21</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">model</span>
+            <span class="skill-meta-val">claude-opus-4</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">timeout</span>
+            <span class="skill-meta-val">25 min</span>
+          </div>
+        </div>
+        <div class="skill-desc">
+          Explores user intent before implementation begins. Surfaces ambiguities, proposes 2–3 concrete designs for non-trivial tasks, and produces a decision record. Invoked automatically ahead of workshop-coder on complexity-flagged tasks.
+        </div>
+        <div class="skill-footer">
+          <span class="skill-runs">38 runs · last 30d</span>
+          <div class="skill-actions">
+            <button class="btn btn-secondary">View</button>
+            <button class="btn btn-secondary">Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- reviewer-performance (disabled) -->
+      <div class="skill-card disabled">
+        <div class="skill-header">
+          <div class="skill-name">reviewer-performance</div>
+          <div class="skill-badges">
+            <span class="badge badge-muted"><span class="dot dot-muted"></span> disabled</span>
+            <span class="badge badge-muted">review</span>
+          </div>
+        </div>
+        <div class="skill-meta">
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">version</span>
+            <span class="skill-meta-val">v0.1.4</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">last updated</span>
+            <span class="skill-meta-val">2025-04-12 10:05</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">model</span>
+            <span class="skill-meta-val">claude-sonnet-4</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">timeout</span>
+            <span class="skill-meta-val">15 min</span>
+          </div>
+        </div>
+        <div class="skill-desc">
+          Profiles hot paths in changed code, flags N+1 query patterns, measures bundle impact on Next.js routes, and annotates diffs with Lighthouse delta estimates. Disabled pending benchmark harness setup.
+        </div>
+        <div class="skill-footer">
+          <span class="skill-runs">0 runs · last 30d</span>
+          <div class="skill-actions">
+            <button class="btn btn-secondary">View</button>
+            <button class="btn btn-secondary">Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- workshop-fix (disabled) -->
+      <div class="skill-card disabled">
+        <div class="skill-header">
+          <div class="skill-name">workshop-fix</div>
+          <div class="skill-badges">
+            <span class="badge badge-muted"><span class="dot dot-muted"></span> disabled</span>
+            <span class="badge badge-warning">beta</span>
+            <span class="badge badge-muted">build</span>
+          </div>
+        </div>
+        <div class="skill-meta">
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">version</span>
+            <span class="skill-meta-val">v0.0.7-beta</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">last updated</span>
+            <span class="skill-meta-val">2025-05-30 23:11</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">model</span>
+            <span class="skill-meta-val">claude-opus-4</span>
+          </div>
+          <div class="skill-meta-item">
+            <span class="skill-meta-key">timeout</span>
+            <span class="skill-meta-val">30 min</span>
+          </div>
+        </div>
+        <div class="skill-desc">
+          Auto-repair skill invoked by workshop-build when CI fails. Reads failing test output, locates root-cause lines, applies minimal targeted patches, re-runs the suite. Uses --resume to avoid restarting from scratch.
+        </div>
+        <div class="skill-footer">
+          <span class="skill-runs">3 runs · last 30d</span>
+          <div class="skill-actions">
+            <button class="btn btn-secondary">View</button>
+            <button class="btn btn-secondary">Edit</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /skills-grid -->
+  </div><!-- /content -->
+</div><!-- /main -->
+
+</body>
+</html>

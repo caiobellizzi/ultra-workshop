@@ -24,6 +24,17 @@ function deriveStageStatus(task: TaskDetail, stage: PipelineStage): StageNodeSta
   return "pending";
 }
 
+/** Map each StageNodeStatus to its Terminal Forge CSS token class. */
+const STAGE_COLOR_CLASS: Record<StageNodeStatus, string> = {
+  pending:     "text-[--stage-pending]",
+  running:     "text-[--stage-running]",
+  success:     "text-[--stage-success]",
+  failed_retry:"text-[--stage-failed]",
+  failed:      "text-[--stage-failed]",
+  paused_hitl: "text-[--stage-paused]",
+  skipped:     "text-[--stage-pending]",
+};
+
 interface StageNodeProps {
   stage: PipelineStage;
   status: StageNodeStatus;
@@ -34,14 +45,16 @@ interface StageNodeProps {
 }
 
 function StageNode({ stage, status, attempts, isCurrent, currentStep, totalSteps }: StageNodeProps) {
+  const colorClass = STAGE_COLOR_CLASS[status];
+
   const icons: Record<StageNodeStatus, React.ReactNode> = {
-    pending: <Circle className="h-5 w-5 text-muted-foreground" />,
-    running: <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />,
-    success: <CheckCircle2 className="h-5 w-5 text-green-500" />,
-    failed_retry: <XCircle className="h-5 w-5 text-amber-500" />,
-    failed: <XCircle className="h-5 w-5 text-destructive" />,
-    paused_hitl: <AlertCircle className="h-5 w-5 text-amber-500" />,
-    skipped: <Clock className="h-5 w-5 text-muted-foreground opacity-40" />,
+    pending:     <Circle      className={cn("h-5 w-5", colorClass)} />,
+    running:     <Loader2     className={cn("h-5 w-5 animate-spin", colorClass)} />,
+    success:     <CheckCircle2 className={cn("h-5 w-5", colorClass)} />,
+    failed_retry:<XCircle     className={cn("h-5 w-5", colorClass)} />,
+    failed:      <XCircle     className={cn("h-5 w-5", colorClass)} />,
+    paused_hitl: <AlertCircle className={cn("h-5 w-5", colorClass)} />,
+    skipped:     <Clock       className={cn("h-5 w-5 opacity-40", colorClass)} />,
   };
 
   return (
@@ -54,19 +67,28 @@ function StageNode({ stage, status, attempts, isCurrent, currentStep, totalSteps
     >
       {icons[status]}
       <div className="flex-1 min-w-0">
-        <StageLabel stage={stage} className="text-sm" />
+        <StageLabel
+          stage={stage}
+          className={cn(
+            "text-sm font-mono",
+            isCurrent ? colorClass : undefined,
+          )}
+        />
         {attempts > 1 && (
-          <span className="ml-1 text-xs text-muted-foreground">×{attempts}</span>
+          <span className="ml-1 text-xs text-[--text-muted]">×{attempts}</span>
         )}
         {stage === "coder" && currentStep != null && totalSteps != null && (
           <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
             <div
-              className="h-full bg-blue-500 transition-all"
+              className="h-full bg-[--stage-running] transition-all"
               style={{ width: `${(currentStep / totalSteps) * 100}%` }}
             />
           </div>
         )}
       </div>
+      {status === "running" && (
+        <span className="h-2 w-2 rounded-full bg-[--stage-running] animate-pulse" />
+      )}
     </div>
   );
 }

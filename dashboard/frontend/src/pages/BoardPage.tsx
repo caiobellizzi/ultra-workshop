@@ -68,23 +68,23 @@ export function BoardPage() {
           }
         />
       ) : (
-        <div className="flex-1 overflow-x-auto">
+        <div className="flex-1 overflow-x-auto bg-[--background]">
           <div className="flex h-full gap-3 p-4 min-w-max">
             {COLUMNS.map((col) => (
               <div key={col.key} className="flex w-56 flex-col gap-2">
                 <div className="flex items-center justify-between px-1">
                   <h3 className="text-sm font-semibold capitalize">{col.label}</h3>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-[--text-muted]">
                     {tasksByColumn[col.key]?.length ?? 0}
                   </span>
                 </div>
-                <ScrollArea className="flex-1 rounded-md border bg-muted/20 p-2">
+                <ScrollArea className="flex-1 rounded-sm border border-[--border] bg-[--surface] p-2">
                   <div className="space-y-2">
                     {tasksByColumn[col.key]?.map((task) => (
                       <TaskCard key={task.task_id} task={task} />
                     ))}
                     {tasksByColumn[col.key]?.length === 0 && (
-                      <p className="py-8 text-center text-xs text-muted-foreground">Empty</p>
+                      <p className="py-8 text-center text-xs border border-dashed border-[--border] text-[--text-dim]">--empty--</p>
                     )}
                   </div>
                 </ScrollArea>

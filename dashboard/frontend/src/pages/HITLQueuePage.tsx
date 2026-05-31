@@ -1,44 +1,104 @@
-import { Loader2, CheckCircle } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { HITLCard } from "@/components/hitl/HITLCard";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { Badge } from "@/components/ui/badge";
 import { useHITLQueue } from "@/hooks/useHITL";
 import type { HITLPayload } from "@/types/task";
 
 export function HITLQueuePage() {
   const { data, isLoading } = useHITLQueue();
 
+  const count = data?.items.length ?? 0;
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="HITL Queue"
-        description="Pending human-in-the-loop decisions"
+        title="Action Required"
         actions={
-          data?.items.length ? (
-            <Badge variant="destructive">{data.items.length} pending</Badge>
+          count > 0 ? (
+            <span
+              style={{
+                backgroundColor: "var(--danger-bg)",
+                border: "1px solid var(--danger-border)",
+                color: "var(--danger)",
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-xs)",
+                borderRadius: "var(--radius-sm)",
+                padding: "2px 6px",
+              }}
+            >
+              {count}
+            </span>
           ) : undefined
         }
       />
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto" style={{ padding: "24px" }}>
         {isLoading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          /* Skeleton: 2 placeholder card outlines */
+          <div className="flex flex-col gap-4" style={{ maxWidth: "672px", margin: "0 auto" }}>
+            {[0, 1].map((i) => (
+              <div
+                key={i}
+                className="animate-pulse"
+                style={{
+                  backgroundColor: "var(--surface-raised)",
+                  border: "1px solid var(--border)",
+                  borderTop: "2px solid var(--warning)",
+                  borderRadius: "var(--radius-sm)",
+                  height: "96px",
+                }}
+              />
+            ))}
           </div>
-        ) : !data?.items.length ? (
-          <EmptyState
-            icon={<CheckCircle className="h-12 w-12" />}
-            title="All clear"
-            description="No pending decisions"
-          />
+        ) : count === 0 ? (
+          <div
+            className="flex items-center justify-center h-full"
+            style={{ minHeight: "160px" }}
+          >
+            <span
+              style={{
+                color: "var(--text-dim)",
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-xs)",
+              }}
+            >
+              -- no pending actions --
+            </span>
+          </div>
         ) : (
-          <div className="space-y-4 max-w-2xl mx-auto">
-            {data.items.map((item) => (
+          <div className="flex flex-col gap-4" style={{ maxWidth: "672px", margin: "0 auto" }}>
+            {data!.items.map((item) => (
               <div key={`${item.task_id}-${item.hitl_type}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-mono text-muted-foreground">{item.task_id}</span>
-                  <Badge variant="outline">{item.hitl_type}</Badge>
-                  <span className="text-xs text-muted-foreground">
+                <div
+                  className="flex items-center gap-2"
+                  style={{ marginBottom: "8px" }}
+                >
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "var(--text-xs)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {item.task_id}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "var(--text-xs)",
+                      color: "var(--text-dim)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)",
+                      padding: "2px 6px",
+                    }}
+                  >
+                    {item.hitl_type}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "var(--text-xs)",
+                      color: "var(--text-dim)",
+                    }}
+                  >
                     {new Date(item.created_at).toLocaleString()}
                   </span>
                 </div>

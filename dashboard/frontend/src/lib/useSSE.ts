@@ -24,13 +24,14 @@ export interface SSEState<T> {
 export function useSSE<T = unknown>(
   url: string,
   onMessage?: (data: T) => void,
-  options: SSEOptions = {},
+  options: SSEOptions & { namedEvents?: string[] } = {},
 ): SSEState<T> {
   const {
     cap = 2000,
     enabled = true,
     initialBackoff = 1000,
     maxBackoff = 30_000,
+    namedEvents = ["log", "state", "progress"],
   } = options;
 
   const [lines, setLines] = useState<T[]>([]);
@@ -67,6 +68,23 @@ export function useSSE<T = unknown>(
         // Ignore parse errors for non-JSON SSE messages
       }
     };
+
+    const handleNamedEvent = (e: MessageEvent<string>) => {
+      try {
+        const parsed = JSON.parse(e.data) as T;
+        if (onMessage) onMessage(parsed);
+        setLines((prev) => {
+          const next = prev.length >= cap ? prev.slice(-(cap - 1)) : prev;
+          return [...next, parsed];
+        });
+      } catch {
+        // Ignore parse errors for non-JSON SSE messages
+      }
+    };
+
+    namedEvents.forEach((name) => {
+      es.addEventListener(name, handleNamedEvent);
+    });
 
     es.onerror = () => {
       setStatus("error");

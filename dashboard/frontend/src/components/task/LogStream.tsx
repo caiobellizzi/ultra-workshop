@@ -13,15 +13,15 @@ function LogLineRow({ line }: { line: LogLine }) {
   return (
     <div className={cn(
       "flex items-start gap-2 px-2 py-0.5 font-mono text-xs",
-      isError && "text-red-500",
-      isWarn && "text-amber-500",
-      !isError && !isWarn && "text-foreground",
+      isError && "text-[--danger]",
+      isWarn && "text-[--warning]",
+      !isError && !isWarn && "text-[--log-text]",
     )}>
-      <span className="text-muted-foreground shrink-0 tabular-nums">
+      <span className="text-[--log-timestamp] shrink-0 tabular-nums" style={{ width: "8ch" }}>
         {new Date(line.ts).toLocaleTimeString()}
       </span>
-      <span className="text-blue-500 shrink-0">{line.event}</span>
-      <span className="break-all">
+      <span className="text-[--log-source] shrink-0" style={{ width: "8ch" }}>{line.event}</span>
+      <span className="break-all text-[--log-text]">
         {Object.entries(line)
           .filter(([k]) => k !== "ts" && k !== "event")
           .map(([k, v]) => `${k}=${typeof v === "string" ? v : JSON.stringify(v)}`)
@@ -68,11 +68,11 @@ export function LogStream({ taskId }: { taskId: string }) {
   }, [rowVirtualizer, filtered.length]);
 
   return (
-    <div className="flex flex-col h-64 border rounded-md overflow-hidden">
-      <div className="flex items-center gap-2 px-2 py-1 border-b bg-muted/30">
-        <span className="text-xs font-medium text-muted-foreground">Live Logs</span>
+    <div className="flex flex-col h-full min-h-48 border border-[--border] rounded-sm overflow-hidden bg-[--log-bg]">
+      <div className="flex items-center gap-2 px-2 py-1 border-b border-[--border]">
+        <span className="text-xs font-mono font-medium text-[--log-source]">Live Logs</span>
         {status === "error" && (
-          <span className="flex items-center gap-1 text-xs text-destructive">
+          <span className="flex items-center gap-1 text-xs text-[--danger]">
             <WifiOff className="h-3 w-3" />
             Disconnected
             <Button size="sm" variant="ghost" className="h-5 px-1 text-xs" onClick={reconnect}>
@@ -81,7 +81,7 @@ export function LogStream({ taskId }: { taskId: string }) {
           </span>
         )}
         {status === "connecting" && (
-          <span className="text-xs text-muted-foreground animate-pulse">Connecting…</span>
+          <span className="text-xs text-[--log-source] animate-pulse">Connecting…</span>
         )}
         <div className="flex-1" />
         <Input
@@ -94,7 +94,7 @@ export function LogStream({ taskId }: { taskId: string }) {
 
       <div
         ref={parentRef}
-        className="flex-1 overflow-y-auto bg-background"
+        className="flex-1 overflow-y-auto bg-[--log-bg]"
         onScroll={handleScroll}
       >
         <div
@@ -119,7 +119,7 @@ export function LogStream({ taskId }: { taskId: string }) {
 
       {userScrolled && (
         <button
-          className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-xs text-primary-foreground shadow"
+          className="absolute bottom-2 right-2 flex items-center gap-1 rounded-sm bg-[--accent] px-2 py-1 text-xs font-mono text-[--background]"
           onClick={scrollToBottom}
         >
           <ArrowDown className="h-3 w-3" />

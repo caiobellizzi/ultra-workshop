@@ -1,15 +1,27 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Clock, AlertTriangle, Bell } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CostPill } from "@/components/shared/CostPill";
-import type { TaskSummary } from "@/types/task";
+import type { TaskStatus, TaskSummary } from "@/types/task";
 import { formatDuration, truncate } from "@/lib/utils";
 
 interface TaskCardProps {
   task: TaskSummary;
 }
+
+/** Maps status to the left-border color token (matches StatusBadge text token) */
+const STATUS_BORDER_COLOR: Record<TaskStatus, string> = {
+  running:                "var(--accent)",
+  needs_approval:         "var(--warning)",
+  needs_clarification:    "var(--warning)",
+  needs_step_recovery:    "var(--warning)",
+  needs_review_recovery:  "var(--warning)",
+  needs_timeout_recovery: "var(--warning)",
+  stopped:                "var(--text-dim)",
+  approval_rejected:      "var(--danger)",
+  pushing:                "var(--accent)",
+  pushed:                 "var(--success)",
+  push_failed:            "var(--danger)",
+};
 
 export function TaskCard({ task }: TaskCardProps) {
   const navigate = useNavigate();
@@ -19,62 +31,139 @@ export function TaskCard({ task }: TaskCardProps) {
     task.status === "needs_step_recovery" ||
     task.status === "needs_review_recovery" ||
     task.status === "needs_timeout_recovery";
-  const isRecovery =
-    task.status === "needs_step_recovery" ||
-    task.status === "needs_review_recovery" ||
-    task.status === "needs_timeout_recovery";
+
+  const borderColor = STATUS_BORDER_COLOR[task.status] ?? "var(--border)";
 
   return (
-    <Card
-      className="cursor-pointer hover:shadow-md transition-shadow"
+    <div
+      className="cursor-pointer group"
+      style={{
+        width: "180px",
+        backgroundColor: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderLeft: `2px solid ${borderColor}`,
+        borderRadius: "var(--radius-sm)",
+        padding: "10px 12px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+        fontFamily: "var(--font-mono)",
+      }}
       onClick={() => void navigate({ to: "/tasks/$taskId", params: { taskId: task.task_id } })}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)";
+        (e.currentTarget as HTMLDivElement).style.borderLeftColor = borderColor;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)";
+        (e.currentTarget as HTMLDivElement).style.borderLeftColor = borderColor;
+      }}
     >
-      <CardContent className="p-3 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <code className="text-xs text-muted-foreground truncate">{task.task_id.slice(0, 8)}</code>
-          {task.status === "running" ? (
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-            </span>
-          ) : isRecovery ? (
-            <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-          ) : isHitl ? (
-            <Bell className="h-4 w-4 text-amber-500 shrink-0" />
-          ) : null}
-        </div>
-
-        <p className="text-sm font-medium leading-snug">{truncate(task.goal, 80)}</p>
-
-        <StatusBadge status={task.status} />
-
-        {task.current_step != null && task.total_steps != null && (
-          <p className="text-xs text-muted-foreground">
-            Step {task.current_step}/{task.total_steps}
-          </p>
+      {/* Header row: task id + running indicator */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "4px" }}>
+        <span
+          style={{
+            fontSize: "var(--text-xs)",
+            color: "var(--text-muted)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {task.task_id.slice(0, 8)}
+        </span>
+        {task.status === "running" && (
+          <span
+            className="animate-pulse"
+            style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              backgroundColor: "var(--stage-running)",
+              flexShrink: 0,
+            }}
+          />
         )}
-
-        <div className="flex items-center justify-between pt-1">
-          <CostPill cents={task.cost_cents_so_far} />
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {formatDuration(task.created_at)}
-          </span>
-        </div>
-
-        {isHitl && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full mt-1"
-            onClick={(e) => {
-              e.stopPropagation();
-              void navigate({ to: "/hitl", search: { taskId: task.task_id } });
+        {(task.status === "needs_step_recovery" ||
+          task.status === "needs_review_recovery" ||
+          task.status === "needs_timeout_recovery") && (
+          <span
+            style={{
+              fontSize: "var(--text-xs)",
+              color: "var(--danger)",
+              flexShrink: 0,
             }}
           >
-            Resolve
-          </Button>
+            ✗
+          </span>
         )}
-      </CardContent>
-    </Card>
+        {(task.status === "needs_approval" || task.status === "needs_clarification") && (
+          <span
+            style={{
+              fontSize: "var(--text-xs)",
+              color: "var(--warning)",
+              flexShrink: 0,
+            }}
+          >
+            ⌛
+          </span>
+        )}
+      </div>
+
+      {/* Goal */}
+      <p
+        style={{
+          fontSize: "var(--text-base)",
+          color: "var(--text)",
+          fontFamily: "var(--font-mono)",
+          margin: 0,
+          lineHeight: "1.4",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical" as const,
+          overflow: "hidden",
+        }}
+      >
+        {truncate(task.goal, 80)}
+      </p>
+
+      <StatusBadge status={task.status} />
+
+      {task.current_step != null && task.total_steps != null && (
+        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+          Step {task.current_step}/{task.total_steps}
+        </span>
+      )}
+
+      {/* Meta row: cost · time */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <CostPill cents={task.cost_cents_so_far} />
+        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+          {formatDuration(task.created_at)}
+        </span>
+      </div>
+
+      {isHitl && (
+        <button
+          style={{
+            width: "100%",
+            fontFamily: "var(--font-mono)",
+            fontSize: "var(--text-xs)",
+            color: "var(--warning)",
+            backgroundColor: "var(--warning-bg)",
+            border: "1px solid var(--warning-border)",
+            borderRadius: "var(--radius-sm)",
+            padding: "4px 12px",
+            cursor: "pointer",
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            void navigate({ to: "/hitl", search: { taskId: task.task_id } });
+          }}
+        >
+          ⌛ Resolve
+        </button>
+      )}
+    </div>
   );
 }

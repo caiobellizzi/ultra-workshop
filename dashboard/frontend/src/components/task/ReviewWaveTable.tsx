@@ -29,17 +29,17 @@ function WaveRow({ report }: { report: WaveReport }) {
     <div className="border rounded-md overflow-hidden">
       <button
         className={cn(
-          "flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 transition-colors text-left",
-          report.passed ? "bg-green-50" : "bg-red-50",
+          "flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-[--surface-raised] transition-colors text-left",
+          report.passed ? "bg-[--success-bg]" : "bg-[--danger-bg]",
         )}
         onClick={() => setOpen(!open)}
       >
         {open ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
         <span className="flex-1 font-medium">{report.role}</span>
         {report.passed ? (
-          <CheckCircle className="h-4 w-4 text-green-500" />
+          <CheckCircle className="h-4 w-4 text-[--success]" />
         ) : (
-          <XCircle className="h-4 w-4 text-destructive" />
+          <XCircle className="h-4 w-4 text-[--danger]" />
         )}
         <Badge variant="outline" className="text-xs">
           {report.findings.length} finding{report.findings.length !== 1 ? "s" : ""}

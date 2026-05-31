@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workshop Board — glass-ops</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #060b18;
+      --surface: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+      --accent: #6366f1;
+      --accent2: #06b6d4;
+      --text: #e8eaf6;
+      --text-muted: #4a5580;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #f43f5e;
+      --running: #06b6d4;
+      --font: 'Inter', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.4;
+      overflow: hidden;
+    }
+
+    /* ── Layout ── */
+    .app {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: rgba(6,11,24,0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-right: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset -1px 0 0 rgba(99,102,241,0.3);
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      z-index: 10;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 16px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-mark svg {
+      width: 16px;
+      height: 16px;
+      fill: white;
+    }
+
+    .logo-text {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--text);
+    }
+    .logo-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      letter-spacing: 0.05em;
+    }
+
+    .sidebar-nav {
+      padding: 10px 8px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 8px 8px 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      font-weight: 450;
+      margin-bottom: 1px;
+      text-decoration: none;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .nav-item:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .nav-item.active {
+      color: var(--text);
+      background: linear-gradient(90deg, rgba(99,102,241,0.2) 0%, transparent 100%);
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+
+    .nav-item.active::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 50%; transform: translateY(-50%);
+      width: 3px; height: 60%;
+      background: var(--accent);
+      border-radius: 2px 0 0 2px;
+      box-shadow: 0 0 8px rgba(99,102,241,0.6);
+    }
+
+    .nav-icon {
+      width: 16px;
+      height: 16px;
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+
+    .nav-item.active .nav-icon { opacity: 1; }
+
+    .nav-badge {
+      margin-left: auto;
+      background: rgba(99,102,241,0.2);
+      color: #a5b4fc;
+      font-size: 10px;
+      font-family: var(--mono);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+
+    .nav-badge.danger {
+      background: rgba(244,63,94,0.2);
+      color: #fb7185;
+    }
+
+    .nav-badge.warn {
+      background: rgba(245,158,11,0.2);
+      color: #fcd34d;
+    }
+
+    .sidebar-footer {
+      padding: 12px 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .connection-dot {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+
+    .dot-live {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent2);
+      box-shadow: 0 0 6px rgba(6,182,212,0.8);
+      animation: pulse-dot 2s infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(6,182,212,0.8); }
+      50% { opacity: 0.6; box-shadow: 0 0 12px rgba(6,182,212,0.4); }
+    }
+
+    /* ── Main ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      height: 54px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(6,11,24,0.5);
+      backdrop-filter: blur(8px);
+    }
+
+    .topbar-title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: var(--text);
+    }
+
+    .topbar-meta {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+
+    .topbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--accent2);
+      font-family: var(--mono);
+      font-weight: 500;
+      padding: 4px 10px;
+      background: rgba(6,182,212,0.06);
+      border: 1px solid rgba(6,182,212,0.15);
+      border-radius: 20px;
+    }
+
+    .btn-primary {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      box-shadow: 0 0 16px rgba(99,102,241,0.3);
+      transition: all 0.15s;
+    }
+
+    .btn-primary:hover {
+      background: #5558e3;
+      box-shadow: 0 0 24px rgba(99,102,241,0.5);
+    }
+
+    /* ── Board ── */
+    .board-wrapper {
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 16px 20px;
+    }
+
+    .board {
+      display: flex;
+      gap: 10px;
+      height: 100%;
+      min-width: max-content;
+    }
+
+    /* ── Column ── */
+    .column {
+      width: 210px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .col-header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 2px;
+    }
+
+    .col-stripe {
+      width: 3px;
+      height: 14px;
+      border-radius: 2px;
+    }
+
+    .col-name {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .col-count {
+      margin-left: auto;
+      font-size: 10.5px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.05);
+      padding: 1px 6px;
+      border-radius: 8px;
+    }
+
+    .col-cards {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      padding-right: 2px;
+    }
+
+    .col-cards::-webkit-scrollbar { width: 3px; }
+    .col-cards::-webkit-scrollbar-track { background: transparent; }
+    .col-cards::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── Task Card ── */
+    .task-card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .task-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 8px;
+      opacity: 0;
+      background: radial-gradient(ellipse at top left, rgba(99,102,241,0.06), transparent 60%);
+      transition: opacity 0.2s;
+    }
+
+    .task-card:hover {
+      border-color: rgba(255,255,255,0.14);
+      transform: translateY(-1px);
+    }
+
+    .task-card:hover::before { opacity: 1; }
+
+    .task-card.running {
+      border-top: 1px solid rgba(6,182,212,0.5);
+      box-shadow: 0 -2px 12px rgba(6,182,212,0.25), 0 1px 0 rgba(6,182,212,0.1) inset;
+      animation: running-glow 3s ease-in-out infinite;
+    }
+
+    @keyframes running-glow {
+      0%, 100% { box-shadow: 0 -2px 12px rgba(6,182,212,0.25), 0 1px 0 rgba(6,182,212,0.1) inset; }
+      50% { box-shadow: 0 -2px 20px rgba(6,182,212,0.45), 0 1px 0 rgba(6,182,212,0.2) inset; }
+    }
+
+    .task-card.approval {
+      border: 1px solid rgba(245,158,11,0.3);
+      box-shadow: 0 0 16px rgba(245,158,11,0.12);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .task-id {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    .status-badge {
+      font-size: 9.5px;
+      font-weight: 600;
+      font-family: var(--mono);
+      letter-spacing: 0.04em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .badge-running {
+      background: rgba(6,182,212,0.12);
+      color: var(--running);
+      border: 1px solid rgba(6,182,212,0.25);
+    }
+
+    .badge-approval {
+      background: rgba(245,158,11,0.12);
+      color: var(--warning);
+      border: 1px solid rgba(245,158,11,0.25);
+    }
+
+    .badge-pushed {
+      background: rgba(16,185,129,0.12);
+      color: var(--success);
+      border: 1px solid rgba(16,185,129,0.25);
+    }
+
+    .badge-failed {
+      background: rgba(244,63,94,0.12);
+      color: var(--danger);
+      border: 1px solid rgba(244,63,94,0.25);
+    }
+
+    .badge-queued {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .card-goal {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.45;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .card-repo {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+      flex: 1;
+    }
+
+    .card-stats {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .card-cost {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .card-time {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* ── Empty state ── */
+    .empty-col {
+      border: 1px dashed rgba(255,255,255,0.05);
+      border-radius: 8px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .empty-col-text {
+      font-size: 11px;
+      color: rgba(74,85,128,0.5);
+      font-family: var(--mono);
+    }
+
+    /* ── Column stripe colors ── */
+    .stripe-brainstorm { background: #8b5cf6; }
+    .stripe-triage { background: #6366f1; }
+    .stripe-requirements { background: #3b82f6; }
+    .stripe-planner { background: #06b6d4; }
+    .stripe-coder { background: #10b981; }
+    .stripe-reviewer { background: #f59e0b; }
+    .stripe-approval { background: #f97316; }
+    .stripe-pushed { background: #10b981; }
+    .stripe-failed { background: #f43f5e; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 0 20px;
+      height: 36px;
+      background: rgba(6,11,24,0.4);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .stat-label { color: var(--text-muted); }
+    .stat-value { color: var(--text); font-weight: 500; }
+    .stat-value.running { color: var(--running); }
+    .stat-value.success { color: var(--success); }
+    .stat-value.warn { color: var(--warning); }
+    .stat-sep { color: rgba(255,255,255,0.1); }
+
+    /* scrollbar reset */
+    .board-wrapper::-webkit-scrollbar { height: 5px; }
+    .board-wrapper::-webkit-scrollbar-track { background: transparent; }
+    .board-wrapper::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 16 16"><path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z" fill="none" stroke="white" stroke-width="1.5"/><circle cx="8" cy="8" r="2.5" fill="white"/></svg>
+      </div>
+      <div>
+        <div class="logo-text">ultra-workshop</div>
+        <div class="logo-sub">ops console</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Workspace</div>
+
+      <a href="#" class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="3" width="3" height="10" rx="1"/><rect x="6" y="1" width="3" height="12" rx="1"/><rect x="11" y="5" width="3" height="8" rx="1"/>
+        </svg>
+        Board
+        <span class="nav-badge">12</span>
+      </a>
+
+      <a href="#" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/><polyline points="8,4 8,8 10.5,10.5"/>
+        </svg>
+        Tasks
+      </a>
+
+      <a href="#" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 13V5l6-3 6 3v8"/><rect x="5" y="8" width="3" height="5"/>
+          <rect x="8" y="6" width="3" height="3"/>
+        </svg>
+        HITL Queue
+        <span class="nav-badge danger">2</span>
+      </a>
+
+      <a href="#" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="1,12 5,7 8,9 11,5 15,10"/><path d="M1 12h14"/>
+        </svg>
+        Analytics
+      </a>
+
+      <div class="nav-section-label" style="margin-top:10px;">Configuration</div>
+
+      <a href="#" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/>
+        </svg>
+        Agents
+      </a>
+
+      <a href="#" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="1" width="14" height="14" rx="2"/><path d="M5 8h6M5 5h3M5 11h4"/>
+        </svg>
+        Logs
+      </a>
+
+      <a href="#" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/><path d="M8 5v3.5l2.5 1.5"/>
+        </svg>
+        Crons
+      </a>
+
+      <a href="#" class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V3a1 1 0 00-1-1z"/><path d="M8 6v4M6 8h4"/>
+        </svg>
+        Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="connection-dot">
+        <span class="dot-live"></span>
+        SSE connected
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-title">Workshop Board</div>
+      <div class="topbar-meta">sunday 31 may 2026 · 23:41 UTC</div>
+      <div class="topbar-right">
+        <div class="live-indicator">
+          <span class="dot-live" style="width:6px;height:6px;"></span>
+          live
+        </div>
+        <button class="btn-primary">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 1v10M1 6h10"/></svg>
+          Launch Task
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-item"><span class="stat-label">active</span><span class="stat-value running">7</span></div>
+      <span class="stat-sep">·</span>
+      <div class="stat-item"><span class="stat-label">queued</span><span class="stat-value">4</span></div>
+      <span class="stat-sep">·</span>
+      <div class="stat-item"><span class="stat-label">pushed today</span><span class="stat-value success">23</span></div>
+      <span class="stat-sep">·</span>
+      <div class="stat-item"><span class="stat-label">failed</span><span class="stat-value" style="color:var(--danger)">2</span></div>
+      <span class="stat-sep">·</span>
+      <div class="stat-item"><span class="stat-label">cost today</span><span class="stat-value warn">$18.42</span></div>
+      <span class="stat-sep">·</span>
+      <div class="stat-item"><span class="stat-label">hitl pending</span><span class="stat-value" style="color:var(--warning)">2</span></div>
+    </div>
+
+    <!-- Board -->
+    <div class="board-wrapper">
+      <div class="board">
+
+        <!-- Brainstorm -->
+        <div class="column">
+          <div class="col-header">
+            <div class="col-stripe stripe-brainstorm"></div>
+            <span class="col-name">Brainstorm</span>
+            <span class="col-count">1</span>
+          </div>
+          <div class="col-cards">
+            <div class="task-card">
+              <div class="card-top">
+                <span class="task-id">e3f901aa</span>
+                <span class="status-badge badge-queued">queued</span>
+              </div>
+              <div class="card-goal">Explore caching strategy for dashboard SSE stream to reduce server load</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/ultra-workshop</span>
+                <div class="card-stats">
+                  <span class="card-time">2m ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Triage -->
+        <div class="column">
+          <div class="col-header">
+            <div class="col-stripe stripe-triage"></div>
+            <span class="col-name">Triage</span>
+            <span class="col-count">0</span>
+          </div>
+          <div class="col-cards">
+            <div class="empty-col">
+              <span class="empty-col-text">no tasks</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Requirements -->
+        <div class="column">
+          <div class="col-header">
+            <div class="col-stripe stripe-requirements"></div>
+            <span class="col-name">Requirements</span>
+            <span class="col-count">1</span>
+          </div>
+          <div class="col-cards">
+            <div class="task-card running">
+              <div class="card-top">
+                <span class="task-id">9b2da714</span>
+                <span class="status-badge badge-running">running</span>
+              </div>
+              <div class="card-goal">Spec out multi-tenant billing module with Stripe webhooks</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/my-saas-app</span>
+                <div class="card-stats">
+                  <span class="card-cost">$0.32</span>
+                  <span class="card-time">6m ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Planner -->
+        <div class="column">
+          <div class="col-header">
+            <div class="col-stripe stripe-planner"></div>
+            <span class="col-name">Planner</span>
+            <span class="col-count">2</span>
+          </div>
+          <div class="col-cards">
+            <div class="task-card running">
+              <div class="card-top">
+                <span class="task-id">c417ee02</span>
+                <span class="status-badge badge-running">running</span>
+              </div>
+              <div class="card-goal">Migrate authentication from JWT to session cookies with Redis store</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/auth-service</span>
+                <div class="card-stats">
+                  <span class="card-cost">$0.87</span>
+                  <span class="card-time">14m ago</span>
+                </div>
+              </div>
+            </div>
+            <div class="task-card">
+              <div class="card-top">
+                <span class="task-id">0fa31cb9</span>
+                <span class="status-badge badge-queued">queued</span>
+              </div>
+              <div class="card-goal">Add rate limiting to all public API endpoints using Redis sliding window</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/api-gateway</span>
+                <div class="card-stats">
+                  <span class="card-cost">$0.11</span>
+                  <span class="card-time">31m ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Coder -->
+        <div class="column">
+          <div class="col-header">
+            <div class="col-stripe stripe-coder"></div>
+            <span class="col-name">Coder</span>
+            <span class="col-count">3</span>
+          </div>
+          <div class="col-cards">
+            <div class="task-card running">
+              <div class="card-top">
+                <span class="task-id">a0b98f99</span>
+                <span class="status-badge badge-running">running</span>
+              </div>
+              <div class="card-goal">Add OAuth2 login with Google and fix the user settings page crash on null profile</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/my-saas-app</span>
+                <div class="card-stats">
+                  <span class="card-cost">$2.14</span>
+                  <span class="card-time">47m ago</span>
+                </div>
+              </div>
+            </div>
+            <div class="task-card running">
+              <div class="card-top">
+                <span class="task-id">7f3c92b1</span>
+                <span class="status-badge badge-running">running</span>
+              </div>
+              <div class="card-goal">Implement dark mode toggle with system preference detection and localStorage persistence</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/dashboard-ui</span>
+                <div class="card-stats">
+                  <span class="card-cost">$1.09</span>
+                  <span class="card-time">1h ago</span>
+                </div>
+              </div>
+            </div>
+            <div class="task-card">
+              <div class="card-top">
+                <span class="task-id">d28e4f50</span>
+                <span class="status-badge badge-queued">queued</span>
+              </div>
+              <div class="card-goal">Refactor data pipeline ETL jobs to use async queue with dead letter queue support</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/data-pipeline</span>
+                <div class="card-stats">
+                  <span class="card-cost">$0.43</span>
+                  <span class="card-time">2h ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reviewer -->
+        <div class="column">
+          <div class="col-header">
+            <div class="col-stripe stripe-reviewer"></div>
+            <span class="col-name">Reviewer</span>
+            <span class="col-count">2</span>
+          </div>
+          <div class="col-cards">
+            <div class="task-card running">
+              <div class="card-top">
+                <span class="task-id">55e1f7c3</span>
+                <span class="status-badge badge-running">running</span>
+              </div>
+              <div class="card-goal">Add comprehensive test suite for payment webhook handler with edge cases</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/billing-svc</span>
+                <div class="card-stats">
+                  <span class="card-cost">$3.61</span>
+                  <span class="card-time">3h ago</span>
+                </div>
+              </div>
+            </div>
+            <div class="task-card running">
+              <div class="card-top">
+                <span class="task-id">b8d042a6</span>
+                <span class="status-badge badge-running">running</span>
+              </div>
+              <div class="card-goal">Migrate PostgreSQL queries to use connection pooling via PgBouncer</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/api-service</span>
+                <div class="card-stats">
+                  <span class="card-cost">$1.78</span>
+                  <span class="card-time">4h ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Approval -->
+        <div class="column">
+          <div class="col-header">
+            <div class="col-stripe stripe-approval"></div>
+            <span class="col-name">Approval</span>
+            <span class="col-count">2</span>
+          </div>
+          <div class="col-cards">
+            <div class="task-card approval">
+              <div class="card-top">
+                <span class="task-id">f9c3a8d1</span>
+                <span class="status-badge badge-approval">approval</span>
+              </div>
+              <div class="card-goal">Deploy zero-downtime database migration for users table schema change</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/core-db</span>
+                <div class="card-stats">
+                  <span class="card-cost">$4.20</span>
+                  <span class="card-time">5h ago</span>
+                </div>
+              </div>
+            </div>
+            <div class="task-card approval">
+              <div class="card-top">
+                <span class="task-id">2ae7b315</span>
+                <span class="status-badge badge-approval">approval</span>
+              </div>
+              <div class="card-goal">Implement GDPR data deletion API with audit log and cascading soft-deletes</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/compliance-svc</span>
+                <div class="card-stats">
+                  <span class="card-cost">$2.93</span>
+                  <span class="card-time">6h ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pushed -->
+        <div class="column">
+          <div class="col-header">
+            <div class="col-stripe stripe-pushed"></div>
+            <span class="col-name">Pushed</span>
+            <span class="col-count">2</span>
+          </div>
+          <div class="col-cards">
+            <div class="task-card">
+              <div class="card-top">
+                <span class="task-id">44c90e27</span>
+                <span class="status-badge badge-pushed">pushed</span>
+              </div>
+              <div class="card-goal">Fix memory leak in WebSocket connection handler — unreferenced listeners</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/realtime-svc</span>
+                <div class="card-stats">
+                  <span class="card-cost">$1.54</span>
+                  <span class="card-time">7h ago</span>
+                </div>
+              </div>
+            </div>
+            <div class="task-card">
+              <div class="card-top">
+                <span class="task-id">1b88f43e</span>
+                <span class="status-badge badge-pushed">pushed</span>
+              </div>
+              <div class="card-goal">Add OpenAPI 3.1 spec auto-generation to CI pipeline with validation gate</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/api-service</span>
+                <div class="card-stats">
+                  <span class="card-cost">$0.98</span>
+                  <span class="card-time">9h ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Failed -->
+        <div class="column">
+          <div class="col-header">
+            <div class="col-stripe stripe-failed"></div>
+            <span class="col-name">Failed</span>
+            <span class="col-count">2</span>
+          </div>
+          <div class="col-cards">
+            <div class="task-card" style="border-color:rgba(244,63,94,0.2);">
+              <div class="card-top">
+                <span class="task-id">3c14d9a0</span>
+                <span class="status-badge badge-failed">failed</span>
+              </div>
+              <div class="card-goal">Upgrade Next.js from 14 to 15 and fix breaking changes in app router</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/dashboard-ui</span>
+                <div class="card-stats">
+                  <span class="card-cost">$3.07</span>
+                  <span class="card-time">12h ago</span>
+                </div>
+              </div>
+            </div>
+            <div class="task-card" style="border-color:rgba(244,63,94,0.2);">
+              <div class="card-top">
+                <span class="task-id">8ea62f11</span>
+                <span class="status-badge badge-failed">failed</span>
+              </div>
+              <div class="card-goal">Set up Kubernetes horizontal pod autoscaler for api-service with custom metrics</div>
+              <div class="card-meta">
+                <span class="card-repo">caiobellizzi/k8s-infra</span>
+                <div class="card-stats">
+                  <span class="card-cost">$1.21</span>
+                  <span class="card-time">1d ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /board -->
+    </div><!-- /board-wrapper -->
+  </main>
+</div>
+</body>
+</html>

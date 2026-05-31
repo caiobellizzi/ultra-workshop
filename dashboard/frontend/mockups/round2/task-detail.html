@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop — Task Detail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #0f0f17; --surface-r: #141420;
+    --border: #1e1e2e; --border-s: #2e2e45;
+    --text: #e5e7eb; --text-m: #6b7280; --text-d: #4b5563;
+    --accent: #f59e0b; --accent-bg: #1a1000; --accent-bd: #78350f; --accent-dim: #92400e;
+    --success: #22c55e; --success-bg: #052e16; --success-bd: #14532d;
+    --danger: #ef4444; --danger-bg: #1c0a0a; --danger-bd: #7f1d1d;
+    --warning: #fbbf24; --warn-bg: #1a1000; --warn-bd: #92400e;
+    --info: #60a5fa; --info-bg: #0c1a30; --info-bd: #1e3a5f;
+    --log-bg: #050508; --log-ts: #f59e0b; --log-src: #9ca3af; --log-text: #d1d5db;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar { width: 160px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; height: 100vh; }
+  .sidebar-brand { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .12em; padding: 0 12px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .nav-link { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 36px; font-size: 12px; color: var(--text-m); cursor: pointer; border-left: 2px solid transparent; white-space: nowrap; }
+  .nav-link.active { background: var(--accent-bg); border-left-color: var(--accent); color: var(--accent); }
+  .nav-prefix { font-size: 10px; width: 10px; }
+  .nav-section { font-size: 10px; letter-spacing: .08em; color: var(--text-d); padding: 12px 12px 4px; text-transform: uppercase; }
+  .nav-link.sub { padding-left: 24px; font-size: 11px; }
+  .nav-badge { margin-left: auto; background: var(--danger-bg); border: 1px solid var(--danger-bd); color: var(--danger); font-size: 9px; padding: 0 5px; border-radius: 2px; }
+  .sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+  .theme-toggle { font-size: 11px; color: var(--text-d); cursor: pointer; }
+
+  /* ─── MAIN ─── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0; }
+  .topbar-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+
+  .breadcrumb { font-size: 12px; color: var(--text-d); flex: 1; }
+  .breadcrumb a { color: var(--text-m); cursor: pointer; }
+  .breadcrumb a:hover { color: var(--accent); }
+  .breadcrumb .sep { margin: 0 6px; }
+  .breadcrumb .cur { color: var(--text); font-weight: 500; font-size: 11px; }
+
+  /* ─── BADGES ─── */
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); }
+  .badge-running { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-bd); }
+  .badge-pushed  { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
+  .badge-danger  { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-bd); }
+  .badge-warning { color: var(--warning); background: var(--warn-bg); border-color: var(--warn-bd); }
+  .badge-info    { color: var(--info); background: var(--info-bg); border-color: var(--info-bd); }
+  .badge-muted   { color: var(--text-m); background: var(--surface-r); border-color: var(--border); }
+
+  /* ─── SHARED ─── */
+  .section-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 12px; }
+  .btn { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-weight: 500; border: 1px solid; }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+  .btn-secondary { background: transparent; color: var(--text-m); border-color: var(--border-s); }
+  .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger-bd); }
+
+  /* ─── 3-PANEL LAYOUT ─── */
+  .panels { flex: 1; display: flex; overflow: hidden; }
+
+  /* LEFT PANEL */
+  .panel-left { width: 224px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; padding: 20px 16px; }
+  .panel-left::-webkit-scrollbar { width: 3px; } .panel-left::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+
+  .stages { margin-bottom: 24px; }
+
+  .stage-row { display: flex; align-items: flex-start; gap: 10px; position: relative; padding-bottom: 4px; min-height: 32px; }
+  .stage-dot-wrap { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .stage-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .stage-line { width: 1px; flex: 1; background: var(--border); min-height: 20px; margin-top: 2px; }
+
+  .dot-pending { background: var(--text-d); }
+  .dot-success { background: var(--success); }
+  .dot-running { background: var(--accent); animation: dot-pulse 1.5s ease-in-out infinite; }
+  .dot-paused  { background: var(--warning); }
+  .dot-failed  { background: var(--danger); }
+
+  @keyframes dot-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(245,158,11,.4); }
+    50%       { opacity: .8; box-shadow: 0 0 0 4px rgba(245,158,11,0); }
+  }
+
+  .stage-label { font-size: 12px; color: var(--text-m); line-height: 1; padding-top: 3px; }
+  .stage-label.active { color: var(--accent); font-weight: 500; }
+  .stage-label.done   { color: var(--text-d); }
+  .stage-sub { font-size: 10px; color: var(--text-d); margin-top: 2px; }
+
+  .stage-time { font-size: 10px; color: var(--text-d); margin-left: auto; padding-top: 4px; }
+
+  /* Metadata */
+  .meta-block { margin-bottom: 20px; }
+  .meta-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 11px; gap: 8px; }
+  .meta-key { color: var(--text-d); flex-shrink: 0; }
+  .meta-val { color: var(--text); text-align: right; word-break: break-all; }
+  .meta-val.accent { color: var(--accent); }
+  .meta-val.info { color: var(--info); }
+
+  /* Goal block */
+  .goal-block { background: var(--surface-r); border: 1px solid var(--border); border-radius: 2px; padding: 10px; font-size: 12px; color: var(--text-m); line-height: 1.55; }
+
+  /* MAIN PANEL */
+  .panel-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .panel-section-title { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 10px; }
+
+  .main-top { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 20px 20px 0; }
+
+  /* Log stream */
+  .log-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .log-panel { background: var(--log-bg); border: 1px solid var(--border); border-radius: 2px; flex: 1; overflow-y: auto; padding: 10px 12px; font-size: 12px; line-height: 1.7; }
+  .log-panel::-webkit-scrollbar { width: 3px; } .log-panel::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+  .log-line { display: flex; gap: 10px; }
+  .log-ts  { color: var(--log-ts); flex-shrink: 0; width: 56px; }
+  .log-src { color: var(--log-src); flex-shrink: 0; width: 62px; }
+  .log-msg { color: var(--log-text); }
+  .log-msg.success { color: var(--success); }
+  .log-msg.warn    { color: var(--warning); }
+  .log-msg.dim     { color: var(--text-d); }
+  .log-msg.info    { color: var(--info); }
+
+  .log-cursor { display: inline-block; width: 6px; height: 12px; background: var(--accent); animation: blink .9s step-start infinite; vertical-align: middle; margin-left: 2px; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  /* Plan steps */
+  .plan-wrap { flex-shrink: 0; padding: 16px 20px; border-top: 1px solid var(--border); }
+  .steps { display: flex; flex-direction: column; gap: 4px; }
+  .step { display: flex; align-items: flex-start; gap: 10px; padding: 7px 8px; border-radius: 2px; border: 1px solid transparent; font-size: 12px; }
+  .step.done    { color: var(--text-d); }
+  .step.current { border-color: var(--accent-bd); background: var(--accent-bg); color: var(--text); }
+  .step.pending { color: var(--text-d); }
+  .step-num { color: var(--text-d); flex-shrink: 0; width: 18px; }
+  .step.current .step-num { color: var(--accent); }
+  .step-check { color: var(--success); flex-shrink: 0; width: 18px; }
+  .step-files { margin-top: 3px; font-size: 10px; color: var(--text-d); display: flex; gap: 6px; flex-wrap: wrap; }
+  .step-file { color: var(--info); background: var(--info-bg); border: 1px solid var(--info-bd); padding: 0 5px; border-radius: 2px; }
+
+  /* RIGHT PANEL */
+  .panel-right { width: 284px; flex-shrink: 0; border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; padding: 20px 16px; }
+  .panel-right::-webkit-scrollbar { width: 3px; } .panel-right::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+
+  .wave-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .wave-name { font-size: 11px; font-weight: 500; color: var(--text); }
+  .wave-status { font-size: 10px; }
+  .wave-pass { color: var(--success); }
+  .wave-fail { color: var(--danger); }
+  .wave-run  { color: var(--accent); }
+  .wave-meta { font-size: 10px; color: var(--text-d); margin-bottom: 12px; }
+
+  .finding { padding: 8px 8px 8px 10px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); border-left-width: 2px; border-radius: 0 2px 2px 0; }
+  .finding.critical  { border-left-color: var(--danger); }
+  .finding.important { border-left-color: var(--warning); }
+  .finding.minor     { border-left-color: var(--text-d); }
+  .finding-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .finding-file { font-size: 10px; color: var(--info); }
+  .finding-sev { font-size: 10px; }
+  .sev-critical  { color: var(--danger); }
+  .sev-important { color: var(--warning); }
+  .sev-minor     { color: var(--text-d); }
+  .finding-problem { font-size: 11px; color: var(--text); margin-bottom: 3px; line-height: 1.4; }
+  .finding-fix { font-size: 10px; color: var(--text-m); line-height: 1.4; }
+
+  .wave-block { margin-bottom: 20px; }
+  .wave-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  .push-block { background: var(--surface); border: 1px solid var(--danger-bd); border-top: 2px solid var(--danger); border-radius: 2px; padding: 10px 12px; margin-bottom: 16px; }
+  .push-title { font-size: 10px; letter-spacing: .08em; color: var(--danger); margin-bottom: 6px; text-transform: uppercase; }
+  .push-text { font-size: 11px; color: var(--text-m); line-height: 1.55; }
+
+  .actions-row { display: flex; gap: 8px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-brand">◆ WORKSHOP</div>
+  <a class="nav-link "><span class="nav-prefix">○</span> Board</a>
+  <a class="nav-link active"><span class="nav-prefix">▶</span> Task Detail</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> HITL Queue</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Cost</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Health</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Skills</a>
+  <a class="nav-link "><span class="nav-prefix">○</span> Repos</a>
+  <div class="nav-section">Config</div>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Models</a>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Reviewers</a>
+  <a class="nav-link sub "><span class="nav-prefix">○</span> Policies</a>
+  <div class="sidebar-bottom"><div class="theme-toggle">◑ light mode</div></div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="breadcrumb">
+      <a>Board</a>
+      <span class="sep">›</span>
+      <span class="cur">caiobellizzi/my-saas-app</span>
+      <span class="sep">›</span>
+      <span class="cur">a0b98f99</span>
+    </div>
+    <span class="badge badge-running">● running</span>
+    <span style="font-size:11px; color:var(--text-d);">coder · step 3 of 7</span>
+    <button class="btn btn-secondary" style="font-size:10px; padding:4px 10px;">⏸ pause</button>
+    <button class="btn btn-danger" style="font-size:10px; padding:4px 10px;">■ stop</button>
+  </div>
+
+  <!-- 3 PANELS -->
+  <div class="panels">
+
+    <!-- LEFT PANEL — stage progress + metadata -->
+    <div class="panel-left">
+
+      <div class="section-label" style="margin-bottom:14px;">Pipeline</div>
+      <div class="stages">
+
+        <div class="stage-row">
+          <div class="stage-dot-wrap">
+            <div class="stage-dot dot-success"></div>
+            <div class="stage-line"></div>
+          </div>
+          <div style="flex:1; display:flex; justify-content:space-between;">
+            <div class="stage-label done">brainstorm</div>
+            <div class="stage-time">0:14</div>
+          </div>
+        </div>
+
+        <div class="stage-row">
+          <div class="stage-dot-wrap">
+            <div class="stage-dot dot-success"></div>
+            <div class="stage-line"></div>
+          </div>
+          <div style="flex:1; display:flex; justify-content:space-between;">
+            <div class="stage-label done">triage</div>
+            <div class="stage-time">0:08</div>
+          </div>
+        </div>
+
+        <div class="stage-row">
+          <div class="stage-dot-wrap">
+            <div class="stage-dot dot-success"></div>
+            <div class="stage-line"></div>
+          </div>
+          <div style="flex:1; display:flex; justify-content:space-between;">
+            <div class="stage-label done">requirements</div>
+            <div class="stage-time">0:31</div>
+          </div>
+        </div>
+
+        <div class="stage-row">
+          <div class="stage-dot-wrap">
+            <div class="stage-dot dot-success"></div>
+            <div class="stage-line"></div>
+          </div>
+          <div style="flex:1; display:flex; justify-content:space-between;">
+            <div class="stage-label done">planner</div>
+            <div class="stage-time">1:02</div>
+          </div>
+        </div>
+
+        <div class="stage-row">
+          <div class="stage-dot-wrap">
+            <div class="stage-dot dot-running"></div>
+            <div class="stage-line"></div>
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between;">
+              <div class="stage-label active">coder</div>
+              <div class="stage-time" style="color:var(--accent);">2:17…</div>
+            </div>
+            <div class="stage-sub">step 3 / 7</div>
+          </div>
+        </div>
+
+        <div class="stage-row">
+          <div class="stage-dot-wrap">
+            <div class="stage-dot dot-pending"></div>
+            <div class="stage-line"></div>
+          </div>
+          <div>
+            <div class="stage-label">reviewer</div>
+          </div>
+        </div>
+
+        <div class="stage-row">
+          <div class="stage-dot-wrap">
+            <div class="stage-dot dot-pending"></div>
+          </div>
+          <div>
+            <div class="stage-label">approval</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="section-label">Metadata</div>
+      <div class="meta-block">
+        <div class="meta-row">
+          <span class="meta-key">task</span>
+          <span class="meta-val" style="font-size:10px; font-family:var(--mono);">a0b98f99…de4c</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">repo</span>
+          <span class="meta-val" style="font-size:10px;">my-saas-app</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">branch</span>
+          <span class="meta-val info" style="font-size:10px;">workshop/a0b98f</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">model</span>
+          <span class="meta-val" style="font-size:10px;">sonnet-4-6</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">cost</span>
+          <span class="meta-val accent">$0.38</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">elapsed</span>
+          <span class="meta-val">4m 12s</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">tokens</span>
+          <span class="meta-val" style="font-size:10px;">84,220 in / 6,104 out</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">attempts</span>
+          <span class="meta-val" style="font-size:10px;">coder:1 planner:1</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">commits</span>
+          <span class="meta-val">2</span>
+        </div>
+      </div>
+
+      <div class="section-label">Goal</div>
+      <div class="goal-block">
+        Add OAuth2 login with Google and fix the user settings page crash on mobile Safari iOS 16
+      </div>
+
+    </div>
+
+    <!-- MAIN PANEL — log stream + plan steps -->
+    <div class="panel-main">
+
+      <div class="main-top">
+        <div class="panel-section-title">Log stream — live</div>
+        <div class="log-wrap">
+          <div class="log-panel">
+            <div class="log-line"><span class="log-ts">14:21:44</span><span class="log-src">planner</span><span class="log-msg dim">Plan written — 7 steps, writing to .planning/PLAN.md</span></div>
+            <div class="log-line"><span class="log-ts">14:21:45</span><span class="log-src">coder</span><span class="log-msg dim">Starting step 1: configure Google OAuth2 credentials</span></div>
+            <div class="log-line"><span class="log-ts">14:21:46</span><span class="log-src">aider</span><span class="log-msg">Editing .env.example — adding GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET</span></div>
+            <div class="log-line"><span class="log-ts">14:21:48</span><span class="log-src">aider</span><span class="log-msg success">✓ Applied edit to .env.example</span></div>
+            <div class="log-line"><span class="log-ts">14:21:49</span><span class="log-src">coder</span><span class="log-msg dim">Step 1 done. Commit: chore(auth): add google oauth env var stubs</span></div>
+            <div class="log-line"><span class="log-ts">14:21:50</span><span class="log-src">git</span><span class="log-msg success">✓ Commit 1c8a3d2 — chore(auth): add google oauth env var stubs</span></div>
+            <div class="log-line"><span class="log-ts">14:22:01</span><span class="log-src">coder</span><span class="log-msg dim">Step 2: implement OAuth callback handler and session creation</span></div>
+            <div class="log-line"><span class="log-ts">14:22:02</span><span class="log-src">aider</span><span class="log-msg">Creating src/auth/oauth.py — 94 lines</span></div>
+            <div class="log-line"><span class="log-ts">14:22:05</span><span class="log-src">aider</span><span class="log-msg success">✓ Applied edit to src/auth/oauth.py</span></div>
+            <div class="log-line"><span class="log-ts">14:22:06</span><span class="log-src">aider</span><span class="log-msg">Editing src/auth/routes.py — 38 lines changed</span></div>
+            <div class="log-line"><span class="log-ts">14:22:08</span><span class="log-src">aider</span><span class="log-msg success">✓ Applied edit to src/auth/routes.py</span></div>
+            <div class="log-line"><span class="log-ts">14:22:09</span><span class="log-src">git</span><span class="log-msg success">✓ Commit 3f4e1a9 — feat(auth): implement google oauth2 callback handler</span></div>
+            <div class="log-line"><span class="log-ts">14:23:01</span><span class="log-src">coder</span><span class="log-msg dim">Step 3: add OAuth login route + Google button to login page</span></div>
+            <div class="log-line"><span class="log-ts">14:23:02</span><span class="log-src">aider</span><span class="log-msg">Editing src/pages/Login.tsx — ORIGINAL/UPDATED block 47 lines</span></div>
+            <div class="log-line"><span class="log-ts">14:23:04</span><span class="log-src">aider</span><span class="log-msg success">✓ Applied edit to src/pages/Login.tsx</span></div>
+            <div class="log-line"><span class="log-ts">14:23:06</span><span class="log-src">aider</span><span class="log-msg warn">⚠ Warning: chunk size 91 tokens near context limit</span></div>
+            <div class="log-line"><span class="log-ts">14:23:07</span><span class="log-src">llm</span><span class="log-msg">Running pnpm typecheck…</span></div>
+            <div class="log-line"><span class="log-ts">14:23:11</span><span class="log-src">llm</span><span class="log-msg success">✓ typecheck passed — 0 errors</span></div>
+            <div class="log-line"><span class="log-ts">14:23:12</span><span class="log-src">coder</span><span class="log-msg info">▌ Committing step 3<span class="log-cursor"></span></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="plan-wrap">
+        <div class="panel-section-title">Execution plan — 7 steps</div>
+        <div class="steps">
+
+          <div class="step done">
+            <span class="step-check">✓</span>
+            <span>Configure Google OAuth2 credentials and env var stubs</span>
+          </div>
+
+          <div class="step done">
+            <span class="step-check">✓</span>
+            <span>Implement OAuth callback handler and session creation</span>
+          </div>
+
+          <div class="step current">
+            <span class="step-num">3.</span>
+            <div>
+              <div style="margin-bottom:5px;">Add OAuth login route + Google sign-in button to login page</div>
+              <div class="step-files">
+                <span class="step-file">src/auth/oauth.py</span>
+                <span class="step-file">src/auth/routes.py</span>
+                <span class="step-file">src/pages/Login.tsx</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="step pending">
+            <span class="step-num">4.</span>
+            <span>Fix settings page crash — viewport units on iOS 16 Safari</span>
+          </div>
+
+          <div class="step pending">
+            <span class="step-num">5.</span>
+            <span>Write integration tests for the full OAuth flow</span>
+          </div>
+
+          <div class="step pending">
+            <span class="step-num">6.</span>
+            <span>Add E2E Playwright test: google-login happy path</span>
+          </div>
+
+          <div class="step pending">
+            <span class="step-num">7.</span>
+            <span>Update CLAUDE.md — document OAuth env vars and setup</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT PANEL — review findings -->
+    <div class="panel-right">
+
+      <div class="section-label" style="margin-bottom:14px;">Review findings</div>
+
+      <!-- Push-blocked banner -->
+      <div class="push-block">
+        <div class="push-title">✗ Push blocked</div>
+        <div class="push-text">1 critical finding requires fix before merge. Security reviewer blocked push.</div>
+        <div class="actions-row">
+          <button class="btn btn-primary" style="font-size:10px; padding:4px 12px;">Fix &amp; retry</button>
+          <button class="btn btn-secondary" style="font-size:10px; padding:4px 10px;">Override</button>
+        </div>
+      </div>
+
+      <!-- Wave 1: security -->
+      <div class="wave-block">
+        <div class="wave-header">
+          <span class="wave-name">security-reviewer</span>
+          <span class="wave-status wave-fail">✗ blocked</span>
+        </div>
+        <div class="wave-meta">wave 1 · 2,140 tok · $0.06 · 18s</div>
+
+        <div class="finding critical">
+          <div class="finding-header">
+            <span class="finding-file">src/auth/oauth.py:34</span>
+            <span class="finding-sev sev-critical">Critical</span>
+          </div>
+          <div class="finding-problem">State parameter not validated on OAuth callback — CSRF possible</div>
+          <div class="finding-fix">Verify state against session-stored nonce before exchanging auth code</div>
+        </div>
+
+        <div class="finding important">
+          <div class="finding-header">
+            <span class="finding-file">src/auth/routes.py:18</span>
+            <span class="finding-sev sev-important">Important</span>
+          </div>
+          <div class="finding-problem">Access token logged at DEBUG level — leaks to log aggregator</div>
+          <div class="finding-fix">Mask token in logs: token[:8] + "…" before passing to logger</div>
+        </div>
+      </div>
+
+      <hr class="wave-divider">
+
+      <!-- Wave 2: correctness -->
+      <div class="wave-block">
+        <div class="wave-header">
+          <span class="wave-name">correctness-reviewer</span>
+          <span class="wave-status wave-pass">✓ passed</span>
+        </div>
+        <div class="wave-meta">wave 2 · 1,890 tok · $0.05 · 14s</div>
+
+        <div class="finding minor">
+          <div class="finding-header">
+            <span class="finding-file">src/pages/Login.tsx:72</span>
+            <span class="finding-sev sev-minor">Minor</span>
+          </div>
+          <div class="finding-problem">Button has no loading state while OAuth redirect is pending</div>
+          <div class="finding-fix">Disable button and show "Signing in…" label on click until redirect fires</div>
+        </div>
+      </div>
+
+      <hr class="wave-divider">
+
+      <!-- Wave 3: style -->
+      <div class="wave-block">
+        <div class="wave-header">
+          <span class="wave-name">style-reviewer</span>
+          <span class="wave-status wave-pass">✓ passed</span>
+        </div>
+        <div class="wave-meta">wave 3 · 980 tok · $0.02 · 9s</div>
+        <div style="font-size:11px; color:var(--text-d);">No findings — all conventions respected.</div>
+      </div>
+
+      <hr class="wave-divider">
+
+      <!-- Summary row -->
+      <div style="display:flex; gap:16px; font-size:11px; color:var(--text-d);">
+        <span>3 reviewers</span>
+        <span>5,010 tokens</span>
+        <span style="color:var(--accent);">$0.13 total</span>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

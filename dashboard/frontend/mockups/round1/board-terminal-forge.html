@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop Board — terminal-forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #0a0e0a;
+    --surface:     #111811;
+    --border:      #1e2e1e;
+    --accent:      #39d353;
+    --accent2:     #00b4d8;
+    --text:        #d4f5d4;
+    --textMuted:   #5a7a5a;
+    --success:     #39d353;
+    --warning:     #f0a500;
+    --danger:      #ff4444;
+    --running:     #00b4d8;
+    --font:        'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 12px;
+    line-height: 1.4;
+    overflow: hidden;
+  }
+
+  /* ── Layout shell ── */
+  .shell {
+    display: flex;
+    height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 200px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--accent);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-logo {
+    padding: 16px 12px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: pre;
+    letter-spacing: 0;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 8px 0;
+  }
+
+  .nav-item {
+    display: block;
+    padding: 8px 12px;
+    color: var(--textMuted);
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    position: relative;
+    transition: color 0.1s;
+    cursor: pointer;
+  }
+
+  .nav-item:hover { color: var(--text); }
+
+  .nav-item.active {
+    color: var(--accent);
+    border-left: 3px solid var(--accent);
+    padding-left: 9px;
+  }
+
+  .nav-section {
+    padding: 12px 12px 4px;
+    font-size: 9px;
+    color: var(--textMuted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+
+  .sidebar-footer {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    color: var(--textMuted);
+    font-size: 10px;
+  }
+
+  /* ── Main content ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    height: 44px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .topbar-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.04em;
+  }
+
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse-green 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse-green {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  .topbar-sep { flex: 1; }
+
+  .topbar-meta {
+    font-size: 10px;
+    color: var(--textMuted);
+  }
+
+  .btn-launch {
+    padding: 5px 14px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+  }
+
+  .btn-launch:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* ── Board ── */
+  .board-area {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 12px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .column {
+    width: 200px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+  }
+
+  .col-header {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .col-name {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--textMuted);
+  }
+
+  .col-count {
+    font-size: 10px;
+    color: var(--textMuted);
+    background: var(--border);
+    padding: 0 5px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .col-body {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .col-body::-webkit-scrollbar { width: 4px; }
+  .col-body::-webkit-scrollbar-track { background: var(--bg); }
+  .col-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .col-empty {
+    padding: 16px 8px;
+    text-align: center;
+    color: var(--textMuted);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    opacity: 0.6;
+    border: 1px dashed var(--border);
+    margin: 4px 0;
+  }
+
+  /* ── Task Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--border);
+    padding: 8px;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.1s;
+  }
+
+  .card:hover { border-color: var(--textMuted); border-top-color: inherit; }
+
+  .card.success  { border-top-color: var(--success); }
+  .card.running  { border-top-color: var(--running); }
+  .card.warning  { border-top-color: var(--warning); }
+  .card.danger   { border-top-color: var(--danger); }
+  .card.pending  { border-top-color: var(--border); }
+
+  .card-id {
+    position: absolute;
+    top: 6px;
+    right: 7px;
+    font-size: 9px;
+    color: var(--textMuted);
+    opacity: 0.7;
+    letter-spacing: 0;
+  }
+
+  .card-goal {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.35;
+    margin-bottom: 6px;
+    padding-right: 56px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-repo {
+    font-size: 9px;
+    color: var(--textMuted);
+    margin-bottom: 7px;
+    letter-spacing: 0.02em;
+  }
+
+  .card-repo::before { content: "⌥ "; }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border: 1px solid;
+  }
+
+  .badge-success { color: var(--success); border-color: var(--success); }
+  .badge-running { color: var(--running); border-color: var(--running); animation: badge-blink 2s ease-in-out infinite; }
+  .badge-warning { color: var(--warning); border-color: var(--warning); }
+  .badge-danger  { color: var(--danger);  border-color: var(--danger); }
+  .badge-pending { color: var(--textMuted); border-color: var(--border); }
+
+  @keyframes badge-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.6; }
+  }
+
+  .card-cost {
+    font-size: 9px;
+    color: var(--textMuted);
+    margin-left: auto;
+  }
+
+  .card-time {
+    font-size: 9px;
+    color: var(--textMuted);
+  }
+
+  /* running dot on card */
+  .running-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--running);
+    display: inline-block;
+    animation: heartbeat 1.4s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    30%       { transform: scale(1.4); opacity: 0.9; }
+    60%       { transform: scale(0.9); opacity: 0.7; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">╔═══════════════╗
+║  ULTRA        ║
+║  WORKSHOP     ║
+║  ░░░ forge ░░░║
+╚═══════════════╝</div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item active" href="#">BOARD</a>
+      <a class="nav-item" href="#">TASKS</a>
+      <a class="nav-item" href="#">HITL QUEUE</a>
+      <a class="nav-item" href="#">PIPELINES</a>
+
+      <div class="nav-section">Observe</div>
+      <a class="nav-item" href="#">LOGS</a>
+      <a class="nav-item" href="#">METRICS</a>
+      <a class="nav-item" href="#">COST</a>
+
+      <div class="nav-section">Config</div>
+      <a class="nav-item" href="#">SETTINGS</a>
+      <a class="nav-item" href="#">AGENTS</a>
+      <a class="nav-item" href="#">TEAMS</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      v0.9.4-alpha<br>
+      <span style="color:var(--accent)">● online</span>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="live-dot"></div>
+      <span class="topbar-title">Workshop Board</span>
+      <span class="topbar-meta">9 columns · 11 tasks · 3 running</span>
+      <div class="topbar-sep"></div>
+      <span class="topbar-meta">last refresh 0s ago</span>
+      <button class="btn-launch">+ Launch Task</button>
+    </div>
+
+    <!-- Kanban board -->
+    <div class="board-area">
+
+      <!-- BRAINSTORM -->
+      <div class="column">
+        <div class="col-header">
+          <span class="col-name">Brainstorm</span>
+          <span class="col-count">1</span>
+        </div>
+        <div class="col-body">
+          <div class="card pending">
+            <span class="card-id">#f2c14a88</span>
+            <div class="card-goal">Explore authentication strategies for multi-tenant SaaS platform</div>
+            <div class="card-repo">caiobellizzi/my-saas-app</div>
+            <div class="card-meta">
+              <span class="badge badge-pending">pending</span>
+              <span class="card-time">8m ago</span>
+              <span class="card-cost">$0.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRIAGE -->
+      <div class="column">
+        <div class="col-header">
+          <span class="col-name">Triage</span>
+          <span class="col-count">0</span>
+        </div>
+        <div class="col-body">
+          <div class="col-empty">— empty —</div>
+        </div>
+      </div>
+
+      <!-- REQUIREMENTS -->
+      <div class="column">
+        <div class="col-header">
+          <span class="col-name">Requirements</span>
+          <span class="col-count">1</span>
+        </div>
+        <div class="col-body">
+          <div class="card warning">
+            <span class="card-id">#9de012b3</span>
+            <div class="card-goal">Migrate billing system from Stripe v2 to Stripe v3 SDK with webhook validation</div>
+            <div class="card-repo">caiobellizzi/billing-service</div>
+            <div class="card-meta">
+              <span class="badge badge-warning">needs input</span>
+              <span class="card-time">23m ago</span>
+              <span class="card-cost">$0.04</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLANNER -->
+      <div class="column">
+        <div class="col-header">
+          <span class="col-name">Planner</span>
+          <span class="col-count">1</span>
+        </div>
+        <div class="col-body">
+          <div class="card running">
+            <span class="card-id">#b7f30091</span>
+            <div class="card-goal">Add Redis caching layer to the product search API with TTL invalidation</div>
+            <div class="card-repo">caiobellizzi/api-gateway</div>
+            <div class="card-meta">
+              <span class="running-dot"></span>
+              <span class="badge badge-running">planning</span>
+              <span class="card-time">5m ago</span>
+              <span class="card-cost">$0.12</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CODER -->
+      <div class="column">
+        <div class="col-header">
+          <span class="col-name">Coder</span>
+          <span class="col-count">3</span>
+        </div>
+        <div class="col-body">
+          <div class="card running">
+            <span class="card-id">#a0b98f99</span>
+            <div class="card-goal">Add OAuth2 login with Google and fix the user settings page crash on null profile</div>
+            <div class="card-repo">caiobellizzi/my-saas-app</div>
+            <div class="card-meta">
+              <span class="running-dot"></span>
+              <span class="badge badge-running">coding</span>
+              <span class="card-time">12m ago</span>
+              <span class="card-cost">$1.84</span>
+            </div>
+          </div>
+          <div class="card running">
+            <span class="card-id">#c3e741fd</span>
+            <div class="card-goal">Implement dark mode toggle with system preference detection and persistence</div>
+            <div class="card-repo">caiobellizzi/frontend-next</div>
+            <div class="card-meta">
+              <span class="running-dot"></span>
+              <span class="badge badge-running">coding</span>
+              <span class="card-time">31m ago</span>
+              <span class="card-cost">$0.97</span>
+            </div>
+          </div>
+          <div class="card warning">
+            <span class="card-id">#78d20044</span>
+            <div class="card-goal">Fix N+1 query issue on the dashboard analytics endpoint, add eager loading</div>
+            <div class="card-repo">caiobellizzi/api-gateway</div>
+            <div class="card-meta">
+              <span class="badge badge-warning">retry 2/3</span>
+              <span class="card-time">54m ago</span>
+              <span class="card-cost">$2.31</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REVIEWER -->
+      <div class="column">
+        <div class="col-header">
+          <span class="col-name">Reviewer</span>
+          <span class="col-count">2</span>
+        </div>
+        <div class="col-body">
+          <div class="card success">
+            <span class="card-id">#5af102de</span>
+            <div class="card-goal">Refactor user authentication middleware to support JWT refresh tokens</div>
+            <div class="card-repo">caiobellizzi/auth-service</div>
+            <div class="card-meta">
+              <span class="badge badge-success">review ok</span>
+              <span class="card-time">1h ago</span>
+              <span class="card-cost">$3.20</span>
+            </div>
+          </div>
+          <div class="card danger">
+            <span class="card-id">#e19c8b0f</span>
+            <div class="card-goal">Add comprehensive test suite for the payment processing pipeline edge cases</div>
+            <div class="card-repo">caiobellizzi/billing-service</div>
+            <div class="card-meta">
+              <span class="badge badge-danger">critical</span>
+              <span class="card-time">47m ago</span>
+              <span class="card-cost">$1.66</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- APPROVAL -->
+      <div class="column">
+        <div class="col-header">
+          <span class="col-name">Approval</span>
+          <span class="col-count">1</span>
+        </div>
+        <div class="col-body">
+          <div class="card warning">
+            <span class="card-id">#30f7a2c1</span>
+            <div class="card-goal">Update database schema — add soft-delete columns to users and sessions tables</div>
+            <div class="card-repo">caiobellizzi/my-saas-app</div>
+            <div class="card-meta">
+              <span class="badge badge-warning">awaiting</span>
+              <span class="card-time">2h ago</span>
+              <span class="card-cost">$4.05</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PUSHED -->
+      <div class="column">
+        <div class="col-header">
+          <span class="col-name">Pushed</span>
+          <span class="col-count">2</span>
+        </div>
+        <div class="col-body">
+          <div class="card success">
+            <span class="card-id">#1d43bc90</span>
+            <div class="card-goal">Add Prometheus metrics endpoint with request latency histograms</div>
+            <div class="card-repo">caiobellizzi/api-gateway</div>
+            <div class="card-meta">
+              <span class="badge badge-success">pushed</span>
+              <span class="card-time">3h ago</span>
+              <span class="card-cost">$2.88</span>
+            </div>
+          </div>
+          <div class="card success">
+            <span class="card-id">#aa7f5501</span>
+            <div class="card-goal">Implement rate limiting on the public API with Redis sliding window algorithm</div>
+            <div class="card-repo">caiobellizzi/api-gateway</div>
+            <div class="card-meta">
+              <span class="badge badge-success">pushed</span>
+              <span class="card-time">5h ago</span>
+              <span class="card-cost">$5.14</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAILED -->
+      <div class="column">
+        <div class="col-header">
+          <span class="col-name">Failed</span>
+          <span class="col-count">0</span>
+        </div>
+        <div class="col-body">
+          <div class="col-empty">— empty —</div>
+        </div>
+      </div>
+
+    </div><!-- /board-area -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+</body>
+</html>

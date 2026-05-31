@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop — Policies Config</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #0f0f17; --surface-r: #141420;
+    --border: #1e1e2e; --border-s: #2e2e45;
+    --text: #e5e7eb; --text-m: #6b7280; --text-d: #4b5563;
+    --accent: #f59e0b; --accent-bg: #1a1000; --accent-bd: #78350f; --accent-dim: #92400e;
+    --success: #22c55e; --success-bg: #052e16; --success-bd: #14532d;
+    --danger: #ef4444; --danger-bg: #1c0a0a; --danger-bd: #7f1d1d;
+    --warning: #fbbf24; --warn-bg: #1a1000; --warn-bd: #92400e;
+    --info: #60a5fa; --info-bg: #0c1a30; --info-bd: #1e3a5f;
+    --log-bg: #050508; --log-ts: #f59e0b; --log-src: #9ca3af; --log-text: #d1d5db;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 160px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; height: 100vh; }
+  .sidebar-brand { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .12em; padding: 0 12px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .nav-link { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 36px; font-size: 12px; color: var(--text-m); cursor: pointer; border-left: 2px solid transparent; white-space: nowrap; text-decoration: none; }
+  .nav-link.active { background: var(--accent-bg); border-left-color: var(--accent); color: var(--accent); }
+  .nav-prefix { font-size: 10px; width: 10px; }
+  .nav-section { font-size: 10px; letter-spacing: .08em; color: var(--text-d); padding: 12px 12px 4px; text-transform: uppercase; }
+  .nav-link.sub { padding-left: 24px; font-size: 11px; }
+  .nav-badge { margin-left: auto; background: var(--danger-bg); border: 1px solid var(--danger-bd); color: var(--danger); font-size: 9px; padding: 0 5px; border-radius: 2px; }
+  .sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+  .theme-toggle { font-size: 11px; color: var(--text-d); cursor: pointer; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0; }
+  .topbar-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  .content::-webkit-scrollbar { width: 3px; } .content::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); }
+  .badge-running { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-bd); }
+  .badge-pushed { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
+  .badge-danger { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-bd); }
+  .badge-warning { color: var(--warning); background: var(--warn-bg); border-color: var(--warn-bd); }
+  .badge-info { color: var(--info); background: var(--info-bg); border-color: var(--info-bd); }
+  .badge-muted { color: var(--text-m); background: var(--surface-r); border-color: var(--border); }
+  .section-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 12px; }
+  .btn { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-weight: 500; border: 1px solid; }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+  .btn-secondary { background: transparent; color: var(--text-m); border-color: var(--border-s); }
+  .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger-bd); }
+  .table-wrap { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead { background: var(--surface); }
+  th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-d); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-m); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(245,158,11,.03); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
+  input[type=text], input[type=number], input[type=time], textarea, select { background: var(--surface-r); border: 1px solid var(--border-s); border-radius: 2px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none; width: 100%; }
+  input[type=text]:focus, input[type=number]:focus, input[type=time]:focus, textarea:focus, select:focus { border-color: var(--accent-bd); }
+  label { font-size: 11px; color: var(--text-m); display: block; margin-bottom: 4px; }
+
+  /* ─── PAGE-SPECIFIC ─── */
+  .policies-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .policy-row {
+    background: var(--surface);
+    padding: 20px 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .policy-row.full-width {
+    grid-column: 1 / -1;
+  }
+  .policy-header {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .policy-key {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: .02em;
+  }
+  .policy-desc {
+    font-size: 11px;
+    color: var(--text-d);
+    line-height: 1.5;
+  }
+  .policy-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .policy-control input[type=number],
+  .policy-control input[type=time] {
+    width: auto;
+  }
+  .input-narrow { width: 96px; }
+  .input-medium { width: 140px; }
+
+  /* Toggle */
+  .toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    background: var(--surface-r);
+    border: 1px solid var(--border-s);
+    transition: background .15s, border-color .15s;
+  }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text-d);
+    transition: transform .15s, background .15s;
+  }
+  .toggle input:checked ~ .toggle-track {
+    background: var(--accent-bg);
+    border-color: var(--accent-bd);
+  }
+  .toggle input:checked ~ .toggle-thumb {
+    transform: translateX(16px);
+    background: var(--accent);
+  }
+  .toggle-label {
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .toggle-label.on { color: var(--accent); }
+  .toggle-label.off { color: var(--text-d); }
+
+  /* Toggle OFF state for danger variant */
+  .toggle.danger-off input:checked ~ .toggle-track {
+    background: var(--danger-bg);
+    border-color: var(--danger-bd);
+  }
+  .toggle.danger-off input:checked ~ .toggle-thumb {
+    background: var(--danger);
+  }
+
+  /* Time range row */
+  .time-range {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .time-sep {
+    font-size: 11px;
+    color: var(--text-d);
+  }
+
+  /* Cost prefix */
+  .input-prefix-wrap {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-s);
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--surface-r);
+    width: 140px;
+  }
+  .input-prefix-wrap:focus-within {
+    border-color: var(--accent-bd);
+  }
+  .input-prefix {
+    padding: 7px 8px 7px 10px;
+    font-size: 12px;
+    color: var(--text-d);
+    background: transparent;
+    border: none;
+    flex-shrink: 0;
+  }
+  .input-prefix-wrap input[type=number] {
+    border: none;
+    background: transparent;
+    padding: 7px 10px 7px 0;
+    width: 100%;
+  }
+  .input-prefix-wrap input[type=number]:focus {
+    border: none;
+    outline: none;
+  }
+
+  /* Action bar */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border: 1px solid var(--border);
+    border-top: none;
+    background: var(--surface);
+    border-radius: 0 0 2px 2px;
+  }
+  .action-bar-hint {
+    font-size: 11px;
+    color: var(--text-d);
+  }
+  .action-bar-hint span {
+    color: var(--accent);
+  }
+  .action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Saved toast stub */
+  .toast {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--success);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .toast.visible { opacity: 1; }
+
+  /* Destructive notice */
+  .destructive-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-bd);
+    border-radius: 2px;
+    font-size: 11px;
+    color: var(--danger);
+    line-height: 1.5;
+  }
+  .destructive-note-icon {
+    flex-shrink: 0;
+    font-size: 12px;
+    margin-top: 1px;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-header-text {}
+  .page-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .page-subtitle { font-size: 11px; color: var(--text-d); }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">◆ WORKSHOP</div>
+  <a class="nav-link"><span class="nav-prefix">○</span> Board</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> HITL Queue</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Cost</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Health</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Skills</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Repos</a>
+  <div class="nav-section">Config</div>
+  <a class="nav-link sub"><span class="nav-prefix">○</span> Models</a>
+  <a class="nav-link sub"><span class="nav-prefix">○</span> Reviewers</a>
+  <a class="nav-link sub active"><span class="nav-prefix">◆</span> Policies</a>
+  <div class="sidebar-bottom"><div class="theme-toggle">◑ light mode</div></div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">Policies</div>
+    <span class="badge badge-muted">config / policies</span>
+  </div>
+
+  <div class="content">
+
+    <div class="page-header">
+      <div class="page-header-text">
+        <div class="page-title">Runtime Policies</div>
+        <div class="page-subtitle">Controls agent behavior, cost limits, and availability windows. Changes apply to all new tasks.</div>
+      </div>
+    </div>
+
+    <div class="policies-grid">
+
+      <!-- auto_retries -->
+      <div class="policy-row">
+        <div class="policy-header">
+          <div class="policy-key">auto_retries</div>
+          <div class="policy-desc">Number of times the agent will automatically retry a failed task step before escalating to HITL.</div>
+        </div>
+        <div class="policy-control">
+          <input type="number" class="input-narrow" value="2" min="0" max="10" />
+          <span style="font-size:11px;color:var(--text-d)">retries · max 10</span>
+        </div>
+      </div>
+
+      <!-- hitl_on_timeout -->
+      <div class="policy-row">
+        <div class="policy-header">
+          <div class="policy-key">hitl_on_timeout</div>
+          <div class="policy-desc">Route a task to the HITL queue when it exceeds its allotted wall-clock time instead of auto-failing.</div>
+        </div>
+        <div class="policy-control toggle-wrap">
+          <label class="toggle">
+            <input type="checkbox" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+          <span class="toggle-label on">ON</span>
+        </div>
+      </div>
+
+      <!-- max_cost_per_task -->
+      <div class="policy-row">
+        <div class="policy-header">
+          <div class="policy-key">max_cost_per_task</div>
+          <div class="policy-desc">Hard ceiling on API spend per task. Task is aborted and flagged if this threshold is reached.</div>
+        </div>
+        <div class="policy-control">
+          <div class="input-prefix-wrap">
+            <span class="input-prefix">$</span>
+            <input type="number" value="5.00" min="0.10" step="0.50" />
+          </div>
+          <span style="font-size:11px;color:var(--text-d)">USD per task</span>
+        </div>
+      </div>
+
+      <!-- quiet_hours -->
+      <div class="policy-row">
+        <div class="policy-header">
+          <div class="policy-key">quiet_hours</div>
+          <div class="policy-desc">New tasks are queued but not started during this window. In-flight tasks continue unaffected.</div>
+        </div>
+        <div class="policy-control">
+          <div class="time-range">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label>start</label>
+              <input type="time" class="input-medium" value="23:00" />
+            </div>
+            <span class="time-sep" style="margin-top:20px;">→</span>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label>end</label>
+              <input type="time" class="input-medium" value="07:00" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- hermes_restart_on_error — full width because of destructive note -->
+      <div class="policy-row full-width">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;">
+          <div style="flex:1;">
+            <div class="policy-header" style="margin-bottom:10px;">
+              <div class="policy-key">hermes_restart_on_error</div>
+              <div class="policy-desc">Automatically restart the Hermes dispatcher process when it encounters an unhandled exception. Disable to preserve crash state for debugging.</div>
+            </div>
+            <div class="policy-control toggle-wrap">
+              <label class="toggle">
+                <input type="checkbox">
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+              <span class="toggle-label off">OFF</span>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div class="destructive-note">
+              <span class="destructive-note-icon">⚠</span>
+              <div>
+                <div style="font-weight:700;margin-bottom:4px;">Manual restart required</div>
+                Auto-restart is disabled. If Hermes crashes, the entire task queue will stall until the process is restarted manually. Use the button below only when you are ready.
+              </div>
+            </div>
+            <div style="margin-top:10px;">
+              <button class="btn btn-danger" style="font-size:11px;padding:7px 16px;">
+                ↺ Force Restart Hermes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /policies-grid -->
+
+    <div class="action-bar">
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div class="action-bar-hint">Last saved <span>3 min ago</span> · applied to all new tasks from <span>caiobellizzi/my-saas-app</span></div>
+        <div class="toast" id="saved-toast">✓ saved</div>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-secondary" onclick="resetForm()">Reset</button>
+        <button class="btn btn-primary" onclick="saveForm()">Save Changes</button>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div>
+
+<script>
+  // Toggle label sync
+  document.querySelectorAll('.toggle input[type=checkbox]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var wrap = this.closest('.policy-row') || this.closest('.toggle-wrap');
+      var label = wrap.querySelector('.toggle-label');
+      if (!label) return;
+      if (this.checked) {
+        label.textContent = 'ON';
+        label.className = 'toggle-label on';
+      } else {
+        label.textContent = 'OFF';
+        label.className = 'toggle-label off';
+      }
+    });
+  });
+
+  function saveForm() {
+    var toast = document.getElementById('saved-toast');
+    toast.classList.add('visible');
+    setTimeout(function() { toast.classList.remove('visible'); }, 2000);
+  }
+
+  function resetForm() {
+    // no-op for mockup
+  }
+</script>
+
+</body>
+</html>

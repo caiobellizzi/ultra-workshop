@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reviewers Config — Workshop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #0f0f17; --surface-r: #141420;
+      --border: #1e1e2e; --border-s: #2e2e45;
+      --text: #e5e7eb; --text-m: #6b7280; --text-d: #4b5563;
+      --accent: #f59e0b; --accent-bg: #1a1000; --accent-bd: #78350f; --accent-dim: #92400e;
+      --success: #22c55e; --success-bg: #052e16; --success-bd: #14532d;
+      --danger: #ef4444; --danger-bg: #1c0a0a; --danger-bd: #7f1d1d;
+      --warning: #fbbf24; --warn-bg: #1a1000; --warn-bd: #92400e;
+      --info: #60a5fa; --info-bg: #0c1a30; --info-bd: #1e3a5f;
+      --log-bg: #050508; --log-ts: #f59e0b; --log-src: #9ca3af; --log-text: #d1d5db;
+      --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 160px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; height: 100vh; }
+    .sidebar-brand { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: .12em; padding: 0 12px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+    .nav-link { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 36px; font-size: 12px; color: var(--text-m); cursor: pointer; border-left: 2px solid transparent; white-space: nowrap; text-decoration: none; }
+    .nav-link.active { background: var(--accent-bg); border-left-color: var(--accent); color: var(--accent); }
+    .nav-prefix { font-size: 10px; width: 10px; }
+    .nav-section { font-size: 10px; letter-spacing: .08em; color: var(--text-d); padding: 12px 12px 4px; text-transform: uppercase; }
+    .nav-link.sub { padding-left: 24px; font-size: 11px; }
+    .nav-badge { margin-left: auto; background: var(--danger-bg); border: 1px solid var(--danger-bd); color: var(--danger); font-size: 9px; padding: 0 5px; border-radius: 2px; }
+    .sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+    .theme-toggle { font-size: 11px; color: var(--text-d); cursor: pointer; }
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0; }
+    .topbar-title { font-size: 16px; font-weight: 700; letter-spacing: -.01em; flex: 1; }
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+    .content::-webkit-scrollbar { width: 3px; } .content::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); }
+    .badge-running { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-bd); }
+    .badge-pushed { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); }
+    .badge-danger { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-bd); }
+    .badge-warning { color: var(--warning); background: var(--warn-bg); border-color: var(--warn-bd); }
+    .badge-info { color: var(--info); background: var(--info-bg); border-color: var(--info-bd); }
+    .badge-muted { color: var(--text-m); background: var(--surface-r); border-color: var(--border); }
+    .section-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-d); margin-bottom: 12px; }
+    .btn { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-weight: 500; border: 1px solid; }
+    .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+    .btn-secondary { background: transparent; color: var(--text-m); border-color: var(--border-s); }
+    .btn-danger { background: transparent; color: var(--danger); border-color: var(--danger-bd); }
+    .table-wrap { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead { background: var(--surface); }
+    th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-d); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-m); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(245,158,11,.03); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
+    input[type=text], textarea, select { background: var(--surface-r); border: 1px solid var(--border-s); border-radius: 2px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 7px 10px; outline: none; width: 100%; }
+    input[type=text]:focus, textarea:focus, select:focus { border-color: var(--accent-bd); }
+    label { font-size: 11px; color: var(--text-m); display: block; margin-bottom: 4px; }
+
+    /* Page-specific */
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 16px; }
+    .page-header-left { flex: 1; }
+    .page-desc { font-size: 12px; color: var(--text-d); margin-top: 4px; line-height: 1.6; }
+
+    .role-name { color: var(--text); font-weight: 500; font-size: 12px; }
+    .role-id { font-size: 10px; color: var(--text-d); margin-top: 2px; }
+
+    .pattern-list { display: flex; flex-wrap: wrap; gap: 4px; }
+    .pattern-tag { font-size: 10px; color: var(--info); background: var(--info-bg); border: 1px solid var(--info-bd); border-radius: 2px; padding: 1px 6px; font-family: var(--mono); }
+
+    .model-label { font-size: 11px; color: var(--text-m); font-family: var(--mono); }
+    .model-label span { color: var(--text); }
+
+    .toggle-on  { color: var(--success); background: var(--success-bg); border-color: var(--success-bd); font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); display: inline-block; }
+    .toggle-off { color: var(--text-d); background: var(--surface-r); border-color: var(--border); font-size: 10px; padding: 2px 8px; border-radius: 2px; border: 1px solid; font-family: var(--mono); display: inline-block; }
+
+    .action-cell { display: flex; align-items: center; gap: 8px; }
+
+    /* Edit drawer overlay */
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; display: none; }
+    .drawer-overlay.open { display: block; }
+    .drawer { position: fixed; top: 0; right: 0; height: 100vh; width: 400px; background: var(--surface); border-left: 1px solid var(--border); z-index: 101; display: flex; flex-direction: column; transform: translateX(100%); transition: transform .18s ease; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .drawer-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    .drawer-close { font-size: 16px; color: var(--text-d); cursor: pointer; background: none; border: none; line-height: 1; }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .drawer-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-hint { font-size: 10px; color: var(--text-d); margin-top: 3px; }
+
+    /* Summary stats row */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 12px 14px; }
+    .stat-val { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.1; }
+    .stat-lbl { font-size: 10px; color: var(--text-d); letter-spacing: .05em; text-transform: uppercase; margin-top: 4px; }
+    .stat-sub { font-size: 10px; color: var(--text-d); margin-top: 2px; }
+
+    /* Reviewer priority indicator */
+    .priority-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+    .priority-high   { background: var(--danger); }
+    .priority-medium { background: var(--warning); }
+    .priority-low    { background: var(--success); }
+
+    .td-role { display: flex; align-items: flex-start; gap: 8px; }
+
+    .info-note { background: var(--info-bg); border: 1px solid var(--info-bd); border-radius: 2px; padding: 10px 14px; font-size: 11px; color: var(--info); margin-bottom: 20px; line-height: 1.6; }
+    .info-note strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">◆ WORKSHOP</div>
+    <a class="nav-link "><span class="nav-prefix">○</span> Board</a>
+    <a class="nav-link "><span class="nav-prefix">○</span> HITL Queue</a>
+    <a class="nav-link "><span class="nav-prefix">○</span> Cost</a>
+    <a class="nav-link "><span class="nav-prefix">○</span> Health</a>
+    <a class="nav-link "><span class="nav-prefix">○</span> Skills</a>
+    <a class="nav-link "><span class="nav-prefix">○</span> Repos</a>
+    <div class="nav-section">Config</div>
+    <a class="nav-link sub "><span class="nav-prefix">○</span> Models</a>
+    <a class="nav-link sub active"><span class="nav-prefix">◆</span> Reviewers</a>
+    <a class="nav-link sub "><span class="nav-prefix">○</span> Policies</a>
+    <div class="sidebar-bottom"><div class="theme-toggle">◑ light mode</div></div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Reviewers Config</div>
+      <span class="badge badge-info">4 roles defined</span>
+      <button class="btn btn-primary" onclick="openDrawer(null)">+ Add Reviewer</button>
+    </div>
+
+    <div class="content">
+
+      <!-- Summary stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val">4</div>
+          <div class="stat-lbl">Total Roles</div>
+          <div class="stat-sub">3 enabled</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">284</div>
+          <div class="stat-lbl">Reviews Run</div>
+          <div class="stat-sub">last 30 days</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">97</div>
+          <div class="stat-lbl">Issues Found</div>
+          <div class="stat-sub">34% flagged</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">1.8s</div>
+          <div class="stat-lbl">Avg Latency</div>
+          <div class="stat-sub">p50 across roles</div>
+        </div>
+      </div>
+
+      <!-- Info note -->
+      <div class="info-note">
+        <strong>Trigger evaluation:</strong> file patterns are matched against diff paths in each task commit. A reviewer runs when at least one changed file matches its configured pattern list. Disabled reviewers are skipped even if their patterns match.
+      </div>
+
+      <!-- Page header actions row -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="section-label">Reviewer Roles</div>
+        </div>
+      </div>
+
+      <!-- Reviewers table -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:200px">Role</th>
+              <th>File Pattern Triggers</th>
+              <th style="width:190px">Model</th>
+              <th style="width:80px">Enabled</th>
+              <th style="width:120px">Last Run</th>
+              <th style="width:90px">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <!-- security-reviewer -->
+            <tr>
+              <td>
+                <div class="td-role">
+                  <span class="priority-dot priority-high"></span>
+                  <div>
+                    <div class="role-name">security-reviewer</div>
+                    <div class="role-id">id: rev_4e2a9f</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="pattern-list">
+                  <span class="pattern-tag">*.py</span>
+                  <span class="pattern-tag">*.js</span>
+                  <span class="pattern-tag">*.ts</span>
+                  <span class="pattern-tag">*.env*</span>
+                  <span class="pattern-tag">requirements.txt</span>
+                </div>
+              </td>
+              <td>
+                <div class="model-label">claude-sonnet-4-6<br><span style="color:var(--text-d);font-size:10px">anthropic · 8k ctx</span></div>
+              </td>
+              <td><span class="toggle-on">ON</span></td>
+              <td style="color:var(--text-d);font-size:11px">2 min ago</td>
+              <td>
+                <div class="action-cell">
+                  <button class="btn btn-secondary" onclick="openDrawer('security-reviewer')">Edit</button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- correctness-reviewer -->
+            <tr>
+              <td>
+                <div class="td-role">
+                  <span class="priority-dot priority-high"></span>
+                  <div>
+                    <div class="role-name">correctness-reviewer</div>
+                    <div class="role-id">id: rev_91b3c2</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="pattern-list">
+                  <span class="pattern-tag">*</span>
+                </div>
+              </td>
+              <td>
+                <div class="model-label">claude-sonnet-4-6<br><span style="color:var(--text-d);font-size:10px">anthropic · 8k ctx</span></div>
+              </td>
+              <td><span class="toggle-on">ON</span></td>
+              <td style="color:var(--text-d);font-size:11px">5 min ago</td>
+              <td>
+                <div class="action-cell">
+                  <button class="btn btn-secondary" onclick="openDrawer('correctness-reviewer')">Edit</button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- style-reviewer -->
+            <tr>
+              <td>
+                <div class="td-role">
+                  <span class="priority-dot priority-medium"></span>
+                  <div>
+                    <div class="role-name">style-reviewer</div>
+                    <div class="role-id">id: rev_7d04e8</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="pattern-list">
+                  <span class="pattern-tag">*.tsx</span>
+                  <span class="pattern-tag">*.ts</span>
+                  <span class="pattern-tag">*.css</span>
+                  <span class="pattern-tag">*.scss</span>
+                </div>
+              </td>
+              <td>
+                <div class="model-label">claude-haiku-3-5<br><span style="color:var(--text-d);font-size:10px">anthropic · 4k ctx</span></div>
+              </td>
+              <td><span class="toggle-on">ON</span></td>
+              <td style="color:var(--text-d);font-size:11px">18 min ago</td>
+              <td>
+                <div class="action-cell">
+                  <button class="btn btn-secondary" onclick="openDrawer('style-reviewer')">Edit</button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- performance-reviewer -->
+            <tr>
+              <td>
+                <div class="td-role">
+                  <span class="priority-dot priority-low"></span>
+                  <div>
+                    <div class="role-name">performance-reviewer</div>
+                    <div class="role-id">id: rev_c5f11a</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="pattern-list">
+                  <span class="pattern-tag">*.py</span>
+                  <span class="pattern-tag">*.go</span>
+                  <span class="pattern-tag">*.rs</span>
+                </div>
+              </td>
+              <td>
+                <div class="model-label">claude-opus-4-8<br><span style="color:var(--text-d);font-size:10px">anthropic · 32k ctx</span></div>
+              </td>
+              <td><span class="toggle-off">OFF</span></td>
+              <td style="color:var(--text-d);font-size:11px">3 days ago</td>
+              <td>
+                <div class="action-cell">
+                  <button class="btn btn-secondary" onclick="openDrawer('performance-reviewer')">Edit</button>
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Priority legend -->
+      <div style="display:flex;align-items:center;gap:20px;margin-top:14px;padding:0 2px;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-d);">
+          <span class="priority-dot priority-high"></span> High priority
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-d);">
+          <span class="priority-dot priority-medium"></span> Medium priority
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-d);">
+          <span class="priority-dot priority-low"></span> Low priority
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Edit drawer overlay -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+  <!-- Edit drawer -->
+  <div class="drawer" id="editDrawer">
+    <div class="drawer-header">
+      <div class="drawer-title" id="drawerTitle">Edit Reviewer</div>
+      <button class="drawer-close" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="drawer-body">
+
+      <div class="form-group">
+        <label>Role Name</label>
+        <input type="text" id="fieldRoleName" value="security-reviewer" />
+        <div class="form-hint">Unique identifier used in task logs and HITL notifications.</div>
+      </div>
+
+      <div class="form-group">
+        <label>File Pattern Triggers</label>
+        <input type="text" id="fieldPatterns" value="*.py, *.js, *.ts, *.env*, requirements.txt" />
+        <div class="form-hint">Comma-separated glob patterns. Use <code style="color:var(--accent);font-size:10px">*</code> to match all files.</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Model</label>
+          <select id="fieldModel">
+            <option selected>claude-sonnet-4-6</option>
+            <option>claude-haiku-3-5</option>
+            <option>claude-opus-4-8</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Context Window</label>
+          <select id="fieldCtx">
+            <option>4k tokens</option>
+            <option selected>8k tokens</option>
+            <option>16k tokens</option>
+            <option>32k tokens</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="fieldPriority">
+          <option selected>high</option>
+          <option>medium</option>
+          <option>low</option>
+        </select>
+        <div class="form-hint">Determines execution order when multiple reviewers match the same file.</div>
+      </div>
+
+      <div class="form-group">
+        <label>System Prompt Override</label>
+        <textarea id="fieldPrompt" rows="5" placeholder="Leave blank to use the default prompt for this reviewer role.">You are a security-focused code reviewer. Identify SQL injection, XSS, SSRF, insecure deserialization, hardcoded secrets, and missing input validation. Flag every issue with severity: critical | high | medium | low.</textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Enabled</label>
+          <select id="fieldEnabled">
+            <option selected>ON</option>
+            <option>OFF</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fail On Severity</label>
+          <select id="fieldFail">
+            <option>critical only</option>
+            <option selected>critical + high</option>
+            <option>any finding</option>
+            <option>never</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="border-top:1px solid var(--border);padding-top:14px;">
+        <div style="font-size:11px;color:var(--text-d);margin-bottom:8px;">Danger zone</div>
+        <button class="btn btn-danger" style="width:100%;justify-content:center;display:flex;">Delete this reviewer role</button>
+      </div>
+
+    </div>
+    <div class="drawer-footer">
+      <button class="btn btn-secondary" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary">Save Changes</button>
+    </div>
+  </div>
+
+  <script>
+    function openDrawer(role) {
+      const overlay = document.getElementById('drawerOverlay');
+      const drawer  = document.getElementById('editDrawer');
+      const title   = document.getElementById('drawerTitle');
+
+      if (role) {
+        title.textContent = 'Edit — ' + role;
+        document.getElementById('fieldRoleName').value = role;
+
+        const patterns = {
+          'security-reviewer':    '*.py, *.js, *.ts, *.env*, requirements.txt',
+          'correctness-reviewer': '*',
+          'style-reviewer':       '*.tsx, *.ts, *.css, *.scss',
+          'performance-reviewer': '*.py, *.go, *.rs'
+        };
+        const models = {
+          'security-reviewer':    'claude-sonnet-4-6',
+          'correctness-reviewer': 'claude-sonnet-4-6',
+          'style-reviewer':       'claude-haiku-3-5',
+          'performance-reviewer': 'claude-opus-4-8'
+        };
+        const enabled = {
+          'security-reviewer':    'ON',
+          'correctness-reviewer': 'ON',
+          'style-reviewer':       'ON',
+          'performance-reviewer': 'OFF'
+        };
+        const prompts = {
+          'security-reviewer':    'You are a security-focused code reviewer. Identify SQL injection, XSS, SSRF, insecure deserialization, hardcoded secrets, and missing input validation. Flag every issue with severity: critical | high | medium | low.',
+          'correctness-reviewer': 'You are a correctness reviewer. Identify logic errors, off-by-one bugs, null dereferences, unhandled edge cases, and incorrect algorithmic complexity. Be precise and cite line numbers.',
+          'style-reviewer':       'You are a style and consistency reviewer for TypeScript/React codebases. Check naming conventions, component structure, unused imports, and adherence to the project ESLint config.',
+          'performance-reviewer': 'You are a performance reviewer. Identify N+1 queries, unbounded loops, unnecessary allocations, missing indexes, blocking I/O in async contexts, and memory leaks.'
+        };
+
+        document.getElementById('fieldPatterns').value = patterns[role] || '*';
+        document.getElementById('fieldPrompt').value   = prompts[role]  || '';
+        const modelSel   = document.getElementById('fieldModel');
+        const enabledSel = document.getElementById('fieldEnabled');
+        Array.from(modelSel.options).forEach(o => o.selected = o.value === models[role]);
+        Array.from(enabledSel.options).forEach(o => o.selected = o.value === enabled[role]);
+      } else {
+        title.textContent = 'Add Reviewer';
+        document.getElementById('fieldRoleName').value = '';
+        document.getElementById('fieldPatterns').value = '';
+        document.getElementById('fieldPrompt').value   = '';
+      }
+
+      overlay.classList.add('open');
+      drawer.classList.add('open');
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawerOverlay').classList.remove('open');
+      document.getElementById('editDrawer').classList.remove('open');
+    }
+  </script>
+
+</body>
+</html>

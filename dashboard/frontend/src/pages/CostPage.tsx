@@ -1,6 +1,5 @@
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useCostSummary, useCostTasks, useCostTrends } from "@/hooks/useCost";
 import { formatCents } from "@/lib/utils";
@@ -17,7 +16,7 @@ import {
   Legend,
 } from "recharts";
 
-const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
+const CHART_COLORS = ["var(--accent)", "var(--success)", "var(--info)", "var(--warning)", "var(--danger)"];
 
 export function CostPage() {
   const { data: summary, isLoading: loadingSummary } = useCostSummary();
@@ -39,71 +38,55 @@ export function CostPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Today</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{formatCents(summary?.today_cents ?? 0)}</p>
-                <Progress value={dailyPct} className="mt-2 h-2" />
-                <p className="text-xs text-muted-foreground mt-1">
-                  of {formatCents(summary?.daily_limit_cents ?? 2000)} limit
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">This Month</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{formatCents(summary?.this_month_cents ?? 0)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Per-Task Avg</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{formatCents(summary?.per_task_avg_cents ?? 0)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Top Model</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-medium truncate">{summary?.most_expensive_alias ?? "—"}</p>
-              </CardContent>
-            </Card>
+            <div className="bg-[--surface] border border-[--border] rounded-sm p-4">
+              <p className="text-xs text-[--text-muted] uppercase tracking-wide mb-2">Today</p>
+              <p className="text-[--accent] font-mono text-xl">{formatCents(summary?.today_cents ?? 0)}</p>
+              <Progress value={dailyPct} className="mt-2 h-2" />
+              <p className="text-xs text-[--text-muted] mt-1">
+                of {formatCents(summary?.daily_limit_cents ?? 2000)} limit
+              </p>
+            </div>
+            <div className="bg-[--surface] border border-[--border] rounded-sm p-4">
+              <p className="text-xs text-[--text-muted] uppercase tracking-wide mb-2">This Month</p>
+              <p className="text-[--accent] font-mono text-xl">{formatCents(summary?.this_month_cents ?? 0)}</p>
+            </div>
+            <div className="bg-[--surface] border border-[--border] rounded-sm p-4">
+              <p className="text-xs text-[--text-muted] uppercase tracking-wide mb-2">Per-Task Avg</p>
+              <p className="text-[--accent] font-mono text-xl">{formatCents(summary?.per_task_avg_cents ?? 0)}</p>
+            </div>
+            <div className="bg-[--surface] border border-[--border] rounded-sm p-4">
+              <p className="text-xs text-[--text-muted] uppercase tracking-wide mb-2">Top Model</p>
+              <p className="font-mono text-[--text] truncate">{summary?.most_expensive_alias ?? "—"}</p>
+            </div>
           </div>
         )}
 
         {/* Charts row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {trends?.daily && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Daily Spend (30d)</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="bg-[--surface] border border-[--border] rounded-sm">
+              <div className="px-4 py-3 border-b border-[--border]">
+                <p className="text-xs text-[--text-muted] uppercase tracking-wide">Daily Spend (30d)</p>
+              </div>
+              <div className="p-4">
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={trends.daily.slice(-30)}>
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} tickFormatter={(v: number) => `$${(v / 100).toFixed(0)}`} />
                     <Tooltip formatter={(v: number) => formatCents(v)} />
-                    <Bar dataKey="cents" fill="#3b82f6" radius={2} />
+                    <Bar dataKey="cents" fill="var(--accent)" radius={2} />
                   </BarChart>
                 </ResponsiveContainer>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {trends?.by_model && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">By Model (MTD)</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="bg-[--surface] border border-[--border] rounded-sm">
+              <div className="px-4 py-3 border-b border-[--border]">
+                <p className="text-xs text-[--text-muted] uppercase tracking-wide">By Model (MTD)</p>
+              </div>
+              <div className="p-4">
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
                     <Pie
@@ -122,47 +105,45 @@ export function CostPage() {
                     <Legend iconSize={10} />
                   </PieChart>
                 </ResponsiveContainer>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </div>
 
         {/* Per-build table */}
         {tasksData?.tasks && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Per-Build Costs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left">
-                      <th className="pb-2 font-medium text-muted-foreground">Task</th>
-                      <th className="pb-2 font-medium text-muted-foreground">Repo</th>
-                      <th className="pb-2 font-medium text-muted-foreground">Date</th>
-                      <th className="pb-2 font-medium text-muted-foreground text-right">Total</th>
+          <div className="bg-[--surface] border border-[--border] rounded-sm">
+            <div className="px-4 py-3 border-b border-[--border]">
+              <p className="text-xs text-[--text-muted] uppercase tracking-wide">Per-Build Costs</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full font-mono text-xs">
+                <thead>
+                  <tr className="bg-[--surface] text-left">
+                    <th className="py-2 px-4 text-[--text-dim] font-medium border-b border-[--border]">Task</th>
+                    <th className="py-2 px-4 text-[--text-dim] font-medium border-b border-[--border]">Repo</th>
+                    <th className="py-2 px-4 text-[--text-dim] font-medium border-b border-[--border]">Date</th>
+                    <th className="py-2 px-4 text-[--text-dim] font-medium border-b border-[--border] text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasksData.tasks.map((row) => (
+                    <tr key={row.task_id} className="border-b border-[--border] last:border-0">
+                      <td className="py-2 px-4">
+                        <span className="text-[--accent]">{row.task_id.slice(0, 8)}</span>
+                        <p className="text-[--text-muted] truncate max-w-48">{row.goal}</p>
+                      </td>
+                      <td className="py-2 px-4 text-[--text-muted]">{row.repo}</td>
+                      <td className="py-2 px-4 text-[--text-muted]">
+                        {new Date(row.date).toLocaleDateString()}
+                      </td>
+                      <td className="py-2 px-4 text-right text-[--text]">{formatCents(row.total_cents)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {tasksData.tasks.map((row) => (
-                      <tr key={row.task_id} className="border-b last:border-0">
-                        <td className="py-2">
-                          <code className="text-xs">{row.task_id.slice(0, 8)}</code>
-                          <p className="text-xs text-muted-foreground truncate max-w-48">{row.goal}</p>
-                        </td>
-                        <td className="py-2 text-xs text-muted-foreground">{row.repo}</td>
-                        <td className="py-2 text-xs text-muted-foreground">
-                          {new Date(row.date).toLocaleDateString()}
-                        </td>
-                        <td className="py-2 text-right font-medium">{formatCents(row.total_cents)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop — HITL Queue (Terminal Forge)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:          #0a0a0f;
+    --surface:     #0f0f17;
+    --surface-r:   #141420;
+    --border:      #1e1e2e;
+    --border-s:    #2e2e45;
+    --text:        #e5e7eb;
+    --text-m:      #6b7280;
+    --text-d:      #4b5563;
+    --accent:      #f59e0b;
+    --accent-bg:   #1a1000;
+    --accent-bd:   #78350f;
+    --success:     #22c55e;
+    --success-bg:  #052e16;
+    --success-bd:  #14532d;
+    --danger:      #ef4444;
+    --danger-bg:   #1c0a0a;
+    --danger-bd:   #7f1d1d;
+    --warning:     #fbbf24;
+    --warn-bg:     #1a1000;
+    --warn-bd:     #92400e;
+    --info:        #60a5fa;
+    --info-bg:     #0c1a30;
+    --info-bd:     #1e3a5f;
+    --mono:       'JetBrains Mono', monospace;
+    --sans:        'Inter', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: 160px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0;
+    height: 100vh;
+  }
+
+  .sidebar-brand {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    padding: 0 12px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    height: 36px;
+    font-size: 12px;
+    color: var(--text-m);
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    white-space: nowrap;
+  }
+
+  .nav-link.active {
+    background: var(--accent-bg);
+    border-left-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .nav-prefix { font-size: 10px; width: 10px; }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-bd);
+    color: var(--danger);
+    font-size: 9px;
+    padding: 0 5px;
+    border-radius: 2px;
+  }
+
+  .nav-section {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text-d);
+    padding: 12px 12px 4px;
+    text-transform: uppercase;
+  }
+
+  .nav-link.sub { padding-left: 24px; font-size: 11px; }
+
+  .sidebar-bottom {
+    margin-top: auto;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .theme-toggle { font-size: 11px; color: var(--text-d); cursor: pointer; }
+
+  /* ─── MAIN ─── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ─── TOP BAR ─── */
+  .topbar {
+    height: 52px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .topbar-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    flex: 1;
+  }
+
+  .hitl-count {
+    color: var(--danger);
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-bd);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── QUEUE CONTENT ─── */
+  .queue-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 860px;
+  }
+
+  .queue-wrap::-webkit-scrollbar { width: 3px; }
+  .queue-wrap::-webkit-scrollbar-thumb { background: var(--border-s); border-radius: 2px; }
+
+  /* ─── HITL CARD BASE ─── */
+  .hitl-card {
+    background: var(--surface);
+    border: 1px solid var(--warn-bd);
+    border-top: 2px solid var(--warning);
+    border-radius: 2px;
+  }
+
+  .hitl-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hitl-type-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--warning);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .hitl-meta { font-size: 11px; color: var(--text-d); display: flex; gap: 12px; }
+
+  .hitl-card-body { padding: 16px; }
+
+  /* ─── APPROVAL CARD ─── */
+  .approval-goal {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+
+  .approval-repo {
+    font-size: 11px;
+    color: var(--text-d);
+    margin-bottom: 16px;
+  }
+
+  .plan-summary-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-d);
+    margin-bottom: 8px;
+  }
+
+  .plan-steps-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 16px;
+  }
+
+  .plan-step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-m);
+    line-height: 1.4;
+  }
+
+  .step-n {
+    color: var(--text-d);
+    flex-shrink: 0;
+    min-width: 20px;
+  }
+
+  .step-files-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 3px;
+  }
+
+  .file-tag {
+    font-size: 10px;
+    color: var(--info);
+    background: var(--info-bg);
+    border: 1px solid var(--info-bd);
+    padding: 0 5px;
+    border-radius: 2px;
+  }
+
+  .affected-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-d);
+    margin-bottom: 6px;
+  }
+
+  .affected-files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-weight: 500;
+    border: 1px solid;
+    letter-spacing: 0.02em;
+    transition: opacity 0.1s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: translateY(1px); }
+
+  .btn-approve {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+
+  .btn-modify {
+    background: transparent;
+    color: var(--text-m);
+    border-color: var(--border-s);
+  }
+
+  .btn-reject {
+    background: transparent;
+    color: var(--danger);
+    border-color: var(--danger-bd);
+    margin-left: auto;
+  }
+
+  /* ─── CLARIFICATION CARD ─── */
+  .clarification-reason {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--text-m);
+    line-height: 1.6;
+    margin-bottom: 20px;
+    border-left: 2px solid var(--warn-bd);
+    padding-left: 10px;
+  }
+
+  .question-block { margin-bottom: 18px; }
+
+  .question-text {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+
+  .options-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .opt-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 2px;
+    border: 1px solid var(--border-s);
+    background: transparent;
+    color: var(--text-m);
+    cursor: pointer;
+    transition: border-color 0.1s, color 0.1s, background 0.1s;
+  }
+
+  .opt-btn:hover {
+    border-color: var(--accent-bd);
+    color: var(--text);
+  }
+
+  .opt-btn.selected {
+    background: var(--accent-bg);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .free-text-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-d);
+    margin-bottom: 6px;
+    margin-top: 10px;
+  }
+
+  .free-text-input {
+    width: 100%;
+    background: var(--surface-r);
+    border: 1px solid var(--border-s);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px;
+    resize: vertical;
+    outline: none;
+    min-height: 60px;
+  }
+
+  .free-text-input:focus { border-color: var(--accent-bd); }
+
+  .btn-submit {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Evidence block */
+  .evidence-block {
+    margin-bottom: 16px;
+    background: var(--surface-r);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 10px;
+  }
+
+  .evidence-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text-d);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .evidence-line {
+    font-size: 11px;
+    color: var(--text-m);
+    line-height: 1.5;
+    font-family: var(--sans);
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-brand">◆ WORKSHOP</div>
+  <a class="nav-link"><span class="nav-prefix">○</span> Board</a>
+  <a class="nav-link active">
+    <span class="nav-prefix">▶</span> HITL Queue
+    <span class="nav-badge">2</span>
+  </a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Cost</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Health</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Skills</a>
+  <a class="nav-link"><span class="nav-prefix">○</span> Repos</a>
+  <div class="nav-section">Config</div>
+  <a class="nav-link sub"><span class="nav-prefix">○</span> Models</a>
+  <a class="nav-link sub"><span class="nav-prefix">○</span> Reviewers</a>
+  <a class="nav-link sub"><span class="nav-prefix">○</span> Policies</a>
+  <div class="sidebar-bottom">
+    <div class="theme-toggle">◑ light mode</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <div class="topbar">
+    <span class="topbar-title">Action Required</span>
+    <span class="hitl-count">✗ 2 TASKS BLOCKED</span>
+  </div>
+
+  <div class="queue-wrap">
+
+    <!-- ── CARD 1: APPROVAL ── -->
+    <div class="hitl-card">
+      <div class="hitl-card-header">
+        <div class="hitl-type-label">⌛ Approval required</div>
+        <div class="hitl-meta">
+          <span>caiobellizzi/api-gateway</span>
+          <span>task b7c3a1f2…</span>
+          <span>$0.71</span>
+        </div>
+      </div>
+
+      <div class="hitl-card-body">
+        <div class="approval-goal">Refactor API rate limiter to use Redis sliding window algorithm</div>
+        <div class="approval-repo">caiobellizzi/api-gateway · planner stage complete</div>
+
+        <div class="plan-summary-label">Plan — 4 steps</div>
+        <ul class="plan-steps-list">
+          <li class="plan-step-item">
+            <span class="step-n">1.</span>
+            <div>
+              <div>Install ioredis and replace in-memory store with Redis client</div>
+              <div class="step-files-row">
+                <span class="file-tag">src/redis.ts</span>
+                <span class="file-tag">package.json</span>
+              </div>
+            </div>
+          </li>
+          <li class="plan-step-item">
+            <span class="step-n">2.</span>
+            <div>
+              <div>Implement sliding window counter using ZADD + ZREMRANGEBYSCORE</div>
+              <div class="step-files-row">
+                <span class="file-tag">src/middleware/rateLimiter.ts</span>
+              </div>
+            </div>
+          </li>
+          <li class="plan-step-item">
+            <span class="step-n">3.</span>
+            <div>
+              <div>Add per-route limit config and fallback to fixed window on Redis failure</div>
+              <div class="step-files-row">
+                <span class="file-tag">src/config/limits.ts</span>
+                <span class="file-tag">src/middleware/rateLimiter.ts</span>
+              </div>
+            </div>
+          </li>
+          <li class="plan-step-item">
+            <span class="step-n">4.</span>
+            <div>Write integration tests with fake Redis using ioredis-mock</div>
+          </li>
+        </ul>
+
+        <div class="affected-label">Affected files</div>
+        <div class="affected-files">
+          <span class="file-tag">src/redis.ts</span>
+          <span class="file-tag">src/middleware/rateLimiter.ts</span>
+          <span class="file-tag">src/config/limits.ts</span>
+          <span class="file-tag">package.json</span>
+          <span class="file-tag">src/__tests__/rateLimiter.test.ts</span>
+        </div>
+
+        <div class="card-actions">
+          <button class="btn btn-approve">▶ APPROVE</button>
+          <button class="btn btn-modify">✎ Modify plan</button>
+          <button class="btn btn-reject">✗ Reject</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CARD 2: CLARIFICATION ── -->
+    <div class="hitl-card">
+      <div class="hitl-card-header">
+        <div class="hitl-type-label">⌛ Clarification needed</div>
+        <div class="hitl-meta">
+          <span>caiobellizzi/my-saas-app</span>
+          <span>task a0b98f99…</span>
+          <span>$0.32</span>
+        </div>
+      </div>
+
+      <div class="hitl-card-body">
+
+        <div class="clarification-reason">
+          The requirements stage found two ambiguities that could significantly change implementation scope. Answers needed before planning can proceed.
+        </div>
+
+        <div class="evidence-block">
+          <div class="evidence-label">Context from codebase</div>
+          <div class="evidence-line">Found existing session.ts using JWT with 24h expiry. Google OAuth flow will need to decide whether to reuse this or create a parallel OAuth session store.</div>
+        </div>
+
+        <!-- Question 1 -->
+        <div class="question-block">
+          <div class="question-text">1. Should existing JWT sessions and new OAuth sessions be unified, or kept as separate authentication paths?</div>
+          <div class="options-row">
+            <button class="opt-btn selected">Unified — merge into one session system</button>
+            <button class="opt-btn">Separate — OAuth users get their own flow</button>
+            <button class="opt-btn">Ask me after implementation draft</button>
+          </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="question-block">
+          <div class="question-text">2. Should users who sign up via Google OAuth also be able to set a password later (progressive accounts)?</div>
+          <div class="options-row">
+            <button class="opt-btn">Yes — allow password linking</button>
+            <button class="opt-btn">No — OAuth-only accounts stay OAuth-only</button>
+            <button class="opt-btn">Out of scope for this task</button>
+          </div>
+        </div>
+
+        <div class="free-text-label">Additional context (optional)</div>
+        <textarea class="free-text-input" placeholder="Any other constraints or notes for the planner..."></textarea>
+
+        <div class="card-actions" style="margin-top:12px;">
+          <button class="btn btn-submit">▶ SUBMIT ANSWERS</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

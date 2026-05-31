@@ -13,10 +13,10 @@ function DiffLine({ line }: { line: string }) {
     <div
       className={cn(
         "font-mono text-xs whitespace-pre px-2 py-0.5 leading-5",
-        isAdded && "bg-green-50 text-green-800",
-        isRemoved && "bg-red-50 text-red-800",
-        isHeader && "bg-blue-50 text-blue-700",
-        !isAdded && !isRemoved && !isHeader && "text-muted-foreground",
+        isAdded && "bg-[--success-bg] text-[--success]",
+        isRemoved && "bg-[--danger-bg] text-[--danger]",
+        isHeader && "bg-[--info-bg] text-[--info]",
+        !isAdded && !isRemoved && !isHeader && "text-[--text-muted]",
       )}
     >
       {line}
@@ -39,8 +39,8 @@ function FileChangeRow({ path, diff, additions, deletions }: {
       >
         {open ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
         <code className="flex-1 truncate">{path}</code>
-        <span className="text-green-600 text-xs">+{additions}</span>
-        <span className="text-red-600 text-xs ml-1">-{deletions}</span>
+        <span className="text-[--success] text-xs">+{additions}</span>
+        <span className="text-[--danger] text-xs ml-1">-{deletions}</span>
       </button>
       {open && (
         <ScrollArea className="max-h-96">
@@ -62,17 +62,17 @@ export function DiffViewer({ diff }: { diff: Diff }) {
         <Badge variant="outline">{diff.branch}</Badge>
         <span className="flex items-center gap-1 text-sm">
           {diff.build_passed ? (
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="h-4 w-4 text-[--success]" />
           ) : (
-            <XCircle className="h-4 w-4 text-destructive" />
+            <XCircle className="h-4 w-4 text-[--danger]" />
           )}
           Build
         </span>
         <span className="flex items-center gap-1 text-sm">
           {diff.test_passed ? (
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="h-4 w-4 text-[--success]" />
           ) : (
-            <XCircle className="h-4 w-4 text-destructive" />
+            <XCircle className="h-4 w-4 text-[--danger]" />
           )}
           Tests
         </span>

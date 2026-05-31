@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2, Rocket } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { repos as reposApi, tasks as tasksApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
@@ -38,63 +39,113 @@ export function LaunchPage() {
     <div className="flex flex-col h-full">
       <PageHeader title="Launch" description="Start a new build task" />
       <div className="flex-1 overflow-y-auto p-6">
-        <Card className="max-w-lg">
-          <CardHeader>
-            <CardTitle className="text-base">New Build</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Repository</Label>
-              <Select value={repo} onValueChange={setRepo}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a repo…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeRepos.map((r) => (
-                    <SelectItem key={r.full_name} value={r.full_name}>
-                      {r.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div
+          className="max-w-lg space-y-4 p-4 rounded-sm"
+          style={{
+            backgroundColor: "var(--surface)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <p
+            className="font-mono font-bold tracking-wide"
+            style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", letterSpacing: "var(--tracking-wide)" }}
+          >
+            NEW BUILD
+          </p>
 
-            <div className="space-y-2">
-              <Label>Goal</Label>
-              <textarea
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm min-h-[100px] resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Describe what you want built…"
-                value={goal}
-                onChange={(e) => setGoal(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">{goal.length} chars (min 10)</p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                id="brainstorm"
-                type="checkbox"
-                checked={brainstorm}
-                onChange={(e) => setBrainstorm(e.target.checked)}
-                className="h-4 w-4"
-              />
-              <Label htmlFor="brainstorm">Enable brainstorm stage</Label>
-            </div>
-
-            <Button
-              className="w-full"
-              onClick={() => launchMutation.mutate()}
-              disabled={!canSubmit || launchMutation.isPending}
+          <div className="space-y-1">
+            <Label
+              className="font-mono mb-1 block"
+              style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}
             >
-              {launchMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Rocket className="h-4 w-4" />
-              )}
-              Launch Build
-            </Button>
-          </CardContent>
-        </Card>
+              Repository
+            </Label>
+            <Select value={repo} onValueChange={setRepo}>
+              <SelectTrigger
+                className="font-mono rounded-sm h-8"
+                style={{
+                  fontSize: "var(--text-xs)",
+                  backgroundColor: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text)",
+                }}
+              >
+                <SelectValue placeholder="select a repo…" />
+              </SelectTrigger>
+              <SelectContent
+                style={{
+                  backgroundColor: "var(--surface-raised)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                {activeRepos.map((r) => (
+                  <SelectItem
+                    key={r.full_name}
+                    value={r.full_name}
+                    className="font-mono"
+                    style={{ fontSize: "var(--text-xs)" }}
+                  >
+                    {r.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label
+              className="font-mono mb-1 block"
+              style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}
+            >
+              Goal
+            </Label>
+            <Textarea
+              placeholder="Describe what you want built…"
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              className="min-h-[100px]"
+            />
+            <p
+              className="font-mono"
+              style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}
+            >
+              {goal.length} chars (min 10)
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="brainstorm"
+              checked={brainstorm}
+              onCheckedChange={(checked) => setBrainstorm(checked === true)}
+            />
+            <Label
+              htmlFor="brainstorm"
+              className="font-mono cursor-pointer"
+              style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}
+            >
+              Enable brainstorm stage
+            </Label>
+          </div>
+
+          <Button
+            className="w-full font-mono font-bold rounded-sm h-8"
+            style={{
+              fontSize: "var(--text-xs)",
+              backgroundColor: canSubmit && !launchMutation.isPending ? "var(--accent)" : "var(--accent-dim)",
+              color: "var(--bg, var(--background))",
+              border: "none",
+            }}
+            onClick={() => launchMutation.mutate()}
+            disabled={!canSubmit || launchMutation.isPending}
+          >
+            {launchMutation.isPending ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : null}
+            ▶ LAUNCH
+          </Button>
+        </div>
       </div>
     </div>
   );

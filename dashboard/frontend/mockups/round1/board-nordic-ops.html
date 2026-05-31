@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workshop Board — nordic-ops</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f8fa;
+      --surface: #ffffff;
+      --border: #e2e6ec;
+      --accent: #2d5be3;
+      --accent2: #7c3aed;
+      --text: #1a1d23;
+      --text-muted: #8892a4;
+      --success: #0e9f6e;
+      --warning: #d97706;
+      --danger: #e3342f;
+      --running: #2d5be3;
+      --font: 'Inter', 'DM Sans', system-ui, sans-serif;
+      --mono: 'IBM Plex Mono', 'Cascadia Code', monospace;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px;
+      min-width: 240px;
+      background: var(--surface);
+      box-shadow: 1px 0 0 var(--border), 4px 0 16px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      padding-top: 32px;
+      z-index: 10;
+    }
+
+    .wordmark {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+      padding: 0 20px 28px;
+    }
+
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 20px 6px;
+      margin-top: 4px;
+    }
+
+    .nav-group {
+      margin-bottom: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 14px 7px 18px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 1px 6px;
+      transition: background 0.12s, color 0.12s;
+      position: relative;
+      text-decoration: none;
+    }
+
+    .nav-item:hover {
+      background: rgba(45, 91, 227, 0.06);
+      color: var(--text);
+    }
+
+    .nav-item.active {
+      background: rgba(45, 91, 227, 0.08);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2px;
+      height: 20px;
+      background: var(--accent);
+      border-radius: 0 2px 2px 0;
+    }
+
+    .nav-icon {
+      width: 16px;
+      height: 16px;
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+
+    .nav-item.active .nav-icon { opacity: 1; }
+
+    .nav-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 10px 16px;
+    }
+
+    /* ── Main content ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .topbar-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--success);
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      border-radius: 7px;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.12s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 1px 3px rgba(45,91,227,0.25);
+    }
+
+    .btn-primary:hover { background: #2450cc; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { background: var(--bg); color: var(--text); }
+
+    /* ── Board ── */
+    .board-container {
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 20px 20px 20px 24px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .board-column {
+      min-width: 220px;
+      width: 220px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .col-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2px 10px;
+    }
+
+    .col-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .col-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1px 7px;
+    }
+
+    .col-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 60px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: box-shadow 0.15s, transform 0.12s;
+    }
+
+    .card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1), 0 6px 20px rgba(0,0,0,0.06);
+      transform: translateY(-1px);
+    }
+
+    .card-notch {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      border-radius: 8px 0 0 8px;
+    }
+
+    .notch-running { background: var(--running); }
+    .notch-success { background: var(--success); }
+    .notch-warning { background: var(--warning); }
+    .notch-danger  { background: var(--danger); }
+    .notch-muted   { background: var(--border); }
+    .notch-purple  { background: var(--accent2); }
+
+    .card-body {
+      padding: 11px 13px 10px 16px;
+    }
+
+    .card-goal {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.4;
+      margin-bottom: 5px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-repo {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      margin-bottom: 9px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 13px 9px 16px;
+      border-top: 1px solid var(--bg);
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-cost {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--text-muted);
+    }
+
+    .card-time {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 20px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .badge-running {
+      background: rgba(45,91,227,0.1);
+      color: var(--running);
+    }
+
+    .badge-success {
+      background: rgba(14,159,110,0.1);
+      color: var(--success);
+    }
+
+    .badge-warning {
+      background: rgba(217,119,6,0.1);
+      color: var(--warning);
+    }
+
+    .badge-danger {
+      background: rgba(227,52,47,0.1);
+      color: var(--danger);
+    }
+
+    .badge-muted {
+      background: var(--bg);
+      color: var(--text-muted);
+    }
+
+    .badge-purple {
+      background: rgba(124,58,237,0.1);
+      color: var(--accent2);
+    }
+
+    .badge-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .badge-running .badge-dot {
+      animation: pulse-dot 1.5s infinite;
+    }
+
+    /* ── Empty state ── */
+    .col-empty {
+      border: 1.5px dashed var(--border);
+      border-radius: 8px;
+      padding: 20px 12px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    /* ── Stage indicator bar ── */
+    .card-stage-bar {
+      height: 2px;
+      background: var(--bg);
+      margin: 0 16px 8px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .card-stage-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="wordmark">ultra-workshop</div>
+
+  <div class="nav-group">
+    <div class="nav-section-label">Board</div>
+    <a class="nav-item active" href="#">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <rect x="1.5" y="1.5" width="5" height="13" rx="1.5"/>
+        <rect x="9.5" y="1.5" width="5" height="8" rx="1.5"/>
+      </svg>
+      Board
+    </a>
+    <a class="nav-item" href="#">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="8" cy="8" r="6.5"/>
+        <path d="M8 4.5v3.5l2.5 1.5"/>
+      </svg>
+      Queue
+    </a>
+  </div>
+
+  <div class="nav-divider"></div>
+
+  <div class="nav-group">
+    <div class="nav-section-label">Costs &amp; Health</div>
+    <a class="nav-item" href="#">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M1.5 11.5l4-4 3 3 5-6"/>
+      </svg>
+      Cost Explorer
+    </a>
+    <a class="nav-item" href="#">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M8 1.5v13M1.5 8h13"/>
+        <circle cx="8" cy="8" r="6.5"/>
+      </svg>
+      Health
+    </a>
+  </div>
+
+  <div class="nav-divider"></div>
+
+  <div class="nav-group">
+    <div class="nav-section-label">Config</div>
+    <a class="nav-item" href="#">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="8" cy="8" r="2.5"/>
+        <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/>
+      </svg>
+      Settings
+    </a>
+    <a class="nav-item" href="#">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M2 4h12M2 8h8M2 12h5"/>
+      </svg>
+      Logs
+    </a>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-title">Workshop Board</span>
+      <div class="live-indicator">
+        <div class="live-dot"></div>
+        Live
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost">Filter</button>
+      <button class="btn btn-primary">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 1v10M1 6h10"/>
+        </svg>
+        Launch Task
+      </button>
+    </div>
+  </div>
+
+  <!-- Board -->
+  <div class="board-container">
+
+    <!-- Brainstorm -->
+    <div class="board-column">
+      <div class="col-header">
+        <span class="col-title">Brainstorm</span>
+        <span class="col-count">1</span>
+      </div>
+      <div class="col-body">
+        <div class="card">
+          <div class="card-notch notch-muted"></div>
+          <div class="card-body">
+            <div class="card-goal">Explore caching strategies for the API gateway layer</div>
+            <div class="card-repo">caiobellizzi/api-gateway</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$0.08</span>
+              <span class="card-time">2h ago</span>
+            </div>
+            <span class="status-badge badge-muted">queued</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Triage -->
+    <div class="board-column">
+      <div class="col-header">
+        <span class="col-title">Triage</span>
+        <span class="col-count">0</span>
+      </div>
+      <div class="col-body">
+        <div class="col-empty">No tasks</div>
+      </div>
+    </div>
+
+    <!-- Requirements -->
+    <div class="board-column">
+      <div class="col-header">
+        <span class="col-title">Requirements</span>
+        <span class="col-count">1</span>
+      </div>
+      <div class="col-body">
+        <div class="card">
+          <div class="card-notch notch-warning"></div>
+          <div class="card-body">
+            <div class="card-goal">Add OAuth2 login with Google and fix the user settings page crash on mobile</div>
+            <div class="card-repo">caiobellizzi/my-saas-app</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$0.21</span>
+              <span class="card-time">47m ago</span>
+            </div>
+            <span class="status-badge badge-warning">clarify</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Planner -->
+    <div class="board-column">
+      <div class="col-header">
+        <span class="col-title">Planner</span>
+        <span class="col-count">2</span>
+      </div>
+      <div class="col-body">
+        <div class="card">
+          <div class="card-notch notch-running"></div>
+          <div class="card-body">
+            <div class="card-goal">Migrate Postgres schema to add multi-tenant row isolation</div>
+            <div class="card-repo">caiobellizzi/platform-core</div>
+            <div class="card-stage-bar"><div class="card-stage-fill" style="width:62%"></div></div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$0.44</span>
+              <span class="card-time">18m ago</span>
+            </div>
+            <span class="status-badge badge-running"><span class="badge-dot"></span>planning</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-notch notch-muted"></div>
+          <div class="card-body">
+            <div class="card-goal">Write ADR for event-driven queue architecture using SQS</div>
+            <div class="card-repo">caiobellizzi/infra-docs</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$0.12</span>
+              <span class="card-time">1h ago</span>
+            </div>
+            <span class="status-badge badge-muted">queued</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coder -->
+    <div class="board-column">
+      <div class="col-header">
+        <span class="col-title">Coder</span>
+        <span class="col-count">3</span>
+      </div>
+      <div class="col-body">
+        <div class="card">
+          <div class="card-notch notch-running"></div>
+          <div class="card-body">
+            <div class="card-goal">Implement JWT refresh token rotation with Redis session store</div>
+            <div class="card-repo">caiobellizzi/auth-service</div>
+            <div class="card-stage-bar"><div class="card-stage-fill" style="width:38%"></div></div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$1.83</span>
+              <span class="card-time">9m ago</span>
+            </div>
+            <span class="status-badge badge-running"><span class="badge-dot"></span>coding</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-notch notch-running"></div>
+          <div class="card-body">
+            <div class="card-goal">Replace lodash with native ES2024 equivalents across the codebase</div>
+            <div class="card-repo">caiobellizzi/frontend-app</div>
+            <div class="card-stage-bar"><div class="card-stage-fill" style="width:71%"></div></div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$2.17</span>
+              <span class="card-time">4m ago</span>
+            </div>
+            <span class="status-badge badge-running"><span class="badge-dot"></span>coding</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-notch notch-purple"></div>
+          <div class="card-body">
+            <div class="card-goal">Add Stripe webhook handler for subscription lifecycle events</div>
+            <div class="card-repo">caiobellizzi/billing-service</div>
+            <div class="card-stage-bar"><div class="card-stage-fill" style="width:15%"></div></div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$0.67</span>
+              <span class="card-time">2m ago</span>
+            </div>
+            <span class="status-badge badge-purple">AI-gen</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reviewer -->
+    <div class="board-column">
+      <div class="col-header">
+        <span class="col-title">Reviewer</span>
+        <span class="col-count">2</span>
+      </div>
+      <div class="col-body">
+        <div class="card">
+          <div class="card-notch notch-running"></div>
+          <div class="card-body">
+            <div class="card-goal">Refactor notification delivery pipeline to support email + push + Slack</div>
+            <div class="card-repo">caiobellizzi/notifications</div>
+            <div class="card-stage-bar"><div class="card-stage-fill" style="width:50%"></div></div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$3.02</span>
+              <span class="card-time">14m ago</span>
+            </div>
+            <span class="status-badge badge-running"><span class="badge-dot"></span>reviewing</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-notch notch-warning"></div>
+          <div class="card-body">
+            <div class="card-goal">Fix N+1 query in the user dashboard endpoint causing p95 latency spikes</div>
+            <div class="card-repo">caiobellizzi/api-core</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$1.55</span>
+              <span class="card-time">31m ago</span>
+            </div>
+            <span class="status-badge badge-warning">needs fix</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Approval -->
+    <div class="board-column">
+      <div class="col-header">
+        <span class="col-title">Approval</span>
+        <span class="col-count">1</span>
+      </div>
+      <div class="col-body">
+        <div class="card">
+          <div class="card-notch notch-warning"></div>
+          <div class="card-body">
+            <div class="card-goal">Upgrade Node.js runtime to v22 LTS and update all CI workflows</div>
+            <div class="card-repo">caiobellizzi/platform-core</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$2.88</span>
+              <span class="card-time">1h ago</span>
+            </div>
+            <span class="status-badge badge-warning">awaiting</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pushed -->
+    <div class="board-column">
+      <div class="col-header">
+        <span class="col-title">Pushed</span>
+        <span class="col-count">2</span>
+      </div>
+      <div class="col-body">
+        <div class="card">
+          <div class="card-notch notch-success"></div>
+          <div class="card-body">
+            <div class="card-goal">Add dark mode toggle with system preference detection</div>
+            <div class="card-repo">caiobellizzi/frontend-app</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$1.24</span>
+              <span class="card-time">3h ago</span>
+            </div>
+            <span class="status-badge badge-success">pushed</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-notch notch-success"></div>
+          <div class="card-body">
+            <div class="card-goal">Set up rate limiting middleware with Redis-backed token bucket</div>
+            <div class="card-repo">caiobellizzi/api-gateway</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$2.10</span>
+              <span class="card-time">5h ago</span>
+            </div>
+            <span class="status-badge badge-success">pushed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Failed -->
+    <div class="board-column">
+      <div class="col-header">
+        <span class="col-title">Failed</span>
+        <span class="col-count">1</span>
+      </div>
+      <div class="col-body">
+        <div class="card">
+          <div class="card-notch notch-danger"></div>
+          <div class="card-body">
+            <div class="card-goal">Deploy Elasticsearch cluster upgrade to 8.x with zero downtime</div>
+            <div class="card-repo">caiobellizzi/search-infra</div>
+          </div>
+          <div class="card-footer">
+            <div class="card-meta">
+              <span class="card-cost">$4.31</span>
+              <span class="card-time">7h ago</span>
+            </div>
+            <span class="status-badge badge-danger">failed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.board-container -->
+</div><!-- /.main -->
+
+</body>
+</html>

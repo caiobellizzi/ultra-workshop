@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Detail — terminal-forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #0a0e0a;
+    --surface:     #111811;
+    --border:      #1e2e1e;
+    --accent:      #39d353;
+    --accent2:     #00b4d8;
+    --text:        #d4f5d4;
+    --textMuted:   #5a7a5a;
+    --success:     #39d353;
+    --warning:     #f0a500;
+    --danger:      #ff4444;
+    --running:     #00b4d8;
+    --font:        'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow: hidden;
+  }
+
+  .shell { display: flex; height: 100vh; }
+
+  /* ── Sidebar nav ── */
+  .sidenav {
+    width: 200px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--accent);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidenav-logo {
+    padding: 16px 12px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: pre;
+  }
+
+  .nav-item {
+    display: block;
+    padding: 8px 12px;
+    color: var(--textMuted);
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .nav-item:hover { color: var(--text); }
+  .nav-item.active {
+    color: var(--accent);
+    border-left: 3px solid var(--accent);
+    padding-left: 9px;
+  }
+
+  .nav-section {
+    padding: 12px 12px 4px;
+    font-size: 9px;
+    color: var(--textMuted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+
+  .sidenav-footer {
+    margin-top: auto;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    color: var(--textMuted);
+    font-size: 10px;
+  }
+
+  /* ── Main wrapper ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Top bar ── */
+  .topbar {
+    height: 40px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .breadcrumb {
+    font-size: 11px;
+    color: var(--textMuted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .breadcrumb a { color: var(--textMuted); text-decoration: none; cursor: pointer; }
+  .breadcrumb a:hover { color: var(--text); }
+  .breadcrumb .sep { color: var(--border); }
+  .breadcrumb .current { color: var(--text); font-weight: 500; }
+
+  .topbar-sep { flex: 1; }
+
+  .badge {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border: 1px solid;
+  }
+  .badge-running {
+    color: var(--running);
+    border-color: var(--running);
+    animation: blink 1.8s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.55} }
+
+  .running-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--running);
+    animation: heartbeat 1.4s ease-in-out infinite;
+  }
+  @keyframes heartbeat {
+    0%,100%{transform:scale(1);opacity:1}
+    30%{transform:scale(1.5);opacity:.9}
+    60%{transform:scale(.85);opacity:.65}
+  }
+
+  .topbar-actions { display: flex; gap: 8px; }
+
+  .btn-sm {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--textMuted);
+    font-family: var(--font);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .btn-sm:hover { border-color: var(--text); color: var(--text); }
+  .btn-danger { border-color: var(--danger); color: var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: var(--bg); }
+
+  /* ── 3-col content ── */
+  .content-area {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Left panel: pipeline + metadata ── */
+  .panel-left {
+    width: 220px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .panel-left::-webkit-scrollbar { width: 4px; }
+  .panel-left::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .panel-section {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-section-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--textMuted);
+    margin-bottom: 10px;
+  }
+
+  /* Pipeline stages */
+  .stage-list { display: flex; flex-direction: column; gap: 0; }
+
+  .stage {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    position: relative;
+  }
+
+  .stage::before {
+    content: '';
+    position: absolute;
+    left: 9px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+    z-index: 0;
+  }
+  .stage:first-child::before { top: 50%; }
+  .stage:last-child::before  { bottom: 50%; }
+
+  .stage-dot {
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+  }
+
+  .stage-dot.done   { border-color: var(--success); color: var(--success); background: var(--bg); }
+  .stage-dot.active { border-color: var(--running); background: var(--bg); }
+  .stage-dot.active::after {
+    content: '';
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--running);
+    animation: heartbeat 1.4s ease-in-out infinite;
+  }
+  .stage-dot.pending { border-color: var(--border); color: var(--textMuted); }
+
+  .stage-info { flex: 1; }
+
+  .stage-name {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .stage-name.done   { color: var(--success); }
+  .stage-name.active { color: var(--running); }
+  .stage-name.pending { color: var(--textMuted); }
+
+  .stage-dur {
+    font-size: 9px;
+    color: var(--textMuted);
+  }
+
+  /* Metadata rows */
+  .meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .meta-row:last-child { border-bottom: none; }
+
+  .meta-label {
+    font-size: 9px;
+    color: var(--textMuted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .meta-value {
+    font-size: 11px;
+    color: var(--text);
+    word-break: break-all;
+  }
+
+  .meta-value.mono-id {
+    font-size: 10px;
+    color: var(--accent);
+  }
+
+  .cost-bar-wrap {
+    height: 4px;
+    background: var(--border);
+    margin-top: 4px;
+  }
+  .cost-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 36%;
+  }
+
+  /* ── Center panel: logs + plan ── */
+  .panel-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .tab {
+    padding: 8px 16px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--textMuted);
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: var(--bg);
+  }
+
+  .log-area {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--bg);
+    padding: 0;
+    position: relative;
+  }
+
+  .log-area::-webkit-scrollbar { width: 4px; }
+  .log-area::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .log-pre {
+    font-family: var(--font);
+    font-size: 11px;
+    line-height: 1.6;
+    padding: 10px 0 40px;
+    white-space: pre;
+    min-height: 100%;
+  }
+
+  .log-line { display: flex; }
+
+  .log-ts {
+    color: var(--textMuted);
+    width: 78px;
+    flex-shrink: 0;
+    padding: 0 8px 0 12px;
+    user-select: none;
+  }
+
+  .log-body { flex: 1; padding-right: 12px; }
+
+  .log-line.info   .log-body { color: var(--text); }
+  .log-line.aider  .log-body { color: var(--accent); }
+  .log-line.system .log-body { color: var(--textMuted); }
+  .log-line.warn   .log-body { color: var(--warning); }
+  .log-line.err    .log-body { color: var(--danger); }
+  .log-line.dim    .log-body { color: var(--textMuted); opacity: 0.6; }
+
+  .cursor-line .log-body::after {
+    content: '█';
+    color: var(--accent);
+    animation: cursor-blink 1s step-end infinite;
+    margin-left: 2px;
+  }
+  @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* Plan section below logs */
+  .plan-area {
+    height: 220px;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+  }
+
+  .plan-area::-webkit-scrollbar { width: 4px; }
+  .plan-area::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .plan-header {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--textMuted);
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 1;
+  }
+
+  .plan-steps { padding: 8px 12px; }
+
+  .plan-step {
+    display: flex;
+    gap: 10px;
+    padding: 6px 8px;
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+  }
+
+  .plan-step.done    { border-color: var(--border); opacity: 0.7; }
+  .plan-step.current { border-color: var(--running); background: rgba(0,180,216,.05); }
+  .plan-step.pending { border-color: transparent; opacity: 0.5; }
+
+  .step-num {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--textMuted);
+    width: 18px;
+    flex-shrink: 0;
+    padding-top: 1px;
+  }
+  .plan-step.done    .step-num { color: var(--success); }
+  .plan-step.current .step-num { color: var(--running); }
+
+  .step-body { flex: 1; }
+
+  .step-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .plan-step.pending .step-title { color: var(--textMuted); }
+  .plan-step.current .step-title { color: var(--running); }
+
+  .step-detail {
+    font-size: 10px;
+    color: var(--textMuted);
+  }
+
+  .step-check {
+    font-size: 10px;
+    color: var(--success);
+    flex-shrink: 0;
+    padding-top: 1px;
+  }
+  .plan-step.pending .step-check { visibility: hidden; }
+  .plan-step.current .step-check { color: var(--running); }
+
+  /* ── Right panel: review ── */
+  .panel-right {
+    width: 280px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .review-header {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--textMuted);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .review-count {
+    background: var(--danger);
+    color: var(--bg);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 0 5px;
+    line-height: 16px;
+  }
+
+  .review-body { flex: 1; overflow-y: auto; padding: 8px; }
+  .review-body::-webkit-scrollbar { width: 4px; }
+  .review-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .wave-label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--textMuted);
+    text-transform: uppercase;
+    padding: 6px 4px 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .wave-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .finding {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    padding: 8px;
+    margin-bottom: 6px;
+    background: var(--bg);
+  }
+
+  .finding.critical { border-left-color: var(--danger); }
+  .finding.warning  { border-left-color: var(--warning); }
+  .finding.info     { border-left-color: var(--textMuted); }
+  .finding.ok       { border-left-color: var(--success); }
+
+  .finding-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+  }
+
+  .finding-sev {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border: 1px solid;
+  }
+  .finding-sev.critical { color: var(--danger); border-color: var(--danger); }
+  .finding-sev.warning  { color: var(--warning); border-color: var(--warning); }
+  .finding-sev.info     { color: var(--textMuted); border-color: var(--border); }
+  .finding-sev.ok       { color: var(--success); border-color: var(--success); }
+
+  .finding-file {
+    font-size: 9px;
+    color: var(--textMuted);
+    margin-left: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+  }
+
+  .finding-desc {
+    font-size: 10px;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 4px;
+  }
+
+  .finding.critical .finding-desc { color: var(--danger); }
+
+  .finding-code {
+    font-size: 10px;
+    color: var(--textMuted);
+    background: var(--surface);
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+    white-space: pre;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .review-summary {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .review-summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--textMuted);
+    padding: 2px 0;
+  }
+
+  .review-summary-row span:last-child { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Sidebar nav ── -->
+  <aside class="sidenav">
+    <div class="sidenav-logo">╔═══════════════╗
+║  ULTRA        ║
+║  WORKSHOP     ║
+║  ░░░ forge ░░░║
+╚═══════════════╝</div>
+    <nav style="flex:1;padding:8px 0;">
+      <a class="nav-item" href="#">BOARD</a>
+      <a class="nav-item active" href="#">TASKS</a>
+      <a class="nav-item" href="#">HITL QUEUE</a>
+      <a class="nav-item" href="#">PIPELINES</a>
+      <div class="nav-section">Observe</div>
+      <a class="nav-item" href="#">LOGS</a>
+      <a class="nav-item" href="#">METRICS</a>
+      <a class="nav-item" href="#">COST</a>
+      <div class="nav-section">Config</div>
+      <a class="nav-item" href="#">SETTINGS</a>
+      <a class="nav-item" href="#">AGENTS</a>
+      <a class="nav-item" href="#">TEAMS</a>
+    </nav>
+    <div class="sidenav-footer">v0.9.4-alpha<br><span style="color:var(--accent)">● online</span></div>
+  </aside>
+
+  <div class="main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="breadcrumb">
+        <a href="#">Board</a>
+        <span class="sep">›</span>
+        <span class="current">task-a0b98f9900de4c96</span>
+      </div>
+      <div class="topbar-sep"></div>
+      <div class="running-dot"></div>
+      <span class="badge badge-running">running</span>
+      <div class="topbar-actions">
+        <button class="btn-sm">Pause</button>
+        <button class="btn-sm btn-danger">Kill</button>
+      </div>
+    </div>
+
+    <!-- 3-column content -->
+    <div class="content-area">
+
+      <!-- ── Left: pipeline + metadata ── -->
+      <div class="panel-left">
+        <div class="panel-section">
+          <div class="panel-section-title">Pipeline Stages</div>
+          <div class="stage-list">
+            <div class="stage">
+              <div class="stage-dot done">✓</div>
+              <div class="stage-info">
+                <div class="stage-name done">Brainstorm</div>
+                <div class="stage-dur">0m 18s</div>
+              </div>
+            </div>
+            <div class="stage">
+              <div class="stage-dot done">✓</div>
+              <div class="stage-info">
+                <div class="stage-name done">Triage</div>
+                <div class="stage-dur">0m 44s</div>
+              </div>
+            </div>
+            <div class="stage">
+              <div class="stage-dot done">✓</div>
+              <div class="stage-info">
+                <div class="stage-name done">Requirements</div>
+                <div class="stage-dur">2m 11s</div>
+              </div>
+            </div>
+            <div class="stage">
+              <div class="stage-dot done">✓</div>
+              <div class="stage-info">
+                <div class="stage-name done">Planner</div>
+                <div class="stage-dur">3m 05s</div>
+              </div>
+            </div>
+            <div class="stage">
+              <div class="stage-dot active"></div>
+              <div class="stage-info">
+                <div class="stage-name active">Coder</div>
+                <div class="stage-dur">5m 47s ↑</div>
+              </div>
+            </div>
+            <div class="stage">
+              <div class="stage-dot pending">6</div>
+              <div class="stage-info">
+                <div class="stage-name pending">Reviewer</div>
+                <div class="stage-dur">—</div>
+              </div>
+            </div>
+            <div class="stage">
+              <div class="stage-dot pending">7</div>
+              <div class="stage-info">
+                <div class="stage-name pending">Approval</div>
+                <div class="stage-dur">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-section-title">Metadata</div>
+          <div class="meta-row">
+            <span class="meta-label">Task ID</span>
+            <span class="meta-value mono-id">a0b98f9900de4c96</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Goal</span>
+            <span class="meta-value">Add OAuth2 login with Google and fix the user settings page crash on null profile</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Repository</span>
+            <span class="meta-value">caiobellizzi/my-saas-app</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Branch</span>
+            <span class="meta-value">feat/oauth2-google-login</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Agent</span>
+            <span class="meta-value">claude-sonnet-4-6</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Duration</span>
+            <span class="meta-value">12m 05s</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Cost</span>
+            <span class="meta-value" style="color:var(--accent)">$1.84 / $5.00 limit</span>
+            <div class="cost-bar-wrap"><div class="cost-bar-fill"></div></div>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Files Changed</span>
+            <span class="meta-value">7 modified · 2 new</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Center: logs + plan ── -->
+      <div class="panel-center">
+        <div class="panel-tabs">
+          <div class="tab active">Live Logs</div>
+          <div class="tab">Diff</div>
+          <div class="tab">Context</div>
+        </div>
+
+        <div class="log-area">
+          <div class="log-pre">
+<div class="log-line system"><span class="log-ts">14:22:01.003</span><span class="log-body">━━ task a0b98f9900de4c96 / stage:coder starting ━━━━━━━━━━━━━━━━━━</span></div>
+<div class="log-line dim"><span class="log-ts">14:22:01.045</span><span class="log-body">cwd=/home/runner/work/my-saas-app  branch=feat/oauth2-google-login</span></div>
+<div class="log-line info"><span class="log-ts">14:22:01.512</span><span class="log-body">reading plan from .planning/phases/oauth2-login/PLAN.md ...</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:02.001</span><span class="log-body">aider v0.51.0 — model claude-sonnet-4-6</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:02.003</span><span class="log-body">Repo-map using 1024 tokens, 0.0% of context window</span></div>
+<div class="log-line dim"><span class="log-ts">14:22:02.891</span><span class="log-body">Added 14 files to the chat.</span></div>
+<div class="log-line info"><span class="log-ts">14:22:04.201</span><span class="log-body">─── Step 1: Install google-auth-oauthlib dependency ──────────</span></div>
+<div class="log-line dim"><span class="log-ts">14:22:04.450</span><span class="log-body">$ pip install google-auth-oauthlib==1.2.0 google-auth==2.29.0</span></div>
+<div class="log-line dim"><span class="log-ts">14:22:07.891</span><span class="log-body">Successfully installed google-auth-2.29.0 google-auth-oauthlib-1.2.0</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:08.012</span><span class="log-body">Adding google-auth-oauthlib==1.2.0 to requirements.txt</span></div>
+<div class="log-line info"><span class="log-ts">14:22:09.001</span><span class="log-body">─── Step 2: Create OAuth2 callback handler ───────────────────</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:09.440</span><span class="log-body">Creating app/routes/auth/google.py</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:14.880</span><span class="log-body">  ✓ Created app/routes/auth/google.py (87 lines)</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:15.021</span><span class="log-body">Editing app/routes/auth/__init__.py</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:18.330</span><span class="log-body">  ✓ Registered /auth/google and /auth/google/callback</span></div>
+<div class="log-line info"><span class="log-ts">14:22:18.400</span><span class="log-body">─── Step 3: Add GOOGLE_CLIENT_ID / SECRET to env schema ──────</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:18.901</span><span class="log-body">Editing app/config.py</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:21.550</span><span class="log-body">  ✓ Added GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI</span></div>
+<div class="log-line info"><span class="log-ts">14:22:22.001</span><span class="log-body">─── Step 4: Fix null profile crash in settings page ──────────</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:22.450</span><span class="log-body">Editing app/routes/settings.py</span></div>
+<div class="log-line warn"><span class="log-ts">14:22:23.100</span><span class="log-body">  ! Found 2 unguarded .profile accesses at lines 44, 78</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:25.880</span><span class="log-body">  ✓ Added null guard: profile = user.profile or UserProfile.default()</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:28.001</span><span class="log-body">Editing app/templates/settings.html</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:31.441</span><span class="log-body">  ✓ Guarded 3 Jinja2 template references with default filters</span></div>
+<div class="log-line info"><span class="log-ts">14:22:31.500</span><span class="log-body">─── Running test suite ───────────────────────────────────────</span></div>
+<div class="log-line dim"><span class="log-ts">14:22:31.890</span><span class="log-body">$ pytest tests/ -x -q --tb=short 2>&1</span></div>
+<div class="log-line dim"><span class="log-ts">14:22:39.001</span><span class="log-body">........................................                    [100%]</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:39.120</span><span class="log-body">  ✓ 40 passed, 0 failed in 7.11s</span></div>
+<div class="log-line info"><span class="log-ts">14:22:39.250</span><span class="log-body">─── Step 5: Write OAuth2 integration tests ───────────────────</span></div>
+<div class="log-line aider"><span class="log-ts">14:22:39.800</span><span class="log-body">Creating tests/test_auth_google.py</span></div>
+<div class="log-line cursor-line"><span class="log-ts">14:22:44.003</span><span class="log-body">  writing test_callback_exchanges_code_for_token ...</span></div>
+          </div>
+        </div>
+
+        <!-- Plan area -->
+        <div class="plan-area">
+          <div class="plan-header">Execution Plan — 8 Steps</div>
+          <div class="plan-steps">
+            <div class="plan-step done">
+              <span class="step-num">01</span>
+              <div class="step-body">
+                <div class="step-title">Install google-auth dependencies</div>
+                <div class="step-detail">Add to requirements.txt, pin versions</div>
+              </div>
+              <span class="step-check">✓</span>
+            </div>
+            <div class="plan-step done">
+              <span class="step-num">02</span>
+              <div class="step-body">
+                <div class="step-title">Create OAuth2 callback route handler</div>
+                <div class="step-detail">app/routes/auth/google.py</div>
+              </div>
+              <span class="step-check">✓</span>
+            </div>
+            <div class="plan-step done">
+              <span class="step-num">03</span>
+              <div class="step-body">
+                <div class="step-title">Add env config schema entries</div>
+                <div class="step-detail">GOOGLE_CLIENT_ID, SECRET, REDIRECT_URI</div>
+              </div>
+              <span class="step-check">✓</span>
+            </div>
+            <div class="plan-step done">
+              <span class="step-num">04</span>
+              <div class="step-body">
+                <div class="step-title">Fix null profile crash in settings</div>
+                <div class="step-detail">Guard unguarded .profile accesses</div>
+              </div>
+              <span class="step-check">✓</span>
+            </div>
+            <div class="plan-step current">
+              <span class="step-num">05</span>
+              <div class="step-body">
+                <div class="step-title">Write OAuth2 integration tests</div>
+                <div class="step-detail">tests/test_auth_google.py — 6 test cases</div>
+              </div>
+              <span class="step-check">▶</span>
+            </div>
+            <div class="plan-step pending">
+              <span class="step-num">06</span>
+              <div class="step-body">
+                <div class="step-title">Update .env.example and README</div>
+                <div class="step-detail">Document new required env vars</div>
+              </div>
+              <span class="step-check">○</span>
+            </div>
+            <div class="plan-step pending">
+              <span class="step-num">07</span>
+              <div class="step-body">
+                <div class="step-title">Run full test suite + linter</div>
+                <div class="step-detail">pytest + ruff check .</div>
+              </div>
+              <span class="step-check">○</span>
+            </div>
+            <div class="plan-step pending">
+              <span class="step-num">08</span>
+              <div class="step-body">
+                <div class="step-title">Commit and push to branch</div>
+                <div class="step-detail">feat/oauth2-google-login → origin</div>
+              </div>
+              <span class="step-check">○</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /panel-center -->
+
+      <!-- ── Right: review findings ── -->
+      <div class="panel-right">
+        <div class="review-header">
+          Review Findings
+          <span class="review-count">1 crit</span>
+        </div>
+
+        <div class="review-body">
+          <div class="wave-label">Wave 1 — Security</div>
+
+          <div class="finding critical">
+            <div class="finding-header">
+              <span class="finding-sev critical">Critical</span>
+              <span class="finding-file">app/routes/auth/google.py</span>
+            </div>
+            <div class="finding-desc">State parameter not validated — CSRF vulnerability in OAuth2 callback. Attacker can forge authorization code exchanges.</div>
+            <div class="finding-code">callback?code=AUTH_CODE&state=...
+# state not compared to session value</div>
+          </div>
+
+          <div class="finding warning">
+            <div class="finding-header">
+              <span class="finding-sev warning">Warning</span>
+              <span class="finding-file">app/config.py</span>
+            </div>
+            <div class="finding-desc">GOOGLE_CLIENT_SECRET missing from startup validation. App will silently fail OAuth2 if env var is absent at runtime.</div>
+          </div>
+
+          <div class="finding info">
+            <div class="finding-header">
+              <span class="finding-sev info">Info</span>
+              <span class="finding-file">app/routes/settings.py</span>
+            </div>
+            <div class="finding-desc">UserProfile.default() creates a new DB row on each call. Consider caching or lazy creation instead.</div>
+          </div>
+
+          <div class="wave-label">Wave 2 — Code Quality</div>
+
+          <div class="finding ok">
+            <div class="finding-header">
+              <span class="finding-sev ok">Pass</span>
+              <span class="finding-file">tests/</span>
+            </div>
+            <div class="finding-desc">Test coverage for auth routes: 91.4%. All happy paths and 2 error paths covered.</div>
+          </div>
+
+          <div class="finding info">
+            <div class="finding-header">
+              <span class="finding-sev info">Info</span>
+              <span class="finding-file">app/routes/auth/google.py</span>
+            </div>
+            <div class="finding-desc">Function get_google_user_info() duplicates logic already in app/utils/oauth.py:84. Extract to shared helper.</div>
+          </div>
+
+          <div class="wave-label">Wave 3 — Compatibility</div>
+
+          <div class="finding ok">
+            <div class="finding-header">
+              <span class="finding-sev ok">Pass</span>
+              <span class="finding-file">requirements.txt</span>
+            </div>
+            <div class="finding-desc">google-auth-oauthlib 1.2.0 compatible with existing Python 3.11 / Flask 3.0 constraint set.</div>
+          </div>
+
+          <div class="finding warning">
+            <div class="finding-header">
+              <span class="finding-sev warning">Warning</span>
+              <span class="finding-file">app/templates/settings.html</span>
+            </div>
+            <div class="finding-desc">Jinja2 default filter applied to email field will render "None" as literal string for legacy accounts. Use a conditional instead.</div>
+          </div>
+        </div>
+
+        <div class="review-summary">
+          <div class="review-summary-row"><span>Waves completed</span><span>3 / 3</span></div>
+          <div class="review-summary-row"><span>Critical</span><span style="color:var(--danger)">1</span></div>
+          <div class="review-summary-row"><span>Warnings</span><span style="color:var(--warning)">3</span></div>
+          <div class="review-summary-row"><span>Info</span><span>2</span></div>
+          <div class="review-summary-row"><span>Pass</span><span style="color:var(--success)">2</span></div>
+        </div>
+      </div>
+
+    </div><!-- /content-area -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+</body>
+</html>
