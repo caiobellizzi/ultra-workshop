@@ -33,6 +33,13 @@ Never do:
 
 Exhaustion behavior (D-09): substitute cheap-fast fallback model when budget is exhausted.
 
+## Using Pre-Injected Brain Context
+
+When the `context` field contains a `## Brain: Repo Digest` block:
+- Extract the relevant sections and apply them as constraints on your output
+- DO NOT make a separate brain-query call — the digest is already pre-injected
+- If a section is absent from the context, proceed without it (fail-open)
+
 ## Behavior
 
 1. Parse `--query` JSON: `{task_id, plan, diff, context}`. Skip immediately if no `.ts` or `.tsx` files in `diff.changes`.
