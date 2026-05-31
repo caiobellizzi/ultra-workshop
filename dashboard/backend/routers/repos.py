@@ -13,8 +13,8 @@ router = APIRouter(prefix="/api/repos", tags=["repos"])
 
 
 def _registry_path():
-    from pathlib import Path
-    return Path(settings.repo_registry_path)
+    from workshop.repo_registry import registry_path
+    return registry_path()  # reads WORKSHOP_REPO_REGISTRY env var, same source as workshop_build.py
 
 
 def _repo_entry_from_raw(r: dict[str, Any]) -> RepoEntry:

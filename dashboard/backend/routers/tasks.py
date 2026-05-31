@@ -53,6 +53,13 @@ def get_progress(task_id: str, _auth=Depends(require_auth)):
 @router.post("", response_model=LaunchResponse, status_code=202)
 def launch_task(body: LaunchRequest, _auth=Depends(require_auth)):
     task_id = str(uuid.uuid4()).replace("-", "")[:16]
+    # Seed state.json before spawning so the task is immediately visible,
+    # even if the subprocess fails before writing its own state.
+    try:
+        from workshop.state import new_task_state, save_task_state
+        save_task_state(new_task_state(task_id, goal=body.goal, repo=body.repo))
+    except Exception:
+        pass
     build_trigger.launch_build(
         task_id=task_id,
         repo=body.repo,

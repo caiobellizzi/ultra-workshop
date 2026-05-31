@@ -24,7 +24,7 @@ def launch_build(task_id: str, repo: str, goal: str, brainstorm: bool = False) -
         str(workshop_build),
         "--task-id", task_id,
         "--repo", repo,
-        "--goal", goal,
+        "--task", goal,
     ]
     if brainstorm:
         cmd.append("--brainstorm")
