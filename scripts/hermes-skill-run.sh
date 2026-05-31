@@ -16,6 +16,14 @@ fi
 
 SKILL="$1"
 shift
+# Detect --dry-run as a standalone flag, not as text inside --query JSON value
+DRY_RUN=""
+_SKIP_NEXT=""
+for _arg in "$@"; do
+    [ -n "$_SKIP_NEXT" ] && { _SKIP_NEXT=""; continue; }
+    [ "$_arg" = "--query" ] && { _SKIP_NEXT="1"; continue; }
+    [ "$_arg" = "--dry-run" ] && { DRY_RUN="1"; break; }
+done
 QUERY="$*"
 
 # Per-skill --max-turns budget AND per-skill HERMES_HOME selection. Planner,
@@ -48,7 +56,7 @@ fi
 
 # Dry-run short-circuit: print what would run and exit 0. Includes the resolved
 # HERMES_HOME so per-skill model routing can be asserted in bats smoke tests.
-if echo "$QUERY" | grep -q -- "--dry-run"; then
+if [ -n "$DRY_RUN" ]; then
   if [ "$SKILL" = "planner-specialist" ]; then
     echo "[dry-run] would run: hermes chat --skills planner-specialist --query '${QUERY}' -Q --max-turns ${MAX_TURNS} --yolo"
     echo "[dry-run] HERMES_HOME=/opt/ultra-workshop/specialist-home-orchestrator"
