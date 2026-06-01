@@ -106,7 +106,7 @@ rsync_files "hermes-skills/startup-cron-catchup-hook/" "/home/uws/.hermes/hooks/
 rsh "chown -R uws:uws /home/uws/.hermes/hooks/startup-cron-catchup"
 
 echo "==> Step N+4: REGISTER HERMES CRON JOBS"
-rsh "sudo -u uws /opt/ultra-workshop/.venv/bin/hermes skill run /opt/ultra-workshop/hermes-skills/bootstrap_cron_jobs.py"
+rsh "sudo -u uws /opt/ultra-workshop/hermes/venv/bin/hermes skill run /opt/ultra-workshop/hermes-skills/bootstrap_cron_jobs.py"
 
 echo "==> Step N+5: DEPLOY INTEGRATION CONTRACT TO VAULT"
 rsync_files "vault/_system/integration-contract.md" "${VAULT_VPS_PATH:-/srv/second-brain}/_system/"
