@@ -9,6 +9,16 @@
 
 ---
 
+## Current State
+
+**v1.0 SHIPPED 2026-06-01** (tag `v1.0`). The autonomous coding agent is live and reproducible on the VPS: Telegram build/fix pipeline with HITL, 5-role specialists + 8-scope review wave, per-step execution, cost circuit breaker, autonomous crons (`daily-research`, `nightly-tests`, `bug-scan-standard`, `nightly-rescan`), fast-poll service, and Brain↔Workshop Flows B/E (link-orphans + post-to-telegram) live-verified end-to-end. 50/56 requirements satisfied; verification 11/11, validation 11/11, integration 10/10, flows 4/4. Archive: `.planning/milestones/v1.0-ROADMAP.md`; evidence: `.planning/v1.0-v1.0-MILESTONE-AUDIT.md`.
+
+## Next Milestone Goals (v1.1)
+
+Carried from v1.0 (see ROADMAP.md backlog): REQ-ws-015 (MCP registration), Mac-side vault round-trip (025/027), live LLM planner accuracy (033), Phase 9 caveats (048/050), and the **Brain-side queue producer** (`ultra-agents-brain` must write entries to `_system/.workshop-queue.jsonl` — the workshop consumer is proven but idle without it). Run `/gsd:new-milestone` to scope.
+
+---
+
 ## Core Value
 
 An autonomous coding/PR/deploy agent team running on the same VPS as Brain, reachable via Telegram, that takes a task description and produces a reviewed pull request — with human approval as the only gate before any code lands.

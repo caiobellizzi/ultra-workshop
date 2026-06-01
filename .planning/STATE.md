@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: milestone_complete
-stopped_at: Milestone complete (Phase 10.1 was final phase)
+status: milestone_shipped
+stopped_at: v1.0 shipped & archived 2026-06-01 (tag v1.0); ROADMAP/REQUIREMENTS archived to milestones/
 last_updated: 2026-06-01T04:31:24.105Z
 last_activity: 2026-05-31 -- Phase 10.1 execution started
 progress:
