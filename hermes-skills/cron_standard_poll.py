@@ -14,6 +14,7 @@ Deploy location: /opt/ultra-workshop/hermes-skills/cron_standard_poll.py
 """
 from __future__ import annotations
 
+import base64
 import datetime
 import json
 import logging
@@ -73,9 +74,49 @@ def _dispatch_entry(entry: dict) -> None:
     elif action == "link-orphans":
         _run_skill("link_orphans", entry)
     elif action == "build":
-        _run_skill("workshop_build", entry)
+        # workshop_build.py parses argparse — pass CLI flags, not stdin JSON.
+        skill_file = SKILL_DIR / "workshop_build.py"
+        if not skill_file.exists():
+            logger.error("Skill file not found: %s — skipping", skill_file)
+        else:
+            task_b64 = base64.b64encode(entry.get("task", "").encode()).decode()
+            try:
+                subprocess.run(
+                    [
+                        sys.executable,
+                        str(skill_file),
+                        "--repo", entry.get("repo", ""),
+                        "--task-b64", task_b64,
+                        "--chat-id", entry.get("chat_id", "7113965359"),
+                    ],
+                    timeout=1800,
+                    check=False,
+                )
+            except subprocess.TimeoutExpired:
+                logger.error("workshop_build timed out after 1800s")
+            except Exception as exc:
+                logger.error("workshop_build dispatch raised: %s", exc)
     elif action == "fix":
-        _run_skill("workshop_fix", entry)
+        # workshop_fix.py parses argparse and requires --issue-url, not stdin JSON.
+        skill_file = SKILL_DIR / "workshop_fix.py"
+        if not skill_file.exists():
+            logger.error("Skill file not found: %s — skipping", skill_file)
+        else:
+            try:
+                subprocess.run(
+                    [
+                        sys.executable,
+                        str(skill_file),
+                        "--issue-url", entry.get("issue_url", ""),
+                        "--chat-id", entry.get("chat_id", "7113965359"),
+                    ],
+                    timeout=1800,
+                    check=False,
+                )
+            except subprocess.TimeoutExpired:
+                logger.error("workshop_fix timed out after 1800s")
+            except Exception as exc:
+                logger.error("workshop_fix dispatch raised: %s", exc)
     else:
         logger.warning("Unknown action %r for entry %s — ACKing without dispatch", action, entry_id)
 

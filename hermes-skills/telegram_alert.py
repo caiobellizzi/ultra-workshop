@@ -36,3 +36,30 @@ def send_alert(message: str, chat_id: str = DEFAULT_CHAT_ID) -> None:
     url = f"{TELEGRAM_API_BASE}/bot{token}/sendMessage"
     resp = httpx.post(url, json={"chat_id": chat_id, "text": message}, timeout=10)
     resp.raise_for_status()
+
+
+def main() -> None:
+    """Read a queue entry JSON from stdin and dispatch it via send_alert().
+
+    Thin subprocess wrapper so cron_standard_poll can dispatch the
+    `post-to-telegram` verb via `_run_skill('telegram_alert', entry)`.
+    Reads entry['text'] and optional entry['chat_id'] (defaults to
+    DEFAULT_CHAT_ID). The send_alert() library function is left unchanged.
+    """
+    import json
+    import sys
+
+    raw = sys.stdin.read()
+    try:
+        entry = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"telegram_alert main(): invalid JSON: {exc}")
+
+    send_alert(
+        entry.get("text", "(no text)"),
+        chat_id=entry.get("chat_id", DEFAULT_CHAT_ID),
+    )
+
+
+if __name__ == "__main__":
+    main()
