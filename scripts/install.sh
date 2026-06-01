@@ -28,9 +28,9 @@ rsh() {
 rsync_files() {
   local src="$1" dst="$2"
   if $DRY_RUN; then
-    echo "[dry-run] rsync -av $src ${VPS}:${dst}"
+    echo "[dry-run] rsync -av --exclude=__pycache__ --exclude=*.pyc $src ${VPS}:${dst}"
   else
-    rsync -av "$src" "${VPS}:${dst}"
+    rsync -av --exclude='__pycache__' --exclude='*.pyc' "$src" "${VPS}:${dst}"
   fi
 }
 
@@ -78,6 +78,14 @@ rsh "mkdir -p /home/uws/.hermes && \
     echo 'config.yaml is a regular file — leaving in place'
   fi"
 
+echo "==> Step 5b: CODE DEPLOY (hermes-skills + workshop package)"
+# These were historically rsync'd by hand, which let the VPS drift behind the
+# repo (e.g. link_orphans.py + the 10.1 dispatch fix were missing in prod).
+# Deploy them as part of install so the running system matches the committed code.
+rsync_files "hermes-skills/" "${INSTALL_DIR}/hermes-skills/"
+rsync_files "workshop/" "${INSTALL_DIR}/workshop/"
+rsh "chown -R uws:uws ${INSTALL_DIR}/hermes-skills ${INSTALL_DIR}/workshop"
+
 echo "==> Step 6: UNIT FILE"
 if ! $DRY_RUN; then
   scp "${UNIT_FILE}" "${VPS}:/etc/systemd/system/uws-hermes.service"
@@ -106,7 +114,10 @@ rsync_files "hermes-skills/startup-cron-catchup-hook/" "/home/uws/.hermes/hooks/
 rsh "chown -R uws:uws /home/uws/.hermes/hooks/startup-cron-catchup"
 
 echo "==> Step N+4: REGISTER HERMES CRON JOBS"
-rsh "sudo -u uws /opt/ultra-workshop/hermes/venv/bin/hermes skill run /opt/ultra-workshop/hermes-skills/bootstrap_cron_jobs.py"
+# Plain script (NOT 'hermes skill run' — that subcommand does not exist in this
+# Hermes build). bootstrap_cron_jobs.py writes ~/.hermes/scripts wrappers and
+# registers each job via 'hermes cron create' idempotently.
+rsh "sudo -u uws /opt/ultra-workshop/hermes/venv/bin/python /opt/ultra-workshop/hermes-skills/bootstrap_cron_jobs.py"
 
 echo "==> Step N+5: DEPLOY INTEGRATION CONTRACT TO VAULT"
 rsync_files "vault/_system/integration-contract.md" "${VAULT_VPS_PATH:-/srv/second-brain}/_system/"
