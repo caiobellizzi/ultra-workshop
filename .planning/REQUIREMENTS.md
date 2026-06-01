@@ -180,8 +180,8 @@ Acceptance: File exists and matches vocabulary table in PLAN.md (V23)
 | REQ-ws-017 | Phase 5 | Pending |
 | REQ-ws-018 | Phase 5 | Pending |
 | REQ-ws-019 | Phase 5 | Pending |
-| REQ-ws-020 | Phase 5 | Pending |
-| REQ-ws-021 | Phase 5 | Pending |
+| REQ-ws-020 | Phase 5 | Complete |
+| REQ-ws-021 | Phase 5 | Complete |
 | REQ-ws-022 | Phase 5 | Pending |
 | REQ-ws-023 | Phase 5 | Pending |
 

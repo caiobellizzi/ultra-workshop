@@ -295,11 +295,11 @@ Plans:
 **Goal:** Close two live runtime blockers (missing link_orphans.py, broken build/fix dispatch) and back-fill formal traceability for 16 orphaned REQ-IDs from Phases 8 and 9
 **Requirements**: REQ-ws-020, REQ-ws-021, REQ-ws-035 through REQ-ws-050
 **Depends on:** Phase 10
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 10.1-01-PLAN.md — Wave 0 test stubs + create link_orphans.py + fix cron_standard_poll dispatch + add telegram_alert.main()
-- [ ] 10.1-02-PLAN.md — Mint REQ-ws-035..042 (Phase 8) + REQ-ws-043..050 (Phase 9) + update traceability table + coverage count
+- [x] 10.1-01-PLAN.md — Wave 0 test stubs + create link_orphans.py + fix cron_standard_poll dispatch + add telegram_alert.main()
+- [x] 10.1-02-PLAN.md — Mint REQ-ws-035..042 (Phase 8) + REQ-ws-043..050 (Phase 9) + update traceability table + coverage count
 
 ## Phase 2 Reservation (LangGraph)
 
