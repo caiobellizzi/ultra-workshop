@@ -48,7 +48,16 @@ def _ensure_schema(db_path: Path) -> None:
 
 
 def _spend_db() -> Path:
-    return Path(settings.spend_db)
+    # Ensure the spend_logs table exists before any read/write. The DB file is
+    # shared with run_events, so the file can exist without spend_logs (e.g. a
+    # run-event was recorded before LiteLLM ever posted spend); creating the
+    # empty table here keeps reads returning zeros instead of 500-ing.
+    p = Path(settings.spend_db)
+    try:
+        _ensure_schema(p)
+    except Exception:
+        pass
+    return p
 
 
 def _usd_to_cents(usd: float) -> int:

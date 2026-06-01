@@ -62,3 +62,27 @@ def test_latest_spend_for_task(seeded_db):
     latest = cs.latest_spend_for_task("t1")
     assert latest == {"model": "m-fast", "tokens": 100}
     assert cs.latest_spend_for_task("nope") is None
+
+
+def test_reads_tolerate_db_with_only_run_events(tmp_path, monkeypatch):
+    """Regression: run_events can create spend.sqlite without spend_logs.
+
+    Cost reads must self-heal (create the empty table) and return zeros/empty
+    rather than raising sqlite3.OperationalError: no such table: spend_logs.
+    """
+    db = tmp_path / "spend.sqlite"
+    from dashboard.backend import config as cfg_module
+    monkeypatch.setattr(cfg_module.settings, "spend_db", str(db))
+
+    # Simulate run_events creating the shared DB file (no spend_logs table).
+    from dashboard.backend.services import run_events
+    run_events.record_run_event({"task_id": "t", "stage": "coder", "agent": "coder-specialist", "outcome": "completed"})
+    assert db.exists()
+
+    from dashboard.backend.services import cost_service as cs
+    # None of these should raise.
+    summary = cs.get_summary()
+    assert summary["today_cents"] == 0 and summary["today_delta_cents"] == 0
+    assert cs.get_model_mix() == []
+    assert cs.estimate_cost("any/repo")["basis"] == "none"
+    assert cs.get_tasks_spend() == []
