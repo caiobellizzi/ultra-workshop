@@ -1,0 +1,31 @@
+# Skill profiles (Workstream B, decision 3 — Path A).
+#
+# Maps a profile name to domain guidance that is appended to the coder
+# specialist's `context` for tasks launched with --skill-profile <name>.
+# The "default" profile is a no-op (no guidance injected).
+#
+# Shape:
+#   profiles:
+#     <name>:
+#       description: <short human label shown in the UI>
+#       guidance: |
+#         <multi-line domain guidance appended to the coder context>
+profiles:
+  default:
+    description: "No domain guidance (standard pipeline behaviour)"
+    guidance: ""
+
+  frontend:
+    description: "Frontend / UI work — React, TypeScript, accessibility"
+    guidance: |
+      Prioritise accessible, responsive components. Follow the existing design
+      system tokens and component patterns rather than inventing new ones. Keep
+      state management consistent with the surrounding code. Avoid introducing
+      new dependencies without a clear need.
+
+  backend:
+    description: "Backend / API work — services, data access, security"
+    guidance: |
+      Favour explicit, well-typed interfaces and parameterised queries. Validate
+      all external input. Keep handlers thin and push logic into services. Match
+      the project's existing error-handling and logging conventions.

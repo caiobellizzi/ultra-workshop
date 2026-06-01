@@ -80,15 +80,27 @@ def _dispatch_entry(entry: dict) -> None:
             logger.error("Skill file not found: %s — skipping", skill_file)
         else:
             task_b64 = base64.b64encode(entry.get("task", "").encode()).decode()
+            build_cmd = [
+                sys.executable,
+                str(skill_file),
+                "--repo", entry.get("repo", ""),
+                "--task-b64", task_b64,
+                "--chat-id", entry.get("chat_id", "7113965359"),
+            ]
+            # Per-task overrides (Workstream B): forward when present on the entry.
+            if entry.get("branch"):
+                build_cmd += ["--branch", str(entry["branch"])]
+            if entry.get("model_alias"):
+                build_cmd += ["--model-alias", str(entry["model_alias"])]
+            if entry.get("skill_profile") and entry["skill_profile"] != "default":
+                build_cmd += ["--skill-profile", str(entry["skill_profile"])]
+            if entry.get("run_optional_reviewers") is False:
+                build_cmd.append("--skip-optional-reviewers")
+            if entry.get("dry_run"):
+                build_cmd.append("--dry-run")
             try:
                 subprocess.run(
-                    [
-                        sys.executable,
-                        str(skill_file),
-                        "--repo", entry.get("repo", ""),
-                        "--task-b64", task_b64,
-                        "--chat-id", entry.get("chat_id", "7113965359"),
-                    ],
+                    build_cmd,
                     timeout=1800,
                     check=False,
                 )

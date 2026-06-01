@@ -123,19 +123,50 @@ def load_review_roster() -> list[dict]:
         return list(_FALLBACK_ROSTER)
 
 
-def _select_reviewers(roster: list[dict], diff_files: list[str]) -> list[dict]:
+_SKILL_PROFILES_PATH = Path("/opt/ultra-workshop/hermes-config/skill-profiles.yaml")
+
+
+def _load_skill_profile_guidance(profile_name: str) -> str:
+    """Return domain-guidance text for a skill profile, or "" for default/missing.
+
+    Decision 3 (Path A): hermes-config/skill-profiles.yaml maps a profile name to
+    a `guidance` string injected into the coder context. 'default' is a no-op.
+    """
+    if not profile_name or profile_name == "default":
+        return ""
+    path = _SKILL_PROFILES_PATH
+    local = Path(__file__).parent.parent / "hermes-config" / "skill-profiles.yaml"
+    if local.exists():
+        path = local
+    try:
+        import yaml
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        profiles = data.get("profiles") or {}
+        entry = profiles.get(profile_name) or {}
+        if isinstance(entry, str):
+            return entry.strip()
+        return str(entry.get("guidance") or "").strip()
+    except Exception:
+        return ""
+
+
+def _select_reviewers(roster: list[dict], diff_files: list[str], include_optional: bool = True) -> list[dict]:
     """Select reviewers to run based on the diff file list.
 
-    Always-on entries (file_patterns == []) are always included.
-    Pattern-gated entries are included if any diff file matches any pattern
-    (substring or suffix match per D-03).
+    Always-on entries (file_patterns == []) are always included — this preserves
+    the security+correctness floor even when *include_optional* is False.
+    Pattern-gated entries are included only when *include_optional* is True and
+    any diff file matches any pattern (substring/suffix match per D-03).
     """
     selected = []
     for entry in roster:
         patterns = entry.get("file_patterns") or []
         if not patterns:
-            # Always-on reviewer
+            # Always-on reviewer — never skipped
             selected.append(entry)
+            continue
+        if not include_optional:
+            # Reviewer toggle off (decision 5): drop pattern-gated optional reviewers
             continue
         # Extension/path-gated: include if any diff file matches any pattern
         for diff_file in diff_files:
@@ -206,7 +237,7 @@ def _build_merge_report(wave_reports: list) -> Any:
     )
 
 
-def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict], repo_full_name: str = "") -> list:
+def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict], repo_full_name: str = "", include_optional: bool = True) -> list:
     """Dispatch parallel reviewer wave using ThreadPoolExecutor(max_workers=8).
 
     T-09-03-02: Each reviewer has a per-reviewer timeout; wave-level timeout is
@@ -229,7 +260,7 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict], repo_f
     from workshop.types import WaveReport
 
     diff_files = [getattr(c, "path", str(c)) for c in (getattr(diff, "changes", []) or [])]
-    selected = _select_reviewers(roster, diff_files)
+    selected = _select_reviewers(roster, diff_files, include_optional=include_optional)
 
     if not selected:
         raise ValueError("No reviewers selected after file filtering")
@@ -689,7 +720,7 @@ def _handle_step_retry_exhausted(
         "repo": state.get("repo_entry") or {},
         "clarifications": [],
         "stage_policy": coder_policy,
-        "model_alias": stage_model_alias("coder-specialist"),
+        "model_alias": state.get("model_alias") or stage_model_alias("coder-specialist"),
         "current_step": step_idx,  # start from the failing step position
     }
     sub_coder_query = json.dumps(sub_coder_payload)
@@ -716,8 +747,12 @@ def main() -> None:
     parser.add_argument("--resume", action="store_true", help="Resume an existing task from state.json")
     parser.add_argument("--session-id", type=str, default="", help="Hermes session ID")
     parser.add_argument("--chat-id", type=str, default="7113965359", help="Telegram chat ID")
-    parser.add_argument("--dry-run", action="store_true", help="Print dry-run message and exit 0")
+    parser.add_argument("--dry-run", action="store_true", help="Run through planner, persist the Plan, set status=plan_ready, and stop before the coder (no worktree/branch/PR)")
     parser.add_argument("--brainstorm", action="store_true", help="Enable brainstorm stage before triage (D-17)")
+    parser.add_argument("--branch", type=str, default="", help="Base branch to checkout in the workspace (default: repo default_branch)")
+    parser.add_argument("--model-alias", type=str, default="", help="Override the coder-specialist model alias for this task only")
+    parser.add_argument("--skill-profile", type=str, default="default", help="Skill profile name; appends domain guidance to the coder context ('default' = no-op)")
+    parser.add_argument("--skip-optional-reviewers", action="store_true", help="Run only always-on reviewers (security+correctness floor); skip pattern-gated optional reviewers")
     args = parser.parse_args()
 
     if args.task_file:
@@ -731,17 +766,10 @@ def main() -> None:
     else:
         task = args.task
 
-    if args.dry_run:
-        if not args.repo:
-            print(_usage_with_repos(), flush=True)
-        print("[dry-run] would run workshop pipeline", flush=True)
-        print(f"[dry-run] repo: {args.repo!r}", flush=True)
-        print(f"[dry-run] task: {task!r}", flush=True)
-        print(f"[dry-run] task_id: {args.task_id!r}", flush=True)
-        print(f"[dry-run] resume: {args.resume!r}", flush=True)
-        sys.exit(0)
+    # Dry-run (decision 2) is no longer an early exit: the pipeline runs through
+    # the planner, persists the Plan, sets status=plan_ready, and stops before the
+    # coder. See the halt below after the planner stage.
 
-    # Import workshop modules AFTER dry-run check so --dry-run works even without workshop/
     from pydantic import BaseModel
 
     try:
@@ -782,6 +810,16 @@ def main() -> None:
                 query_json = json.dumps(query)
         except Exception:
             pass  # fail-open
+        # Skill-profile guidance — coder stage only (decision 3), next to brain_context
+        if stage == "coder":
+            try:
+                guidance = _load_skill_profile_guidance(str(state.get("skill_profile") or "default"))
+                if guidance:
+                    query = json.loads(query_json)
+                    query["context"] = query.get("context", "") + "\n\n[Skill profile guidance]\n" + guidance
+                    query_json = json.dumps(query)
+            except Exception:
+                pass  # fail-open
         _ev_started = _utcnow_iso()
         try:
             _ev_model = (json.loads(query_json) or {}).get("model_alias")
@@ -856,6 +894,11 @@ def main() -> None:
             repo=args.repo,
             session_id=args.session_id,
             chat_id=args.chat_id,
+            branch=args.branch,
+            model_alias=args.model_alias,
+            skill_profile=args.skill_profile,
+            run_optional_reviewers=not args.skip_optional_reviewers,
+            dry_run=bool(args.dry_run),
         )
 
     if not goal:
@@ -1059,6 +1102,18 @@ def main() -> None:
         else:
             plan = Plan.model_validate(stages["planner"])
 
+        # Dry-run (decision 2): persist the Plan, set terminal status plan_ready,
+        # and stop before the coder. No worktree/branch/PR.
+        if state.get("dry_run"):
+            stages["planner"] = plan.model_dump()
+            state["status"] = "plan_ready"
+            state["next_stage"] = "done"
+            save_task_state(state)
+            write_task_ledger(task_id, goal, status="plan_ready")
+            append_progress(task_id, "plan_ready", {"steps": len(plan.steps)})
+            print("[workshop] dry-run complete: plan_ready (stopped before coder)", flush=True)
+            return
+
         diff: Diff | None = None
         review: Review | None = None
         if "diff" in stages and not _stage_should_run(state, "coder"):
@@ -1113,7 +1168,7 @@ def main() -> None:
                     "repo": repo_entry,
                     "clarifications": requirements.clarifications,
                     "stage_policy": coder_policy,
-                    "model_alias": stage_model_alias("coder-specialist"),
+                    "model_alias": state.get("model_alias") or stage_model_alias("coder-specialist"),
                     "current_step": current_step,
                 }
                 if review is not None and not review.passed:
@@ -1143,7 +1198,10 @@ def main() -> None:
                 save_task_state(state)
 
                 roster = load_review_roster()
-                wave_reports = wave_dispatch(diff, plan, task_id, roster, repo_full_name)
+                wave_reports = wave_dispatch(
+                    diff, plan, task_id, roster, repo_full_name,
+                    include_optional=bool(state.get("run_optional_reviewers", True)),
+                )
                 # WR-01: enforce merge budget cap before consolidation
                 try:
                     check_role_budget("merge")

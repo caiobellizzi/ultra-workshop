@@ -32,6 +32,11 @@ def new_task_state(
     repo: str = "",
     session_id: str = "",
     chat_id: str = "",
+    branch: str = "",
+    model_alias: str = "",
+    skill_profile: str = "default",
+    run_optional_reviewers: bool = True,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     now = utc_now()
     return {
@@ -45,6 +50,12 @@ def new_task_state(
         "session_id": session_id,
         "chat_id": chat_id,
         "workspace_dir": "",
+        # Per-task overrides (Workstream B)
+        "branch": branch,
+        "model_alias": model_alias,
+        "skill_profile": skill_profile or "default",
+        "run_optional_reviewers": run_optional_reviewers,
+        "dry_run": dry_run,
         "status": "running",
         "next_stage": "triage",
         "attempts": {},
@@ -121,6 +132,22 @@ def clone_repo_to_workspace(
         if result.returncode != 0:
             raise RuntimeError(
                 f"[workshop] clone failed for {repo}: {result.stderr.strip()}"
+            )
+
+    # Per-task base-branch override (Workstream B): checkout when set, else the
+    # repo's default branch (already checked out by `gh repo clone`). No existence
+    # validation — fail loud on a bad branch name.
+    branch = str(state.get("branch") or "").strip()
+    if branch:
+        checkout = subprocess.run(
+            ["git", "-C", str(workspace), "checkout", branch],
+            capture_output=True,
+            text=True,
+            shell=False,
+        )
+        if checkout.returncode != 0:
+            raise RuntimeError(
+                f"[workshop] checkout of branch {branch!r} failed: {checkout.stderr.strip()}"
             )
 
     state["workspace_dir"] = str(workspace)

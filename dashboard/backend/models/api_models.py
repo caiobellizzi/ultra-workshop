@@ -72,6 +72,12 @@ class LaunchRequest(BaseModel):
     repo: str
     goal: str
     brainstorm: bool = False
+    # Per-task overrides (Workstream B)
+    branch: str = ""
+    model_alias: str = ""
+    skill_profile: str = "default"
+    run_optional_reviewers: bool = True
+    dry_run: bool = False
 
 
 class LaunchResponse(BaseModel):

@@ -57,7 +57,16 @@ def launch_task(body: LaunchRequest, _auth=Depends(require_auth)):
     # even if the subprocess fails before writing its own state.
     try:
         from workshop.state import new_task_state, save_task_state
-        save_task_state(new_task_state(task_id, goal=body.goal, repo=body.repo))
+        save_task_state(new_task_state(
+            task_id,
+            goal=body.goal,
+            repo=body.repo,
+            branch=body.branch,
+            model_alias=body.model_alias,
+            skill_profile=body.skill_profile,
+            run_optional_reviewers=body.run_optional_reviewers,
+            dry_run=body.dry_run,
+        ))
     except Exception:
         pass
     build_trigger.launch_build(
@@ -65,6 +74,11 @@ def launch_task(body: LaunchRequest, _auth=Depends(require_auth)):
         repo=body.repo,
         goal=body.goal,
         brainstorm=body.brainstorm,
+        branch=body.branch,
+        model_alias=body.model_alias,
+        skill_profile=body.skill_profile,
+        run_optional_reviewers=body.run_optional_reviewers,
+        dry_run=body.dry_run,
     )
     return LaunchResponse(task_id=task_id)
 

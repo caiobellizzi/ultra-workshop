@@ -9,10 +9,21 @@ from pathlib import Path
 from dashboard.backend.config import settings
 
 
-def launch_build(task_id: str, repo: str, goal: str, brainstorm: bool = False) -> None:
+def launch_build(
+    task_id: str,
+    repo: str,
+    goal: str,
+    brainstorm: bool = False,
+    branch: str = "",
+    model_alias: str = "",
+    skill_profile: str = "default",
+    run_optional_reviewers: bool = True,
+    dry_run: bool = False,
+) -> None:
     """Fire-and-forget: start workshop_build.py in a daemon thread.
 
     Returns immediately. Progress is observable via state.json + progress_log.jsonl.
+    Per-task overrides (Workstream B) are forwarded as CLI flags.
     """
     workshop_build = Path(settings.workshop_build_py)
     if not workshop_build.exists():
@@ -28,6 +39,16 @@ def launch_build(task_id: str, repo: str, goal: str, brainstorm: bool = False) -
     ]
     if brainstorm:
         cmd.append("--brainstorm")
+    if branch:
+        cmd += ["--branch", branch]
+    if model_alias:
+        cmd += ["--model-alias", model_alias]
+    if skill_profile and skill_profile != "default":
+        cmd += ["--skill-profile", skill_profile]
+    if not run_optional_reviewers:
+        cmd.append("--skip-optional-reviewers")
+    if dry_run:
+        cmd.append("--dry-run")
 
     def _run() -> None:
         try:
