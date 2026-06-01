@@ -122,6 +122,37 @@ class CostSummaryResponse(BaseModel):
     this_month_cents: int
     per_task_avg_cents: int
     most_expensive_alias: str
+    # Prior-period deltas (Workstream C). today vs yesterday, month vs prior month.
+    today_delta_cents: int = 0
+    this_month_delta_cents: int = 0
+
+
+class ModelMixItem(BaseModel):
+    alias: str
+    count: int
+
+
+class ModelMixResponse(BaseModel):
+    items: list[ModelMixItem] = Field(default_factory=list)
+
+
+class CostEstimateRequest(BaseModel):
+    repo: str
+
+
+class CostEstimateResponse(BaseModel):
+    p25_cents: int
+    p50_cents: int
+    p75_cents: int
+    sample_size: int
+    basis: str  # "repo" | "global" | "none"
+
+
+class QueueStatsResponse(BaseModel):
+    running: int
+    queued: int
+    hitl_pending: int
+    max_concurrency: int
 
 
 class WaveBreakdownItem(BaseModel):
@@ -297,6 +328,11 @@ class HITLItem(BaseModel):
     hitl_type: str
     payload: dict[str, Any] = Field(default_factory=dict)
     created_at: str
+    # Cost strip enrichment (Workstream C)
+    stage: Optional[str] = None
+    model: Optional[str] = None
+    tokens: Optional[int] = None
+    waiting_seconds: Optional[int] = None
 
 
 class HITLListResponse(BaseModel):
@@ -324,6 +360,10 @@ class RepoEntry(BaseModel):
     updated_at: str = ""
     last_used: Optional[str] = None  # renamed from last_used_at
     test_command: str = ""
+    # Aggregated task counts (Workstream F) — derived, not stored
+    task_count: int = 0
+    active_task_count: int = 0
+    last_task_at: Optional[str] = None
 
 
 class RepoListResponse(BaseModel):
@@ -345,6 +385,10 @@ class ServiceStatus(BaseModel):
     running: bool
     uptime_seconds: Optional[int] = None
     version: Optional[str] = None
+    # Process metrics (Workstream E) — None when not applicable (file-check services)
+    pid: Optional[int] = None
+    rss_bytes: Optional[int] = None
+    port: Optional[int] = None
 
 
 class DiskStats(BaseModel):

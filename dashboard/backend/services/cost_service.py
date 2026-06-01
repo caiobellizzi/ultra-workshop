@@ -354,12 +354,35 @@ def get_summary() -> dict[str, Any]:
         ).fetchone()
         most_expensive_alias = alias_row[0] or "" if alias_row else ""
 
+        # Prior-period totals for deltas (Workstream C)
+        from datetime import timedelta
+
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        yesterday_usd = float(
+            conn.execute(
+                "SELECT COALESCE(SUM(response_cost), 0) FROM spend_logs WHERE start_time LIKE ?",
+                (f"{yesterday}%",),
+            ).fetchone()[0]
+        )
+        # Prior calendar month prefix (handles January → December rollover)
+        y, m = int(today[:4]), int(today[5:7])
+        prev_y, prev_m = (y - 1, 12) if m == 1 else (y, m - 1)
+        prev_month_prefix = f"{prev_y:04d}-{prev_m:02d}"
+        prev_month_usd = float(
+            conn.execute(
+                "SELECT COALESCE(SUM(response_cost), 0) FROM spend_logs WHERE start_time LIKE ?",
+                (f"{prev_month_prefix}%",),
+            ).fetchone()[0]
+        )
+
     return {
         "today_cents": _usd_to_cents(today_usd),
         "daily_limit_cents": daily_limit_cents,
         "this_month_cents": _usd_to_cents(month_usd),
         "per_task_avg_cents": _usd_to_cents(per_task_avg_usd),
         "most_expensive_alias": most_expensive_alias,
+        "today_delta_cents": _usd_to_cents(today_usd) - _usd_to_cents(yesterday_usd),
+        "this_month_delta_cents": _usd_to_cents(month_usd) - _usd_to_cents(prev_month_usd),
     }
 
 
@@ -469,3 +492,122 @@ def get_trends(from_date: str | None = None, to_date: str | None = None) -> dict
     ]
 
     return {"daily": daily, "by_model": by_model, "by_role": by_role}
+
+
+# ---------------------------------------------------------------------------
+# Workstream C — spend_logs-derived reads
+# ---------------------------------------------------------------------------
+
+def get_model_mix(task_ids: list[str] | None = None) -> list[dict[str, Any]]:
+    """Return [{alias, count}] of LLM calls grouped by model.
+
+    When *task_ids* is provided, restrict to those tasks (the Board uses live
+    task_ids). When None, group over all spend_logs.
+    """
+    db_path = _spend_db()
+    if not db_path.exists():
+        return []
+    with sqlite3.connect(str(db_path)) as conn:
+        if task_ids:
+            placeholders = ",".join("?" for _ in task_ids)
+            rows = conn.execute(
+                f"""
+                SELECT model, COUNT(*) AS count
+                FROM spend_logs
+                WHERE task_id IN ({placeholders})
+                GROUP BY model
+                ORDER BY count DESC
+                """,
+                list(task_ids),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT model, COUNT(*) AS count
+                FROM spend_logs
+                GROUP BY model
+                ORDER BY count DESC
+                """,
+            ).fetchall()
+    return [{"alias": r[0] or "unknown", "count": int(r[1])} for r in rows]
+
+
+def _percentile(sorted_vals: list[float], pct: float) -> float:
+    """Linear-interpolation percentile of a pre-sorted list (pct in 0..1)."""
+    if not sorted_vals:
+        return 0.0
+    if len(sorted_vals) == 1:
+        return sorted_vals[0]
+    pos = pct * (len(sorted_vals) - 1)
+    lo = int(pos)
+    hi = min(lo + 1, len(sorted_vals) - 1)
+    frac = pos - lo
+    return sorted_vals[lo] * (1 - frac) + sorted_vals[hi] * frac
+
+
+def estimate_cost(repo: str, min_samples: int = 3) -> dict[str, Any]:
+    """Estimate per-task cost (p25/p50/p75 cents) from historical per-task totals.
+
+    Uses tasks for *repo* when there are at least *min_samples*; otherwise falls
+    back to the global distribution. basis is "repo" | "global" | "none".
+    """
+    db_path = _spend_db()
+    if not db_path.exists():
+        return {"p25_cents": 0, "p50_cents": 0, "p75_cents": 0, "sample_size": 0, "basis": "none"}
+
+    def _task_totals(filter_repo: str | None) -> list[float]:
+        with sqlite3.connect(str(db_path)) as conn:
+            rows = conn.execute(
+                """
+                SELECT task_id, SUM(response_cost) AS total
+                FROM spend_logs
+                WHERE task_id IS NOT NULL AND task_id != ''
+                GROUP BY task_id
+                """,
+            ).fetchall()
+        totals: list[float] = []
+        for task_id, total in rows:
+            if filter_repo is not None:
+                data = _load_task_data(task_id)
+                if str(data.get("repo", "")) != filter_repo and str(data.get("repo_full_name", "")) != filter_repo:
+                    continue
+            totals.append(float(total or 0.0))
+        return totals
+
+    repo_totals = _task_totals(repo)
+    if len(repo_totals) >= min_samples:
+        vals, basis = sorted(repo_totals), "repo"
+    else:
+        global_totals = _task_totals(None)
+        if not global_totals:
+            return {"p25_cents": 0, "p50_cents": 0, "p75_cents": 0, "sample_size": 0, "basis": "none"}
+        vals, basis = sorted(global_totals), "global"
+
+    return {
+        "p25_cents": _usd_to_cents(_percentile(vals, 0.25)),
+        "p50_cents": _usd_to_cents(_percentile(vals, 0.50)),
+        "p75_cents": _usd_to_cents(_percentile(vals, 0.75)),
+        "sample_size": len(vals),
+        "basis": basis,
+    }
+
+
+def latest_spend_for_task(task_id: str) -> dict[str, Any] | None:
+    """Most recent spend_logs row for a task (model + tokens), for HITL enrichment."""
+    db_path = _spend_db()
+    if not db_path.exists():
+        return None
+    with sqlite3.connect(str(db_path)) as conn:
+        row = conn.execute(
+            """
+            SELECT model, total_tokens
+            FROM spend_logs
+            WHERE task_id = ?
+            ORDER BY COALESCE(end_time, start_time, recorded_at) DESC
+            LIMIT 1
+            """,
+            (task_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return {"model": row[0], "tokens": int(row[1]) if row[1] is not None else None}

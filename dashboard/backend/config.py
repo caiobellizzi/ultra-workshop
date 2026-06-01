@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 7010
 
+    # --- Queue ---
+    # Max concurrent tasks the workshop runner will dispatch (Workstream C queue stats).
+    max_concurrency: int = 3
+
     # --- Paths ---
     tasks_base: str = "/home/uws/.ultra-workshop/tasks"
     hitl_db: str = "/home/uws/.ultra-workshop/pending_hitl.db"

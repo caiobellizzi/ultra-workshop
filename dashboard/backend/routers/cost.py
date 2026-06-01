@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from dashboard.backend.deps import require_auth
 from dashboard.backend.models.api_models import (
+    CostEstimateRequest,
+    CostEstimateResponse,
     CostSummaryResponse,
     CostTrendsResponse,
     DailySpendResponse,
@@ -91,6 +93,13 @@ def cost_task(task_id: str, _auth=Depends(require_auth)):
         total_cents=data["total_cents"],
         wave_breakdown=[WaveBreakdownItem(**w) for w in data["wave_breakdown"]] or None,
     )
+
+
+@router.post("/estimate", response_model=CostEstimateResponse)
+def cost_estimate(body: CostEstimateRequest, _auth=Depends(require_auth)):
+    """Estimate per-task cost (p25/p50/p75) from historical spend for a repo."""
+    data = cost_service.estimate_cost(body.repo)
+    return CostEstimateResponse(**data)
 
 
 @router.get("/daily")

@@ -11,19 +11,40 @@ from dashboard.backend.models.api_models import (
     FixRequest,
     LaunchRequest,
     LaunchResponse,
+    ModelMixItem,
+    ModelMixResponse,
     ProgressResponse,
     TaskDetail,
     TaskListResponse,
     TaskSummary,
 )
-from dashboard.backend.services import build_trigger, task_store
+from dashboard.backend.services import build_trigger, cost_service, task_store
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
+
+# Statuses considered "live" for model-mix / queue aggregation.
+_LIVE_STATUSES = {
+    "running",
+    "needs_clarification",
+    "needs_timeout_recovery",
+    "needs_review_recovery",
+    "needs_step_recovery",
+    "needs_approval",
+    "pushing",
+}
 
 
 @router.get("", response_model=TaskListResponse)
 def list_tasks(_auth=Depends(require_auth)):
     return TaskListResponse(tasks=task_store.list_tasks())
+
+
+@router.get("/model-mix", response_model=ModelMixResponse)
+def model_mix(_auth=Depends(require_auth)):
+    """Model usage mix (call counts per alias) across currently-live tasks."""
+    task_ids = [t.task_id for t in task_store.list_tasks() if t.status in _LIVE_STATUSES]
+    items = cost_service.get_model_mix(task_ids)
+    return ModelMixResponse(items=[ModelMixItem(**i) for i in items])
 
 
 @router.get("/{task_id}", response_model=TaskDetail)

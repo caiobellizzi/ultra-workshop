@@ -21,6 +21,7 @@ from dashboard.backend.models.api_models import (
     HealthResponse,
     ModelReachability,
     ModelReachabilityResponse,
+    QueueStatsResponse,
     ServiceStatus,
 )
 
@@ -31,6 +32,47 @@ router = APIRouter(prefix="/api", tags=["health"])
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+def _systemd_pid(unit: str) -> int | None:
+    """Return MainPID for a systemd unit, or None when unavailable."""
+    try:
+        out = subprocess.run(
+            ["systemctl", "show", unit, "-p", "MainPID", "--value"],
+            capture_output=True, text=True, timeout=5,
+        )
+        pid = int(out.stdout.strip() or "0")
+        return pid or None
+    except Exception:
+        return None
+
+
+def _rss_bytes_for_pid(pid: int) -> int | None:
+    """Resident set size in bytes for a pid; reads /proc, falls back to psutil."""
+    try:
+        # /proc/<pid>/statm: field 2 (resident) is in pages
+        statm = Path(f"/proc/{pid}/statm").read_text(encoding="utf-8").split()
+        resident_pages = int(statm[1])
+        import os as _os
+        page_size = _os.sysconf("SC_PAGE_SIZE")
+        return resident_pages * page_size
+    except Exception:
+        pass
+    try:
+        import psutil  # optional dependency
+
+        return int(psutil.Process(pid).memory_info().rss)
+    except Exception:
+        return None
+
+
+def _port_from_url(url: str) -> int | None:
+    try:
+        from urllib.parse import urlparse
+
+        return urlparse(url).port
+    except Exception:
+        return None
+
+
 def _check_hermes_service() -> ServiceStatus:
     try:
         result = subprocess.run(
@@ -40,7 +82,9 @@ def _check_hermes_service() -> ServiceStatus:
             timeout=5,
         )
         active = result.stdout.strip() == "active"
-        return ServiceStatus(name="uws-hermes", running=active)
+        pid = _systemd_pid("uws-hermes.service") if active else None
+        rss = _rss_bytes_for_pid(pid) if pid else None
+        return ServiceStatus(name="uws-hermes", running=active, pid=pid, rss_bytes=rss)
     except FileNotFoundError:
         return ServiceStatus(name="uws-hermes", running=True)
     except Exception:
@@ -55,7 +99,7 @@ def _check_litellm() -> ServiceStatus:
         running = e.code < 500  # 401/403 means the proxy is up
     except Exception:
         running = False
-    return ServiceStatus(name="litellm", running=running)
+    return ServiceStatus(name="litellm", running=running, port=_port_from_url(settings.litellm_base_url))
 
 
 def _check_spend_db() -> ServiceStatus:
@@ -128,6 +172,38 @@ def _disk_stats() -> DiskStats:
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+def _queued_count() -> int:
+    """Count confirmed-but-not-dispatched entries in the workshop queue."""
+    import os
+
+    queue_path = Path(os.environ.get("WORKSHOP_QUEUE_PATH", "/srv/second-brain/.workshop-queue.jsonl"))
+    if not queue_path.exists():
+        return 0
+    count = 0
+    for line in queue_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except Exception:
+            continue
+        if entry.get("confirmed") is True and not entry.get("dispatched"):
+            count += 1
+    return count
+
+
+@router.get("/queue/stats", response_model=QueueStatsResponse)
+def queue_stats(_auth=Depends(require_auth)):
+    """Launch-page queue snapshot: running / queued / hitl_pending / max_concurrency."""
+    return QueueStatsResponse(
+        running=_queue_depth(),
+        queued=_queued_count(),
+        hitl_pending=_hitl_count(),
+        max_concurrency=settings.max_concurrency,
+    )
+
 
 @router.get("/health", response_model=HealthResponse)
 def health(_auth=Depends(require_auth)):

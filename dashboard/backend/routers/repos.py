@@ -11,6 +11,42 @@ from dashboard.backend.models.api_models import AddRepoRequest, RepoEntry, RepoL
 
 router = APIRouter(prefix="/api/repos", tags=["repos"])
 
+# Statuses that count as a live/active task for per-repo aggregation (Workstream F).
+_LIVE_STATUSES = {
+    "running",
+    "needs_clarification",
+    "needs_timeout_recovery",
+    "needs_review_recovery",
+    "needs_step_recovery",
+    "needs_approval",
+    "pushing",
+}
+
+
+def _annotate_task_counts(repos: list[RepoEntry]) -> None:
+    """Fill task_count / active_task_count / last_task_at from the task store."""
+    from dashboard.backend.services import task_store
+
+    try:
+        tasks = task_store.list_tasks()
+    except Exception:
+        return
+    agg: dict[str, dict[str, Any]] = {}
+    for t in tasks:
+        key = t.repo_full_name or ""
+        row = agg.setdefault(key, {"count": 0, "active": 0, "last": ""})
+        row["count"] += 1
+        if t.status in _LIVE_STATUSES:
+            row["active"] += 1
+        if t.updated_at and t.updated_at > row["last"]:
+            row["last"] = t.updated_at
+    for r in repos:
+        row = agg.get(r.full_name)
+        if row:
+            r.task_count = row["count"]
+            r.active_task_count = row["active"]
+            r.last_task_at = row["last"] or None
+
 
 def _registry_path():
     from workshop.repo_registry import registry_path
@@ -31,6 +67,7 @@ def list_repos(_auth=Depends(require_auth)):
         from workshop.repo_registry import load_registry
         data = load_registry(_registry_path())
         repos = [_repo_entry_from_raw(r) for r in data.get("repos", [])]
+        _annotate_task_counts(repos)
         return RepoListResponse(repos=repos)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))

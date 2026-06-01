@@ -59,8 +59,25 @@ def _payload_for_state(data: dict[str, Any], hitl_type: str) -> dict[str, Any]:
     return {}
 
 
+def _waiting_seconds(created_at: str) -> int | None:
+    """Seconds elapsed since an ISO-8601 created_at, or None if unparseable."""
+    if not created_at:
+        return None
+    from datetime import datetime, timezone
+
+    try:
+        ts = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        return max(0, int((datetime.now(timezone.utc) - ts).total_seconds()))
+    except Exception:
+        return None
+
+
 @router.get("", response_model=HITLListResponse)
 def list_hitl(_auth=Depends(require_auth)):
+    from dashboard.backend.services import cost_service, run_events
+
     rows = hitl_service.list_pending()
     session_map = _build_session_map()
     items: list[HITLItem] = []
@@ -71,12 +88,30 @@ def list_hitl(_auth=Depends(require_auth)):
         status = str(state.get("status", ""))
         hitl_type = _HITL_STATUS_TYPE.get(status, "unknown")
         payload = _payload_for_state(state, hitl_type)
+        created_at = str(r.get("created_at", ""))
+
+        # Cost-strip enrichment (Workstream C): stage + latest model/tokens + wait time.
+        stage = str(state.get("next_stage") or "") or None
+        model = tokens = None
+        latest = cost_service.latest_spend_for_task(task_id)
+        if latest:
+            model, tokens = latest.get("model"), latest.get("tokens")
+        if model is None:
+            ev = run_events.latest_for_task(task_id)
+            if ev:
+                model = ev.get("model")
+                stage = stage or ev.get("stage")
+
         items.append(
             HITLItem(
                 task_id=task_id,
                 hitl_type=hitl_type,
                 payload=payload,
-                created_at=str(r.get("created_at", "")),
+                created_at=created_at,
+                stage=stage,
+                model=model,
+                tokens=tokens,
+                waiting_seconds=_waiting_seconds(created_at),
             )
         )
     return HITLListResponse(items=items)
