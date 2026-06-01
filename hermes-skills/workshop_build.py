@@ -24,6 +24,58 @@ DECOMPOSE_DEPTH_MAX = 1
 
 T = TypeVar("T")
 
+# Dashboard base URL for fire-and-forget telemetry (run-events). Loopback only.
+_DASH_URL = os.environ.get("UWS_DASH_URL", "http://127.0.0.1:7010").rstrip("/")
+
+
+def _utcnow_iso() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _emit_run_event(
+    *,
+    task_id: str,
+    stage: str,
+    agent: str,
+    model: str | None,
+    started_at: str,
+    ended_at: str,
+    outcome: str,
+    issues_found: int | None = None,
+) -> None:
+    """Fire-and-forget POST of a run-event to the dashboard. Never blocks or raises.
+
+    Telemetry must never affect the pipeline, so the request runs in a daemon
+    thread with a short timeout and all exceptions swallowed.
+    """
+    payload = {
+        "task_id": task_id,
+        "stage": stage,
+        "agent": agent,
+        "model": model,
+        "started_at": started_at,
+        "ended_at": ended_at,
+        "outcome": outcome,
+        "issues_found": issues_found,
+    }
+
+    def _post() -> None:
+        try:
+            import httpx
+
+            httpx.post(f"{_DASH_URL}/internal/run-event", json=payload, timeout=2.0)
+        except Exception:
+            pass
+
+    try:
+        import threading
+
+        threading.Thread(target=_post, daemon=True).start()
+    except Exception:
+        pass
+
 _STAGE_INDEX = {
     "brainstorm": 0,
     "triage": 1,
@@ -189,6 +241,7 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict], repo_f
         role = entry["role"]
         skill_name = f"{role}-reviewer"
         model_alias = entry.get("model_alias", "reviewer-model")
+        _rev_started = _utcnow_iso()
 
         # D-09 budget check before dispatch
         try:
@@ -206,6 +259,9 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict], repo_f
                     append_audit(task_id, "role_budget_skipped", {"role": role})
                 except Exception:
                     pass
+                _emit_run_event(task_id=task_id, stage="reviewer", agent=skill_name,
+                                model=model_alias, started_at=_rev_started,
+                                ended_at=_utcnow_iso(), outcome="skipped", issues_found=0)
                 return WaveReport(role=role, passed=True, findings=[], tokens_used=0, cost_cents=0.0)
         except RoleBudgetWarning:
             print(f"[workshop] WARNING: role {role!r} approaching budget cap", file=sys.stderr, flush=True)
@@ -239,10 +295,17 @@ def wave_dispatch(diff: Any, plan: Any, task_id: str, roster: list[dict], repo_f
                     result = run_specialist(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
             else:
                 result = run_specialist(skill_name, reviewer_query, WaveReport, timeout=per_reviewer_timeout)
+            _emit_run_event(task_id=task_id, stage="reviewer", agent=skill_name,
+                            model=model_alias, started_at=_rev_started,
+                            ended_at=_utcnow_iso(), outcome="completed",
+                            issues_found=len(getattr(result, "findings", []) or []))
             return result
         except Exception as exc:
             # Per-reviewer failure is non-blocking for non-critical roles
             print(f"[workshop] WARNING: {role} reviewer failed: {exc}", file=sys.stderr, flush=True)
+            _emit_run_event(task_id=task_id, stage="reviewer", agent=skill_name,
+                            model=model_alias, started_at=_rev_started,
+                            ended_at=_utcnow_iso(), outcome="failed", issues_found=0)
             return WaveReport(role=role, passed=True, findings=[], tokens_used=0, cost_cents=0.0)
 
     results: list[WaveReport] = []
@@ -719,31 +782,50 @@ def main() -> None:
                 query_json = json.dumps(query)
         except Exception:
             pass  # fail-open
-        for retry_index in range(auto_retries + 1):
-            attempts = state.setdefault("attempts", {})
-            attempt = int(attempts.get(stage, 0)) + 1
-            attempts[stage] = attempt
-            save_task_state(state)
-            try:
-                return run_specialist(
-                    skill_name,
-                    query_json,
-                    output_schema,
-                    timeout=int(policy_data["timeout"]),
-                )
-            except subprocess.TimeoutExpired as exc:
-                reason = f"Specialist {skill_name!r} timed out after {policy_data['timeout']}s"
-                if policy_data["hitl_on_timeout"]:
-                    raise StageTimeoutForHITL(stage, attempt, reason) from exc
-                if retry_index >= auto_retries:
+        _ev_started = _utcnow_iso()
+        try:
+            _ev_model = (json.loads(query_json) or {}).get("model_alias")
+        except Exception:
+            _ev_model = None
+        _ev_outcome = "failed"
+        try:
+            for retry_index in range(auto_retries + 1):
+                attempts = state.setdefault("attempts", {})
+                attempt = int(attempts.get(stage, 0)) + 1
+                attempts[stage] = attempt
+                save_task_state(state)
+                try:
+                    _result = run_specialist(
+                        skill_name,
+                        query_json,
+                        output_schema,
+                        timeout=int(policy_data["timeout"]),
+                    )
+                    _ev_outcome = "completed"
+                    return _result
+                except subprocess.TimeoutExpired as exc:
+                    reason = f"Specialist {skill_name!r} timed out after {policy_data['timeout']}s"
+                    if policy_data["hitl_on_timeout"]:
+                        raise StageTimeoutForHITL(stage, attempt, reason) from exc
+                    if retry_index >= auto_retries:
+                        raise
+                    append_progress(task_id, "stage_retry", {"stage": stage, "attempt": attempt, "reason": reason})
+                except SpecialistFailed as exc:
+                    if policy_data["hitl_on_timeout"] and _is_timeout_failure(exc):
+                        reason = f"Specialist {skill_name!r} timed out or exited 124: {exc.stderr[:500]}"
+                        raise StageTimeoutForHITL(stage, attempt, reason) from exc
                     raise
-                append_progress(task_id, "stage_retry", {"stage": stage, "attempt": attempt, "reason": reason})
-            except SpecialistFailed as exc:
-                if policy_data["hitl_on_timeout"] and _is_timeout_failure(exc):
-                    reason = f"Specialist {skill_name!r} timed out or exited 124: {exc.stderr[:500]}"
-                    raise StageTimeoutForHITL(stage, attempt, reason) from exc
-                raise
-        raise RuntimeError(f"stage {stage!r} exhausted without result")
+            raise RuntimeError(f"stage {stage!r} exhausted without result")
+        finally:
+            _emit_run_event(
+                task_id=task_id,
+                stage=stage,
+                agent=skill_name,
+                model=_ev_model,
+                started_at=_ev_started,
+                ended_at=_utcnow_iso(),
+                outcome=_ev_outcome,
+            )
 
     if args.resume and not args.task_id:
         print("[workshop] --resume requires --task-id", flush=True)
