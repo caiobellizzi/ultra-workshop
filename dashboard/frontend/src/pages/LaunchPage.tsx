@@ -180,22 +180,22 @@ export function LaunchPage() {
                 <Label className="font-mono mb-3 block" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
                   Options
                 </Label>
-                <label className="flex items-start gap-2.5 cursor-pointer">
+                <div className="flex items-start gap-2.5">
                   <Checkbox
                     id="brainstorm"
                     checked={brainstorm}
                     onCheckedChange={(c) => setBrainstorm(c === true)}
                     className="mt-0.5"
                   />
-                  <span className="flex flex-col gap-0.5">
+                  <label htmlFor="brainstorm" className="flex flex-col gap-0.5 cursor-pointer">
                     <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--text)" }}>
                       Enable brainstorm stage
                     </span>
                     <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", lineHeight: 1.4 }}>
                       Run an upfront brainstorm pass to refine the goal before triage.
                     </span>
-                  </span>
-                </label>
+                  </label>
+                </div>
 
                 {/* Per-task overrides (Workstream B) */}
                 <div className="grid gap-3 mt-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
@@ -222,25 +222,25 @@ export function LaunchPage() {
                   </div>
                 </div>
 
-                <label className="flex items-start gap-2.5 cursor-pointer mt-4">
-                  <Checkbox checked={runOptionalReviewers} onCheckedChange={(c) => setRunOptionalReviewers(c !== false)} className="mt-0.5" />
-                  <span className="flex flex-col gap-0.5">
+                <div className="flex items-start gap-2.5 mt-4">
+                  <Checkbox id="runOptionalReviewers" checked={runOptionalReviewers} onCheckedChange={(c) => setRunOptionalReviewers(c !== false)} className="mt-0.5" />
+                  <label htmlFor="runOptionalReviewers" className="flex flex-col gap-0.5 cursor-pointer">
                     <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--text)" }}>Run optional reviewers</span>
                     <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", lineHeight: 1.4 }}>
                       When off, only the security + correctness floor runs.
                     </span>
-                  </span>
-                </label>
+                  </label>
+                </div>
 
-                <label className="flex items-start gap-2.5 cursor-pointer mt-3">
-                  <Checkbox checked={dryRun} onCheckedChange={(c) => setDryRun(c === true)} className="mt-0.5" />
-                  <span className="flex flex-col gap-0.5">
+                <div className="flex items-start gap-2.5 mt-3">
+                  <Checkbox id="dryRun" checked={dryRun} onCheckedChange={(c) => setDryRun(c === true)} className="mt-0.5" />
+                  <label htmlFor="dryRun" className="flex flex-col gap-0.5 cursor-pointer">
                     <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--text)" }}>Dry run (plan only)</span>
                     <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", lineHeight: 1.4 }}>
                       Stop after the planner with status plan_ready — no coder, branch, or PR.
                     </span>
-                  </span>
-                </label>
+                  </label>
+                </div>
               </div>
             </div>
 

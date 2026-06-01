@@ -9,33 +9,19 @@ const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      "peer shrink-0 disabled:cursor-not-allowed disabled:opacity-50",
-      "focus:outline-none",
+      "peer inline-flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[1px] border outline-none transition-colors",
+      "border-[var(--border)] bg-[var(--surface)]",
+      // Visible checked state (was missing — a checked box looked identical to unchecked)
+      "data-[state=checked]:bg-[var(--accent)] data-[state=checked]:border-[var(--accent-border)]",
+      "focus-visible:border-[var(--border-strong)]",
+      "disabled:cursor-not-allowed disabled:opacity-50",
       className,
     )}
-    style={{
-      width: "14px",
-      height: "14px",
-      border: "1px solid var(--border)",
-      borderRadius: "1px",
-      backgroundColor: "var(--surface)",
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-    onFocus={(e) => {
-      e.currentTarget.style.borderColor = "var(--border-strong)";
-      if (props.onFocus) props.onFocus(e);
-    }}
-    onBlur={(e) => {
-      const checked = e.currentTarget.getAttribute("data-state") === "checked";
-      e.currentTarget.style.borderColor = checked ? "var(--accent-border)" : "var(--border)";
-      if (props.onBlur) props.onBlur(e);
-    }}
     {...props}
   >
     <CheckboxPrimitive.Indicator
-      style={{ color: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center" }}
+      className="flex items-center justify-center"
+      style={{ color: "var(--background)" }}
     >
       <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
         <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

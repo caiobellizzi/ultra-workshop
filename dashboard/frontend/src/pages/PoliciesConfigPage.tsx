@@ -54,10 +54,10 @@ function GlobalPoliciesCard() {
         </div>
         {/* Quiet hours */}
         <div className="flex items-center justify-between gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <Checkbox checked={qh.enabled !== false} onCheckedChange={(c) => setDraft({ ...draft, quiet_hours: { ...qh, enabled: c !== false } })} />
-            <span className="font-mono text-xs text-[--text-muted]">Quiet hours</span>
-          </label>
+          <div className="flex items-center gap-2">
+            <Checkbox id="gp-quiet" checked={qh.enabled !== false} onCheckedChange={(c) => setDraft({ ...draft, quiet_hours: { ...qh, enabled: c !== false } })} />
+            <label htmlFor="gp-quiet" className="font-mono text-xs text-[--text-muted] cursor-pointer">Quiet hours</label>
+          </div>
           <div className="flex items-center gap-2">
             <Input type="number" className="font-mono h-8 w-16" value={qh.start_hour ?? ""} placeholder="22"
               onChange={(e) => setDraft({ ...draft, quiet_hours: { ...qh, start_hour: Number(e.target.value) } })} />
@@ -67,10 +67,10 @@ function GlobalPoliciesCard() {
           </div>
         </div>
         {/* Restart */}
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox checked={restart.allow_auto_restart === true} onCheckedChange={(c) => setDraft({ ...draft, restart: { ...restart, allow_auto_restart: c === true } })} />
-          <span className="font-mono text-xs text-[--text-muted]">Allow automatic restart</span>
-        </label>
+        <div className="flex items-center gap-2">
+          <Checkbox id="gp-restart" checked={restart.allow_auto_restart === true} onCheckedChange={(c) => setDraft({ ...draft, restart: { ...restart, allow_auto_restart: c === true } })} />
+          <label htmlFor="gp-restart" className="font-mono text-xs text-[--text-muted] cursor-pointer">Allow automatic restart</label>
+        </div>
       </CardContent>
     </Card>
   );
