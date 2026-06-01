@@ -14,13 +14,21 @@ via: terminal python3 /opt/ultra-workshop/hermes-skills/brain_http.py <agent_id>
 """
 from __future__ import annotations
 
-import httpx
 import json
+import os
 import sys
+import tempfile
+from pathlib import Path
 from typing import Optional
 
 BRAIN_BASE_URL = "http://127.0.0.1:7000"
 DEFAULT_TIMEOUT = 60.0
+
+
+def _queue_path() -> Path:
+    """Resolve the workshop queue JSONL — must match cron_bug_scan_fastpoll._queue_path."""
+    vault = os.environ.get("VAULT_VPS_PATH", "/srv/second-brain")
+    return Path(vault) / "_system" / ".workshop-queue.jsonl"
 
 
 def call_agent(agent_id: str, message: str, user_id: str = "workshop") -> dict:
@@ -42,6 +50,8 @@ def call_agent(agent_id: str, message: str, user_id: str = "workshop") -> dict:
         SystemExit(1) if Brain returns status "ERROR" (application-level error).
         httpx.HTTPError on network/HTTP transport failures.
     """
+    import httpx  # lazy — only the agent-call path needs httpx; ACK is file-only
+
     resp = httpx.post(
         f"{BRAIN_BASE_URL}/agents/{agent_id}/runs",
         data={"message": message, "stream": "false", "user_id": user_id},
@@ -60,16 +70,51 @@ def call_agent(agent_id: str, message: str, user_id: str = "workshop") -> dict:
 
 
 def mark_queue_entry_dispatched(entry_id: str) -> dict:
-    """PUT /workshop/queue/{entry_id}/dispatched — mark queue entry as dispatched.
+    """Mark a queue entry dispatched by flipping `dispatched: true` in the local JSONL.
 
-    Raises httpx.HTTPStatusError on non-2xx response.
+    The Brain (ultra-agents-brain) does not serve a queue-ACK HTTP endpoint
+    (PUT /workshop/queue/{id}/dispatched returns 404) — it only owns the queue
+    file. Since fast-poll and standard-poll already read this file directly, the
+    ACK is performed in-place here. Without it, dispatched entries re-fire on
+    every poll (telegram spam / re-run builds).
+
+    Atomic: rewrites the whole JSONL via a temp file + os.replace. Entries other
+    than `entry_id` are preserved verbatim. Returns {id, dispatched, found}.
+    Never raises on a missing/empty queue — returns found=False.
     """
-    resp = httpx.put(
-        f"{BRAIN_BASE_URL}/workshop/queue/{entry_id}/dispatched",
-        timeout=10,
-    )
-    resp.raise_for_status()
-    return resp.json()
+    queue_file = _queue_path()
+    if not queue_file.exists():
+        return {"id": entry_id, "dispatched": False, "found": False}
+
+    found = False
+    out_lines: list[str] = []
+    for raw in queue_file.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            out_lines.append(line)  # preserve unparseable lines untouched
+            continue
+        if entry.get("id") == entry_id:
+            entry["dispatched"] = True
+            found = True
+        out_lines.append(json.dumps(entry))
+
+    payload = "".join(f"{ln}\n" for ln in out_lines)
+    fd, tmp = tempfile.mkstemp(dir=str(queue_file.parent), prefix=".workshop-queue.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(payload)
+        os.replace(tmp, queue_file)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+    return {"id": entry_id, "dispatched": found, "found": found}
 
 
 if __name__ == "__main__":
