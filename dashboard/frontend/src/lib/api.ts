@@ -6,20 +6,39 @@ import type {
   ReviewerEntry,
   PoliciesConfig,
   CronJob,
+  GlobalPolicies,
 } from "@/types/config";
 import type {
   CostSummary,
   TaskCostRow,
   CostTrends,
   RoleSpend,
+  ModelMixItem,
+  CostEstimate,
 } from "@/types/cost";
 import type {
   HealthResponse,
   ModelReachability,
   ErrorLogEntry,
+  QueueStats,
 } from "@/types/health";
-import type { SkillMeta, SkillDetail, GitHistoryEntry } from "@/types/skill";
+import type {
+  SkillMeta,
+  SkillDetail,
+  GitHistoryEntry,
+  SkillStat,
+  ReviewerStat,
+} from "@/types/skill";
 import type { Repo, HITLItem } from "@/types/repo";
+
+// Per-task override fields forwarded on launch (Workstream B).
+export interface LaunchOverrides {
+  branch?: string;
+  model_alias?: string;
+  skill_profile?: string;
+  run_optional_reviewers?: boolean;
+  dry_run?: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Fetch helper
@@ -92,7 +111,11 @@ export const tasks = {
   get: (id: string) => request<TaskDetail>(`/api/tasks/${id}`),
   progress: (id: string) =>
     request<{ events: ProgressEvent[] }>(`/api/tasks/${id}/progress`),
-  create: (body: { repo: string; goal: string; brainstorm?: boolean }) =>
+  modelMix: () =>
+    request<{ items: ModelMixItem[] }>("/api/tasks/model-mix"),
+  create: (
+    body: { repo: string; goal: string; brainstorm?: boolean } & LaunchOverrides,
+  ) =>
     request<{ task_id: string }>("/api/tasks", {
       method: "POST",
       body: JSON.stringify(body),
@@ -142,6 +165,19 @@ export const cost = {
   },
   roles: () => request<{ roles: RoleSpend[] }>("/api/cost/roles"),
   task: (id: string) => request<TaskCostRow>(`/api/cost/task/${id}`),
+  estimate: (repo: string) =>
+    request<CostEstimate>("/api/cost/estimate", {
+      method: "POST",
+      body: JSON.stringify({ repo }),
+    }),
+};
+
+// ---------------------------------------------------------------------------
+// Queue
+// ---------------------------------------------------------------------------
+
+export const queue = {
+  stats: () => request<QueueStats>("/api/queue/stats"),
 };
 
 // ---------------------------------------------------------------------------
@@ -167,6 +203,15 @@ export const config = {
     request<{ ok: boolean }>("/api/config/stage-policies", {
       method: "PUT",
       body: JSON.stringify(policies),
+    }),
+  getReviewerStats: () =>
+    request<{ stats: ReviewerStat[] }>("/api/config/reviewers/stats"),
+  getGlobalPolicies: () =>
+    request<{ global_policies: GlobalPolicies }>("/api/config/global-policies"),
+  putGlobalPolicies: (global_policies: GlobalPolicies) =>
+    request<{ ok: boolean }>("/api/config/global-policies", {
+      method: "PUT",
+      body: JSON.stringify({ global_policies }),
     }),
   getRoster: () =>
     request<{ roster: ReviewerEntry[] }>("/api/config/roster"),
@@ -199,7 +244,18 @@ export const config = {
 
 export const skills = {
   list: () => request<{ skills: SkillMeta[] }>("/api/skills"),
+  stats: () => request<{ stats: SkillStat[] }>("/api/skills/stats"),
   get: (name: string) => request<SkillDetail>(`/api/skills/${name}`),
+  create: (name: string, content: string) =>
+    request<{ ok: boolean; name: string }>("/api/skills", {
+      method: "POST",
+      body: JSON.stringify({ name, content }),
+    }),
+  setEnabled: (name: string, enabled: boolean) =>
+    request<{ ok: boolean; enabled: boolean }>(`/api/skills/${name}/enabled`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    }),
   put: (name: string, content: string) =>
     request<{ ok: boolean }>(`/api/skills/${name}`, {
       method: "PUT",
@@ -257,7 +313,9 @@ export const repos = {
 // ---------------------------------------------------------------------------
 
 export const launch = {
-  build: (body: { repo: string; goal: string; brainstorm?: boolean }) =>
+  build: (
+    body: { repo: string; goal: string; brainstorm?: boolean } & LaunchOverrides,
+  ) =>
     request<{ task_id: string }>("/api/tasks", {
       method: "POST",
       body: JSON.stringify(body),

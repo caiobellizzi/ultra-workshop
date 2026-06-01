@@ -3,6 +3,16 @@ export interface ServiceStatus {
   running: boolean;
   uptime_seconds?: number;
   version?: string;
+  pid?: number | null;
+  rss_bytes?: number | null;
+  port?: number | null;
+}
+
+export interface QueueStats {
+  running: number;
+  queued: number;
+  hitl_pending: number;
+  max_concurrency: number;
 }
 
 export interface DiskStats {

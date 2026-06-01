@@ -1,5 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { health as healthApi } from "@/lib/api";
+import { health as healthApi, queue as queueApi } from "@/lib/api";
+
+export function useQueueStats() {
+  return useQuery({
+    queryKey: ["queue", "stats"],
+    queryFn: () => queueApi.stats(),
+    refetchInterval: 5_000,
+  });
+}
 
 export function useHealth() {
   return useQuery({

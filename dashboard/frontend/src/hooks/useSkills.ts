@@ -1,6 +1,32 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { skills as skillsApi } from "@/lib/api";
 
+export function useSkillStats() {
+  return useQuery({
+    queryKey: ["skills", "stats"],
+    queryFn: () => skillsApi.stats(),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useCreateSkill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, content }: { name: string; content: string }) =>
+      skillsApi.create(name, content),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["skills"] }),
+  });
+}
+
+export function useSetSkillEnabled() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, enabled }: { name: string; enabled: boolean }) =>
+      skillsApi.setEnabled(name, enabled),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["skills"] }),
+  });
+}
+
 export function useSkillList() {
   return useQuery({
     queryKey: ["skills"],

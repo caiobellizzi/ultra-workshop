@@ -1,5 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
-import { cost as costApi } from "@/lib/api";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { cost as costApi, tasks as tasksApi } from "@/lib/api";
+
+export function useModelMix() {
+  return useQuery({
+    queryKey: ["tasks", "model-mix"],
+    queryFn: () => tasksApi.modelMix(),
+    refetchInterval: 10_000,
+  });
+}
+
+export function useCostEstimate() {
+  return useMutation({
+    mutationFn: (repo: string) => costApi.estimate(repo),
+  });
+}
 
 export function useCostSummary(from?: string, to?: string) {
   return useQuery({

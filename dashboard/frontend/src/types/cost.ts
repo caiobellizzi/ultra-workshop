@@ -4,6 +4,21 @@ export interface CostSummary {
   this_month_cents: number;
   per_task_avg_cents: number;
   most_expensive_alias: string;
+  today_delta_cents?: number;
+  this_month_delta_cents?: number;
+}
+
+export interface ModelMixItem {
+  alias: string;
+  count: number;
+}
+
+export interface CostEstimate {
+  p25_cents: number;
+  p50_cents: number;
+  p75_cents: number;
+  sample_size: number;
+  basis: "repo" | "global" | "none";
 }
 
 export interface TaskCostRow {

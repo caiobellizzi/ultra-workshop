@@ -54,6 +54,15 @@ export interface ReviewerEntry {
   fallback_alias?: string;
   mtd_spend_cents?: number;
   budget_pct?: number;
+  priority?: number;
+}
+
+// Global policies (flat block — Workstream D)
+export interface GlobalPolicies {
+  cost?: { task_budget_seconds?: number };
+  quiet_hours?: { enabled?: boolean; start_hour?: number; end_hour?: number };
+  restart?: { allow_auto_restart?: boolean };
+  [key: string]: Record<string, unknown> | undefined;
 }
 
 // Cron job

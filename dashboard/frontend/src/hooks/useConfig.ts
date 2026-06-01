@@ -1,6 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { config as configApi } from "@/lib/api";
-import type { ReviewerEntry, PoliciesConfig } from "@/types/config";
+import type { ReviewerEntry, PoliciesConfig, GlobalPolicies } from "@/types/config";
+
+export function useReviewerStats() {
+  return useQuery({
+    queryKey: ["config", "reviewers", "stats"],
+    queryFn: () => configApi.getReviewerStats(),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useGlobalPolicies() {
+  return useQuery({
+    queryKey: ["config", "global-policies"],
+    queryFn: () => configApi.getGlobalPolicies(),
+  });
+}
+
+export function useSaveGlobalPolicies() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (policies: GlobalPolicies) => configApi.putGlobalPolicies(policies),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["config", "global-policies"] }),
+  });
+}
 
 export function useModelsConfig() {
   return useQuery({
