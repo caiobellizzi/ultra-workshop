@@ -1,14 +1,33 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSkillList } from "@/hooks/useSkills";
+import { useSkillList, useSkillStats, useCreateSkill, useSetSkillEnabled } from "@/hooks/useSkills";
+import { toast } from "@/hooks/use-toast";
 
 export function SkillsPage() {
   const { data, isLoading } = useSkillList();
+  const { data: statsData } = useSkillStats();
+  const createSkill = useCreateSkill();
+  const setEnabled = useSetSkillEnabled();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
+
+  const statByAgent = Object.fromEntries((statsData?.stats ?? []).map((s) => [s.agent, s]));
+
+  const onImport = async (file: File) => {
+    const content = await file.text();
+    const name = file.name.replace(/\.(md|markdown)$/i, "").replace(/[^a-z0-9_-]/gi, "-").toLowerCase();
+    createSkill.mutate(
+      { name, content },
+      {
+        onSuccess: () => toast({ title: "Skill imported", description: name }),
+        onError: (e) => toast({ variant: "destructive", title: "Import failed", description: String(e) }),
+      },
+    );
+  };
 
   const filtered = data?.skills.filter(
     (s) =>
@@ -31,11 +50,29 @@ export function SkillsPage() {
         title="Skills"
         description="SKILL.md registry & editor"
         actions={
-          data?.skills.length ? (
-            <span className="font-mono px-2 py-0.5 rounded-sm" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", backgroundColor: "var(--surface-raised)", border: "1px solid var(--border)" }}>
-              {data.skills.length} skills
-            </span>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            {data?.skills.length ? (
+              <span className="font-mono px-2 py-0.5 rounded-sm" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", backgroundColor: "var(--surface-raised)", border: "1px solid var(--border)" }}>
+                {data.skills.length} skills
+              </span>
+            ) : null}
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".md,.markdown"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void onImport(f); e.target.value = ""; }}
+            />
+            <Button
+              size="sm"
+              className="font-mono font-bold text-xs"
+              style={{ backgroundColor: "var(--accent)", color: "var(--background)" }}
+              onClick={() => fileRef.current?.click()}
+              disabled={createSkill.isPending}
+            >
+              ↑ Import SKILL.md
+            </Button>
+          </div>
         }
       />
       <div className="flex-1 overflow-hidden flex flex-col">
@@ -92,12 +129,30 @@ export function SkillsPage() {
                             <span className="text-[--text-d] text-xs font-mono">
                               v{skill.version}
                             </span>
-                            <span className="text-[--text-d] text-xs font-mono truncate max-w-[240px]">
+                            {statByAgent[skill.name] && (
+                              <span className="text-[--text-d] text-xs font-mono">
+                                {statByAgent[skill.name].runs_today} runs today
+                              </span>
+                            )}
+                            <span className="text-[--text-d] text-xs font-mono truncate max-w-[200px]">
                               {skill.path}
                             </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => setEnabled.mutate({ name: skill.name, enabled: skill.enabled === false })}
+                            className="font-mono text-xs px-2 py-0.5 rounded-sm"
+                            style={{
+                              cursor: "pointer",
+                              ...(skill.enabled === false
+                                ? { color: "var(--text-dim)", backgroundColor: "var(--surface-raised)", border: "1px solid var(--border)" }
+                                : { color: "var(--success)", backgroundColor: "var(--success-bg)", border: "1px solid var(--success-border)" }),
+                            }}
+                            title="Toggle enabled"
+                          >
+                            {skill.enabled === false ? "○ off" : "✓ on"}
+                          </button>
                           <Button
                             asChild
                             variant="outline"

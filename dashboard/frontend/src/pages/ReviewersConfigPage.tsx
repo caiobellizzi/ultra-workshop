@@ -2,16 +2,31 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useReviewersConfig } from "@/hooks/useConfig";
+import { useReviewersConfig, useReviewerStats } from "@/hooks/useConfig";
 import { useCostRoles } from "@/hooks/useCost";
 import { formatCents } from "@/lib/utils";
+
+function relTime(iso?: string | null): string {
+  if (!iso) return "—";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "—";
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
 
 export function ReviewersConfigPage() {
   const { data, isLoading } = useReviewersConfig();
   const { data: rolesData } = useCostRoles();
+  const { data: statsData } = useReviewerStats();
 
   const roleSpend = Object.fromEntries(
     (rolesData?.roles ?? []).map((r) => [r.role, r])
+  );
+  const roleStats = Object.fromEntries(
+    (statsData?.stats ?? []).map((s) => [s.role, s])
   );
 
   const reviewers = data?.reviewers ?? [];
@@ -58,6 +73,9 @@ export function ReviewersConfigPage() {
                       <th className="py-2 px-3 font-mono uppercase" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", letterSpacing: "0.06em" }}>Role</th>
                       <th className="py-2 px-3 font-mono uppercase" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", letterSpacing: "0.06em" }}>File Pattern Triggers</th>
                       <th className="py-2 px-3 font-mono uppercase" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", letterSpacing: "0.06em" }}>Model</th>
+                      <th className="py-2 px-3 font-mono uppercase" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", letterSpacing: "0.06em" }}>Runs</th>
+                      <th className="py-2 px-3 font-mono uppercase" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", letterSpacing: "0.06em" }}>Issues</th>
+                      <th className="py-2 px-3 font-mono uppercase" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", letterSpacing: "0.06em" }}>Last Run</th>
                       <th className="py-2 px-3 font-mono uppercase" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", letterSpacing: "0.06em" }}>Enabled</th>
                       <th className="py-2 px-3 font-mono uppercase" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", letterSpacing: "0.06em" }}>MTD Spend</th>
                       <th className="py-2 px-3 font-mono uppercase w-32" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", letterSpacing: "0.06em" }}>Budget</th>
@@ -80,6 +98,9 @@ export function ReviewersConfigPage() {
                             </div>
                           </td>
                           <td className="py-2.5 px-3 font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{r.model_alias}</td>
+                          <td className="py-2.5 px-3 font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{roleStats[r.role]?.reviews_run ?? "—"}</td>
+                          <td className="py-2.5 px-3 font-mono" style={{ fontSize: "var(--text-xs)", color: (roleStats[r.role]?.issues_found ?? 0) > 0 ? "var(--warning)" : "var(--text-muted)" }}>{roleStats[r.role]?.issues_found ?? "—"}</td>
+                          <td className="py-2.5 px-3 font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>{relTime(roleStats[r.role]?.last_run)}</td>
                           <td className="py-2.5 px-3">
                             {r.isolation ? (
                               <span className="font-mono px-1.5 py-0.5 rounded-sm" style={{ fontSize: "var(--text-xs)", color: "var(--success)", backgroundColor: "var(--success-bg)", border: "1px solid var(--success-border)" }}>ON</span>

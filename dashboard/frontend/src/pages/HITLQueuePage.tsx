@@ -3,6 +3,23 @@ import { HITLCard } from "@/components/hitl/HITLCard";
 import { useHITLQueue } from "@/hooks/useHITL";
 import type { HITLPayload } from "@/types/task";
 
+function fmtWait(secs?: number | null): string {
+  if (secs == null) return "";
+  if (secs < 60) return `${secs}s`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h`;
+  return `${Math.floor(secs / 86400)}d`;
+}
+
+const STRIP_PILL: React.CSSProperties = {
+  fontFamily: "var(--font-mono)",
+  fontSize: "var(--text-xs)",
+  color: "var(--text-dim)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  padding: "1px 6px",
+};
+
 export function HITLQueuePage() {
   const { data, isLoading } = useHITLQueue();
 
@@ -102,6 +119,15 @@ export function HITLQueuePage() {
                   >
                     {new Date(item.created_at).toLocaleString()}
                   </span>
+                  {/* Cost strip (Workstream C) */}
+                  {item.stage && <span style={STRIP_PILL}>{item.stage}</span>}
+                  {item.model && <span style={STRIP_PILL}>{item.model.split("/").pop()}</span>}
+                  {item.tokens != null && <span style={STRIP_PILL}>{item.tokens.toLocaleString()} tok</span>}
+                  {item.waiting_seconds != null && (
+                    <span style={{ ...STRIP_PILL, color: "var(--warning)", borderColor: "var(--warning-border)" }}>
+                      waiting {fmtWait(item.waiting_seconds)}
+                    </span>
+                  )}
                 </div>
                 <HITLCard
                   taskId={item.task_id}

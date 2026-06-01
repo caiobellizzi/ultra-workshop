@@ -1,10 +1,80 @@
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { usePoliciesConfig, useCronJobs } from "@/hooks/useConfig";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { usePoliciesConfig, useCronJobs, useGlobalPolicies, useSaveGlobalPolicies } from "@/hooks/useConfig";
 import { config as configApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { GlobalPolicies } from "@/types/config";
+
+function GlobalPoliciesCard() {
+  const { data, isLoading } = useGlobalPolicies();
+  const save = useSaveGlobalPolicies();
+  const [draft, setDraft] = useState<GlobalPolicies>({});
+
+  useEffect(() => {
+    if (data?.global_policies) setDraft(data.global_policies);
+  }, [data]);
+
+  if (isLoading) return null;
+
+  const cost = draft.cost ?? {};
+  const qh = draft.quiet_hours ?? {};
+  const restart = draft.restart ?? {};
+
+  const onSave = () =>
+    save.mutate(draft, {
+      onSuccess: () => toast({ title: "Global policies saved" }),
+      onError: (e) => toast({ variant: "destructive", title: "Save failed", description: String(e) }),
+    });
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle className="font-mono text-xs text-[--text-muted] tracking-widest uppercase">Global Policies</CardTitle>
+        <Button size="sm" className="font-mono text-xs" style={{ backgroundColor: "var(--accent)", color: "var(--background)" }}
+          onClick={onSave} disabled={save.isPending}>
+          {save.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}Save
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Cost */}
+        <div className="flex items-center justify-between gap-4">
+          <span className="font-mono text-xs text-[--text-muted]">Task budget (seconds)</span>
+          <Input
+            type="number"
+            className="font-mono h-8 w-32"
+            value={cost.task_budget_seconds ?? ""}
+            onChange={(e) => setDraft({ ...draft, cost: { ...cost, task_budget_seconds: Number(e.target.value) } })}
+          />
+        </div>
+        {/* Quiet hours */}
+        <div className="flex items-center justify-between gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox checked={qh.enabled !== false} onCheckedChange={(c) => setDraft({ ...draft, quiet_hours: { ...qh, enabled: c !== false } })} />
+            <span className="font-mono text-xs text-[--text-muted]">Quiet hours</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <Input type="number" className="font-mono h-8 w-16" value={qh.start_hour ?? ""} placeholder="22"
+              onChange={(e) => setDraft({ ...draft, quiet_hours: { ...qh, start_hour: Number(e.target.value) } })} />
+            <span className="font-mono text-xs text-[--text-dim]">→</span>
+            <Input type="number" className="font-mono h-8 w-16" value={qh.end_hour ?? ""} placeholder="7"
+              onChange={(e) => setDraft({ ...draft, quiet_hours: { ...qh, end_hour: Number(e.target.value) } })} />
+          </div>
+        </div>
+        {/* Restart */}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <Checkbox checked={restart.allow_auto_restart === true} onCheckedChange={(c) => setDraft({ ...draft, restart: { ...restart, allow_auto_restart: c === true } })} />
+          <span className="font-mono text-xs text-[--text-muted]">Allow automatic restart</span>
+        </label>
+      </CardContent>
+    </Card>
+  );
+}
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -46,6 +116,8 @@ export function PoliciesConfigPage() {
           </div>
         ) : (
           <>
+            <GlobalPoliciesCard />
+
             <Card>
               <CardHeader>
                 <CardTitle className="font-mono text-xs text-[--text-muted] tracking-widest uppercase">Stage Policies</CardTitle>

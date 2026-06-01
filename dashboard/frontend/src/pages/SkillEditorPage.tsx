@@ -24,6 +24,13 @@ export function SkillEditorPage() {
   const { theme: currentTheme } = useTheme();
   const [content, setContent] = useState<string | null>(null);
   const [schemaWarning, setSchemaWarning] = useState(false);
+  const [tab, setTab] = useState<"skill" | "config" | "hooks">("skill");
+
+  const siblings = [
+    { key: "config" as const, label: "config.yml", value: data?.config_yml, lang: "yaml" },
+    { key: "hooks" as const, label: "hooks.yml", value: data?.hooks_yml, lang: "yaml" },
+  ].filter((s) => s.value != null);
+  const activeSibling = siblings.find((s) => s.key === tab);
 
   if (data && content === null) {
     setContent(data.content);
@@ -107,29 +114,67 @@ export function SkillEditorPage() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="flex-1 overflow-hidden">
-          <Suspense
-            fallback={
-              <div className="flex h-full items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            }
-          >
-            <MonacoEditor
-              height="100%"
-              language="markdown"
-              value={content ?? ""}
-              onChange={handleChange}
-              options={{
-                minimap: { enabled: false },
-                wordWrap: "on",
-                lineNumbers: "on",
-                fontSize: 13,
-                scrollBeyondLastLine: false,
-              }}
-              theme={currentTheme === "dark" ? "vs-dark" : "vs"}
-            />
-          </Suspense>
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {siblings.length > 0 && (
+            <div className="flex items-center gap-1 px-4 py-1.5 border-b border-[--border]">
+              {[{ key: "skill" as const, label: "SKILL.md" }, ...siblings].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className="font-mono text-xs px-2.5 py-1 rounded-sm"
+                  style={{
+                    cursor: "pointer",
+                    backgroundColor: tab === t.key ? "var(--accent-bg)" : "transparent",
+                    border: `1px solid ${tab === t.key ? "var(--accent-border)" : "transparent"}`,
+                    color: tab === t.key ? "var(--accent)" : "var(--text-muted)",
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex-1 overflow-hidden">
+            <Suspense
+              fallback={
+                <div className="flex h-full items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              }
+            >
+              {tab !== "skill" && activeSibling ? (
+                <MonacoEditor
+                  height="100%"
+                  language={activeSibling.lang}
+                  value={activeSibling.value ?? ""}
+                  options={{
+                    minimap: { enabled: false },
+                    wordWrap: "on",
+                    lineNumbers: "on",
+                    fontSize: 13,
+                    scrollBeyondLastLine: false,
+                    readOnly: true,
+                  }}
+                  theme={currentTheme === "dark" ? "vs-dark" : "vs"}
+                />
+              ) : (
+                <MonacoEditor
+                  height="100%"
+                  language="markdown"
+                  value={content ?? ""}
+                  onChange={handleChange}
+                  options={{
+                    minimap: { enabled: false },
+                    wordWrap: "on",
+                    lineNumbers: "on",
+                    fontSize: 13,
+                    scrollBeyondLastLine: false,
+                  }}
+                  theme={currentTheme === "dark" ? "vs-dark" : "vs"}
+                />
+              )}
+            </Suspense>
+          </div>
         </div>
       )}
     </div>
