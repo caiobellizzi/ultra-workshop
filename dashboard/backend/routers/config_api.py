@@ -6,12 +6,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from dashboard.backend.deps import require_auth
 from dashboard.backend.models.api_models import (
     CronPayload,
+    GlobalPoliciesPayload,
     ModelAliasesPayload,
     ModelsConfigResponse,
+    ReviewerStatItem,
+    ReviewerStatsResponse,
     RosterPayload,
     StagePoliciesPayload,
 )
-from dashboard.backend.services import config_service
+from dashboard.backend.services import config_service, run_events
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
@@ -77,6 +80,28 @@ def set_reviewers(body: RosterPayload, _auth=Depends(require_auth)):
     reviewers = body.reviewers if body.reviewers is not None else body.roster or []
     try:
         config_service.set_roster(reviewers)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    return {"ok": True}
+
+
+@router.get("/reviewers/stats", response_model=ReviewerStatsResponse)
+def get_reviewer_stats(_auth=Depends(require_auth)):
+    """Per-role reviewer telemetry (Workstream A → D): reviews, issues, latency."""
+    return ReviewerStatsResponse(stats=[ReviewerStatItem(**s) for s in run_events.reviewer_stats()])
+
+
+# --- Global policies (Workstream D, decision 6) ---
+
+@router.get("/global-policies")
+def get_global_policies(_auth=Depends(require_auth)):
+    return {"global_policies": config_service.get_global_policies()}
+
+
+@router.put("/global-policies")
+def set_global_policies(body: GlobalPoliciesPayload, _auth=Depends(require_auth)):
+    try:
+        config_service.set_global_policies(body.global_policies)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     return {"ok": True}

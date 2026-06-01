@@ -42,10 +42,38 @@ QUEUE_PATH = Path(os.environ.get("WORKSHOP_QUEUE_PATH", "/srv/second-brain/.work
 SKILL_DIR = _HERE
 
 
+_GLOBAL_POLICIES_PATH = _REPO_ROOT / "hermes-config" / "global-policies.yaml"
+
+
+def _quiet_hours_window() -> tuple[bool, int, int]:
+    """Return (enabled, start_hour, end_hour) from global-policies.yaml.
+
+    Falls back to the historical default (enabled, 22:00–06:59) when the config
+    is absent or malformed (Workstream D, decision 6 — smallest seam).
+    """
+    try:
+        import yaml
+        data = yaml.safe_load(_GLOBAL_POLICIES_PATH.read_text(encoding="utf-8")) or {}
+        qh = (data.get("global_policies") or {}).get("quiet_hours") or {}
+        return (
+            bool(qh.get("enabled", True)),
+            int(qh.get("start_hour", 22)),
+            int(qh.get("end_hour", 7)),
+        )
+    except Exception:
+        return (True, 22, 7)
+
+
 def _is_quiet_hours() -> bool:
-    """Return True during quiet hours (22:00–06:59 local time)."""
+    """Return True during the configured quiet-hours window (default 22:00–06:59)."""
+    enabled, start_h, end_h = _quiet_hours_window()
+    if not enabled:
+        return False
     h = datetime.datetime.now().hour
-    return h >= 22 or h < 7
+    if start_h <= end_h:
+        return start_h <= h < end_h
+    # Wrap-around window (e.g. 22 → 7)
+    return h >= start_h or h < end_h
 
 
 def _load_queue() -> list[dict]:

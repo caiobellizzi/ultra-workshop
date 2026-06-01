@@ -14,19 +14,25 @@ from dashboard.backend.config import settings
 from dashboard.backend.deps import require_auth
 from dashboard.backend.models.api_models import (
     GitHistoryEntry,
+    SkillCreateRequest,
     SkillDetail,
     SkillDryRunRequest,
+    SkillEnabledRequest,
     SkillHistoryResponse,
     SkillListResponse,
     SkillMetaModel,
     SkillRollbackRequest,
+    SkillStatItem,
+    SkillStatsResponse,
     SkillSummary,
     SkillUpdateRequest,
 )
+from dashboard.backend.services import run_events
 
 router = APIRouter(prefix="/api/skills", tags=["skills"])
 
 _SKILL_NAME_RE = re.compile(r"^[a-z0-9_-]+$")
+_FORBIDDEN_FRONTMATTER_KEYS = ("tools", "mcpServers", "hooks")
 _MAX_SKILL_SIZE = 128_000  # bytes
 _OUTPUT_SCHEMA_RE = re.compile(r"##\s*output\s*schema", re.IGNORECASE)
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
@@ -38,6 +44,66 @@ def _skills_root() -> Path:
 
 def _skill_path(name: str) -> Path:
     return _skills_root() / name / "SKILL.md"
+
+
+def _skill_state_path() -> Path:
+    """Sidecar that stores per-skill enabled flags (avoids rewriting frontmatter)."""
+    return Path(settings.hermes_config_dir) / "skill-state.yaml"
+
+
+def _load_skill_state() -> dict[str, Any]:
+    path = _skill_state_path()
+    if not path.exists():
+        return {}
+    try:
+        import yaml
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        return data.get("skills", {}) if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _is_enabled(name: str, state: dict[str, Any] | None = None) -> bool:
+    state = _load_skill_state() if state is None else state
+    entry = state.get(name)
+    if isinstance(entry, dict):
+        return bool(entry.get("enabled", True))
+    return True  # default: enabled when unset
+
+
+def _set_skill_enabled(name: str, enabled: bool) -> None:
+    path = _skill_state_path()
+    state = _load_skill_state()
+    entry = state.get(name) if isinstance(state.get(name), dict) else {}
+    entry["enabled"] = enabled
+    state[name] = entry
+    path.parent.mkdir(parents=True, exist_ok=True)
+    import yaml
+    tmp = path.with_suffix(".yaml.tmp")
+    tmp.write_text(yaml.dump({"skills": state}, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _validate_frontmatter(name: str, content: str) -> None:
+    """Validate SKILL.md frontmatter per test_skill_frontmatter.py rules.
+
+    Raises HTTPException(422) on any violation.
+    """
+    fm = _parse_frontmatter(content)
+    if not fm:
+        raise HTTPException(status_code=422, detail="no valid YAML frontmatter block found")
+    if "name" not in fm:
+        raise HTTPException(status_code=422, detail="frontmatter missing 'name'")
+    if "description" not in fm:
+        raise HTTPException(status_code=422, detail="frontmatter missing 'description'")
+    for forbidden in _FORBIDDEN_FRONTMATTER_KEYS:
+        if forbidden in fm:
+            raise HTTPException(status_code=422, detail=f"forbidden Hermes key '{forbidden}' present")
+    if str(fm.get("name")) != name:
+        raise HTTPException(
+            status_code=422,
+            detail=f"frontmatter name {fm.get('name')!r} does not match skill name {name!r}",
+        )
 
 
 def _has_output_schema(content: str) -> bool:
@@ -77,6 +143,7 @@ def list_skills(_auth=Depends(require_auth)):
     root = _skills_root()
     if not root.exists():
         return SkillListResponse(skills=[])
+    state = _load_skill_state()
     results: list[SkillSummary] = []
     for skill_dir in sorted(root.iterdir()):
         if not skill_dir.is_dir():
@@ -96,9 +163,38 @@ def list_skills(_auth=Depends(require_auth)):
                 path=str(skill_file),
                 size=len(content.encode("utf-8")),
                 has_output_schema=_has_output_schema(content),
+                enabled=_is_enabled(name, state),
             )
         )
     return SkillListResponse(skills=results)
+
+
+@router.get("/stats", response_model=SkillStatsResponse)
+def skill_stats(_auth=Depends(require_auth)):
+    """Per-skill run stats today (Workstream A → D), from run_events."""
+    return SkillStatsResponse(stats=[SkillStatItem(**s) for s in run_events.skill_stats()])
+
+
+@router.post("", status_code=201)
+def create_skill(body: SkillCreateRequest, _auth=Depends(require_auth)):
+    """Create a new skill from an uploaded SKILL.md, validated against frontmatter rules."""
+    name = body.name.strip()
+    if not _SKILL_NAME_RE.match(name):
+        raise HTTPException(status_code=400, detail="invalid skill name")
+    content_bytes = body.content.encode("utf-8")
+    if len(content_bytes) > _MAX_SKILL_SIZE:
+        raise HTTPException(status_code=422, detail=f"skill content too large ({len(content_bytes)} bytes)")
+    _validate_frontmatter(name, body.content)
+
+    skill_dir = _skills_root() / name
+    skill_file = skill_dir / "SKILL.md"
+    if skill_file.exists():
+        raise HTTPException(status_code=409, detail=f"skill {name!r} already exists")
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    tmp = skill_file.with_name(f"{skill_file.name}.tmp")
+    tmp.write_text(body.content, encoding="utf-8")
+    tmp.replace(skill_file)
+    return {"ok": True, "name": name, "path": str(skill_file)}
 
 
 @router.get("/{name}", response_model=SkillDetail)
@@ -110,7 +206,34 @@ def get_skill(name: str, _auth=Depends(require_auth)):
         raise HTTPException(status_code=404, detail=f"skill {name!r} not found")
     content = skill_file.read_text(encoding="utf-8")
     meta = _meta_from_content(name, str(skill_file), content)
-    return SkillDetail(meta=meta, content=content)
+
+    # Optional sibling config files (Workstream D)
+    def _read_sibling(filename: str) -> str | None:
+        p = skill_file.parent / filename
+        if p.exists():
+            try:
+                return p.read_text(encoding="utf-8")
+            except Exception:
+                return None
+        return None
+
+    return SkillDetail(
+        meta=meta,
+        content=content,
+        config_yml=_read_sibling("config.yml") or _read_sibling("config.yaml"),
+        hooks_yml=_read_sibling("hooks.yml") or _read_sibling("hooks.yaml"),
+    )
+
+
+@router.put("/{name}/enabled")
+def set_skill_enabled(name: str, body: SkillEnabledRequest, _auth=Depends(require_auth)):
+    """Enable/disable a skill via the skill-state.yaml sidecar (no frontmatter rewrite)."""
+    if not _SKILL_NAME_RE.match(name):
+        raise HTTPException(status_code=400, detail="invalid skill name")
+    if not _skill_path(name).exists():
+        raise HTTPException(status_code=404, detail=f"skill {name!r} not found")
+    _set_skill_enabled(name, body.enabled)
+    return {"ok": True, "name": name, "enabled": body.enabled}
 
 
 @router.put("/{name}")

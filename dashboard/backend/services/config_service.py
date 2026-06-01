@@ -225,3 +225,35 @@ def set_cron_config(jobs: list[dict[str, Any]]) -> None:
             raise ValueError(f"cron job #{i} must be a dict")
     yaml_path = _hermes_config_dir() / "cron.yaml"
     _atomic_write_yaml(yaml_path, {"jobs": jobs})
+
+
+# ---------------------------------------------------------------------------
+# Global policies (Workstream D, decision 6)
+# ---------------------------------------------------------------------------
+
+_DEFAULT_GLOBAL_POLICIES: dict[str, Any] = {
+    # Cost guard — surfaced as UWS_TASK_BUDGET (seconds) for the pipeline.
+    "cost": {"task_budget_seconds": 2400},
+    # Quiet hours — read by cron_standard_poll to pause dispatch.
+    "quiet_hours": {"enabled": True, "start_hour": 22, "end_hour": 7},
+    # Restart policy — surfaced for the control/systemd path.
+    "restart": {"allow_auto_restart": False},
+}
+
+
+def get_global_policies() -> dict[str, Any]:
+    data = _read_yaml(_hermes_config_dir() / "global-policies.yaml")
+    if not data or "global_policies" not in data:
+        return dict(_DEFAULT_GLOBAL_POLICIES)
+    return data.get("global_policies", {})
+
+
+def set_global_policies(policies: dict[str, Any]) -> None:
+    """Validate (must be a dict-of-dicts) and write global-policies.yaml."""
+    if not isinstance(policies, dict):
+        raise ValueError("global_policies must be an object")
+    for key, val in policies.items():
+        if not isinstance(val, dict):
+            raise ValueError(f"global policy {key!r} must be an object")
+    yaml_path = _hermes_config_dir() / "global-policies.yaml"
+    _atomic_write_yaml(yaml_path, {"global_policies": policies})

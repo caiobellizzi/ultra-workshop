@@ -224,6 +224,11 @@ class CronPayload(BaseModel):
     jobs: list[dict[str, Any]]
 
 
+class GlobalPoliciesPayload(BaseModel):
+    """Flat global policy block (Workstream D, decision 6): cost / quiet_hours / restart."""
+    global_policies: dict[str, Any]
+
+
 class CronJobModel(BaseModel):
     name: str
     schedule: str
@@ -265,6 +270,7 @@ class SkillSummary(BaseModel):
     path: str
     size: int = 0
     has_output_schema: bool = False
+    enabled: bool = True  # Workstream D — from skill-state.yaml sidecar
 
 
 class SkillListResponse(BaseModel):
@@ -282,10 +288,45 @@ class SkillMetaModel(BaseModel):
 class SkillDetail(BaseModel):
     meta: SkillMetaModel
     content: str
+    # Sibling config files (Workstream D) — present only when they exist in the skill dir
+    config_yml: Optional[str] = None
+    hooks_yml: Optional[str] = None
 
 
 class SkillUpdateRequest(BaseModel):
     content: str
+
+
+class SkillCreateRequest(BaseModel):
+    name: str
+    content: str
+
+
+class SkillEnabledRequest(BaseModel):
+    enabled: bool
+
+
+class SkillStatItem(BaseModel):
+    agent: str
+    runs_today: int
+    avg_duration_seconds: Optional[float] = None
+    last_run: Optional[str] = None
+
+
+class SkillStatsResponse(BaseModel):
+    stats: list[SkillStatItem] = Field(default_factory=list)
+
+
+class ReviewerStatItem(BaseModel):
+    role: str
+    reviews_run: int
+    issues_found: int
+    avg_latency_seconds: Optional[float] = None
+    last_run: Optional[str] = None
+
+
+class ReviewerStatsResponse(BaseModel):
+    stats: list[ReviewerStatItem] = Field(default_factory=list)
 
 
 class SkillRollbackRequest(BaseModel):
