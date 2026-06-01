@@ -191,6 +191,24 @@ Acceptance: File exists and matches vocabulary table in PLAN.md (V23)
 | REQ-ws-033 | Phase 7 | Complete |
 | REQ-ws-034 | Phase 7 | Complete |
 
+| REQ-ws-035 | Phase 8 | Complete |
+| REQ-ws-036 | Phase 8 | Complete |
+| REQ-ws-037 | Phase 8 | Complete |
+| REQ-ws-038 | Phase 8 | Complete |
+| REQ-ws-039 | Phase 8 | Complete |
+| REQ-ws-040 | Phase 8 | Complete |
+| REQ-ws-041 | Phase 8 | Complete |
+| REQ-ws-042 | Phase 8 | Complete |
+
+| REQ-ws-043 | Phase 9 | Implemented |
+| REQ-ws-044 | Phase 9 | Implemented |
+| REQ-ws-045 | Phase 9 | Implemented |
+| REQ-ws-046 | Phase 9 | Implemented |
+| REQ-ws-047 | Phase 9 | Implemented |
+| REQ-ws-048 | Phase 9 | Implemented |
+| REQ-ws-049 | Phase 9 | Implemented |
+| REQ-ws-050 | Phase 9 | Implemented |
+
 | REQ-ws-051 | Phase 10 | Complete |
 | REQ-ws-052 | Phase 10 | Complete |
 | REQ-ws-053 | Phase 10 | Complete |
@@ -198,7 +216,7 @@ Acceptance: File exists and matches vocabulary table in PLAN.md (V23)
 | REQ-ws-055 | Phase 10 | Complete |
 | REQ-ws-056 | Phase 10 | Complete |
 
-**Coverage:** 40/40 requirements mapped. No orphans.
+**Coverage:** 56/56 requirements mapped. No orphans.
 
 ---
 
@@ -259,6 +277,42 @@ Acceptance: `grep -i "brain.query\|brain_query\|brain-query" skills/planner-spec
 **REQ-ws-042** — workshop-fix: correct push path + requirements stage documented
 `workshop-fix/SKILL.md` uses `workshop_continue.py` push path (not the old direct-push path). The requirements stage is documented in the skill so the fix pipeline mirrors the build pipeline structure.
 Acceptance: `grep "workshop_continue\|continue" skills/workshop-fix/SKILL.md` → ≥1 match; `grep "requirements" skills/workshop-fix/SKILL.md` → ≥1 match (SC-6)
+
+---
+
+### Phase 9: Advanced Agent Architecture
+
+**REQ-ws-043** — Brainstorm/conception HITL stage (pre-triage)
+A brainstorm/conception stage runs as a pre-triage HITL conversational loop in `workshop_build.py`. The loop continues until explicit owner approval (no turn cap — owner amendment B1-A). On approval it produces a scoped goal statement fed to triage. Triggered via `--brainstorm` flag; direct `/build` skips brainstorm.
+Acceptance: `grep "\-\-brainstorm\|brainstorm_approved" hermes-skills/workshop_build.py` → ≥2 matches; `python -m pytest tests/phase-09/test_brainstorm_hitl.py -x` passes (SC-1)
+
+**REQ-ws-044** — Agent personas: monthly token budgets + auto-pause
+Each specialist (planner, coder, reviewer, requirements, triage, merge-agent, brainstorm) has a monthly token budget tracked in the brain ledger (`brain/_system/cost-ledger.md`). Budgets configured in `hermes-config/review-roster.yaml`. Auto-pause fires at 100% utilization with a Telegram alert at 80%.
+Acceptance: `grep "monthly\|budget\|auto.pause" hermes-config/review-roster.yaml` → ≥3 matches; `python -m pytest tests/phase-09/test_cost_budget.py -x` passes (SC-2)
+
+**REQ-ws-045** — Immutable per-task audit log in the brain
+Every pipeline event (wave start, specialist completion with token/cost + finding counts, merge completion with block decision) is appended to an append-only `vault/_system/workshop-audit/{task_id}.jsonl` via `brain_http.call_agent("ingest", ...)`.
+Acceptance: `python -m pytest tests/phase-09/test_audit_log.py -x` passes; `grep "workshop-audit\|append_audit" hermes-skills/workshop_build.py hermes-skills/workshop_reviewer.py` → ≥2 matches (SC-3)
+
+**REQ-ws-046** — Parallel 8-scope review wave with dedup+autofix merge agent
+`workshop_reviewer.py` dispatches 8 reviewers in parallel via `ThreadPoolExecutor`: `correctness`, `security`, `python`, `typescript`, `reactjs`, `qa`, `docs`, `config`. A merge agent (wave 3) deduplicates findings by `(file, line)`, auto-fixes `severity: low` items, and produces a `MergeReport`. `hermes-config/review-roster.yaml` governs routing rules and model aliases.
+Acceptance: `python -m pytest tests/phase-09/test_review_wave.py tests/phase-09/test_merge_agent.py -x` passes; `grep "ThreadPoolExecutor" hermes-skills/workshop_reviewer.py` → ≥1 match (SC-4)
+
+**REQ-ws-047** — AgentTool/SkillTool isolation policy: documented and registry-enforced
+`hermes-config/agent-isolation-policy.md` documents which roles run as isolated AgentTool dispatches (security, correctness, merge-agent) vs. shared-context SkillTool passes. Per-specialist isolation flag encoded in `review-roster.yaml`. Policy document serves as the single source of truth.
+Acceptance: `ls hermes-config/agent-isolation-policy.md` → file exists; `grep "isolated" hermes-config/review-roster.yaml` → ≥1 match; `grep "isolation" hermes-config/agent-isolation-policy.md` → ≥1 match (SC-5)
+
+**REQ-ws-048** — requirements-specialist brain pre-query before HITL
+`requirements-specialist/SKILL.md` (or `workshop_build.py` requirements stage) queries the brain for `"prior clarifications for {repo_full_name}"` before triggering HITL. Prevents re-asking resolved ambiguities.
+Acceptance: `grep "brain.query\|brain_query\|prior.clarification" skills/requirements-specialist/SKILL.md` → ≥1 match; `python -m pytest tests/phase-09/test_requirements_brain.py -x` passes (SC-6)
+
+**REQ-ws-049** — Review roster registry: hermes-config/review-roster.yaml
+`hermes-config/review-roster.yaml` defines all 8 reviewer roles with routing rules (file-extension → specialist map), model aliases, isolation flag, and monthly budget cap. Adding a new reviewer requires one soul file and one registry line — no Python changes.
+Acceptance: `ls hermes-config/review-roster.yaml` → file exists; `grep -c "correctness\|security\|python\|typescript\|reactjs\|qa\|docs\|config" hermes-config/review-roster.yaml` → ≥8 matches
+
+**REQ-ws-050** — git-worktree isolation for file-editing agent (deferred production wiring)
+`workshop/worktree.py` created implementing git-worktree lifecycle (create, prune on success, retain on failure with max-age sweep). Designed for the merge agent's auto-fix step. **Caveat: `worktree.py` is not wired to the production review wave — reviewers run via `ThreadPoolExecutor` only. Worktree integration is deferred to a future phase.**
+Acceptance: `ls workshop/worktree.py` → file exists; `python -m py_compile workshop/worktree.py` exits 0; `python -m pytest tests/phase-09/test_worktree.py -x` passes (SC-4 partial — creation/pruning lifecycle tested)
 
 ---
 
