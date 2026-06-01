@@ -8,10 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { repos as reposApi, tasks as tasksApi, hitl as hitlApi } from "@/lib/api";
+import { useQueueStats } from "@/hooks/useHealth";
+import { useCostEstimate } from "@/hooks/useCost";
+import { usePoliciesConfig } from "@/hooks/useConfig";
 import { toast } from "@/hooks/use-toast";
 import type { TaskSummary } from "@/types/task";
+
+const SKILL_PROFILES = ["default", "frontend", "backend"];
+
+function centsToUsd(c: number): string {
+  return `$${(c / 100).toFixed(2)}`;
+}
 
 const SECTION_LABEL: React.CSSProperties = {
   fontFamily: "var(--font-mono)",
@@ -38,6 +48,16 @@ export function LaunchPage() {
   const [repo, setRepo] = useState("");
   const [goal, setGoal] = useState("");
   const [brainstorm, setBrainstorm] = useState(false);
+  // Per-task overrides (Workstream B)
+  const [branch, setBranch] = useState("");
+  const [modelAlias, setModelAlias] = useState("");
+  const [skillProfile, setSkillProfile] = useState("default");
+  const [runOptionalReviewers, setRunOptionalReviewers] = useState(true);
+  const [dryRun, setDryRun] = useState(false);
+
+  const { data: queueStats } = useQueueStats();
+  const { data: policies } = usePoliciesConfig();
+  const estimate = useCostEstimate();
 
   const { data: reposData } = useQuery({
     queryKey: ["repos"],
@@ -60,9 +80,19 @@ export function LaunchPage() {
   const hitlCount = hitlData?.items.length ?? 0;
 
   const launchMutation = useMutation({
-    mutationFn: () => tasksApi.create({ repo, goal, brainstorm }),
+    mutationFn: () =>
+      tasksApi.create({
+        repo,
+        goal,
+        brainstorm,
+        branch: branch.trim() || undefined,
+        model_alias: modelAlias.trim() || undefined,
+        skill_profile: skillProfile,
+        run_optional_reviewers: runOptionalReviewers,
+        dry_run: dryRun,
+      }),
     onSuccess: async (data) => {
-      toast({ title: "Build launched", description: data.task_id });
+      toast({ title: dryRun ? "Dry run launched" : "Build launched", description: data.task_id });
       await navigate({ to: "/tasks/$taskId", params: { taskId: data.task_id } });
     },
     onError: (e) => toast({ variant: "destructive", title: "Launch failed", description: String(e) }),
@@ -70,9 +100,21 @@ export function LaunchPage() {
 
   const canSubmit = repo && goal.length >= 10;
 
+  // Strictness note derived from stage-policies (decision 7)
+  const coderPolicy = policies?.stage_policies?.coder;
+  const strictness = coderPolicy
+    ? (coderPolicy.hitl_on_timeout ? "strict (HITL on timeout)" : "lenient (auto-retry)")
+    : "—";
+
   const reset = () => {
     setGoal("");
     setBrainstorm(false);
+    setBranch("");
+    setModelAlias("");
+    setSkillProfile("default");
+    setRunOptionalReviewers(true);
+    setDryRun(false);
+    estimate.reset();
   };
 
   return (
@@ -114,7 +156,7 @@ export function LaunchPage() {
                 <Label className="font-mono mb-1 block" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
                   Repository
                 </Label>
-                <Select value={repo} onValueChange={setRepo}>
+                <Select value={repo} onValueChange={(v) => { setRepo(v); estimate.mutate(v); }}>
                   <SelectTrigger
                     className="font-mono rounded-sm h-8"
                     style={{ fontSize: "var(--text-xs)", backgroundColor: "var(--surface-raised)", border: "1px solid var(--border-strong)", color: "var(--text)" }}
@@ -151,6 +193,51 @@ export function LaunchPage() {
                     </span>
                     <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", lineHeight: 1.4 }}>
                       Run an upfront brainstorm pass to refine the goal before triage.
+                    </span>
+                  </span>
+                </label>
+
+                {/* Per-task overrides (Workstream B) */}
+                <div className="grid gap-3 mt-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                  <div>
+                    <Label className="font-mono mb-1 block" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>Base branch</Label>
+                    <Input value={branch} onChange={(e) => setBranch(e.target.value)} placeholder="default branch" className="font-mono h-8" style={{ fontSize: "var(--text-xs)" }} />
+                  </div>
+                  <div>
+                    <Label className="font-mono mb-1 block" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>Coder model alias</Label>
+                    <Input value={modelAlias} onChange={(e) => setModelAlias(e.target.value)} placeholder="global routing" className="font-mono h-8" style={{ fontSize: "var(--text-xs)" }} />
+                  </div>
+                  <div>
+                    <Label className="font-mono mb-1 block" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>Skill profile</Label>
+                    <Select value={skillProfile} onValueChange={setSkillProfile}>
+                      <SelectTrigger className="font-mono rounded-sm h-8" style={{ fontSize: "var(--text-xs)", backgroundColor: "var(--surface-raised)", border: "1px solid var(--border-strong)", color: "var(--text)" }}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent style={{ backgroundColor: "var(--surface-raised)", border: "1px solid var(--border)" }}>
+                        {SKILL_PROFILES.map((p) => (
+                          <SelectItem key={p} value={p} className="font-mono" style={{ fontSize: "var(--text-xs)" }}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <label className="flex items-start gap-2.5 cursor-pointer mt-4">
+                  <Checkbox checked={runOptionalReviewers} onCheckedChange={(c) => setRunOptionalReviewers(c !== false)} className="mt-0.5" />
+                  <span className="flex flex-col gap-0.5">
+                    <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--text)" }}>Run optional reviewers</span>
+                    <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", lineHeight: 1.4 }}>
+                      When off, only the security + correctness floor runs.
+                    </span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-2.5 cursor-pointer mt-3">
+                  <Checkbox checked={dryRun} onCheckedChange={(c) => setDryRun(c === true)} className="mt-0.5" />
+                  <span className="flex flex-col gap-0.5">
+                    <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--text)" }}>Dry run (plan only)</span>
+                    <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", lineHeight: 1.4 }}>
+                      Stop after the planner with status plan_ready — no coder, branch, or PR.
                     </span>
                   </span>
                 </label>
@@ -239,12 +326,59 @@ export function LaunchPage() {
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                   <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>running</span>
-                  <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--accent)" }}>{runningCount}</span>
+                  <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--accent)" }}>{queueStats?.running ?? runningCount}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>queued</span>
+                  <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--text)" }}>{queueStats?.queued ?? 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>hitl pending</span>
-                  <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--warning)" }}>{hitlCount}</span>
+                  <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--warning)" }}>{queueStats?.hitl_pending ?? hitlCount}</span>
                 </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>max concurrency</span>
+                  <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--text-dim)" }}>{queueStats?.max_concurrency ?? "—"}</span>
+                </div>
+              </div>
+            </div>
+
+            <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "16px 0" }} />
+
+            <p style={{ ...SECTION_LABEL, marginBottom: 12 }}>Cost estimate</p>
+            <div className="rounded-sm p-3" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              {!repo ? (
+                <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>select a repo for an estimate</span>
+              ) : estimate.isPending ? (
+                <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>estimating…</span>
+              ) : estimate.data && estimate.data.basis !== "none" ? (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>p25–p75</span>
+                    <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--accent)" }}>
+                      {centsToUsd(estimate.data.p25_cents)} – {centsToUsd(estimate.data.p75_cents)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>median</span>
+                    <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text)" }}>{centsToUsd(estimate.data.p50_cents)}</span>
+                  </div>
+                  <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>
+                    {estimate.data.basis} · n={estimate.data.sample_size}
+                  </span>
+                </div>
+              ) : (
+                <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>— no history yet —</span>
+              )}
+            </div>
+
+            <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "16px 0" }} />
+
+            <p style={{ ...SECTION_LABEL, marginBottom: 12 }}>Stage policy</p>
+            <div className="rounded-sm p-3" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              <div className="flex justify-between items-center">
+                <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>coder strictness</span>
+                <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text)" }}>{strictness}</span>
               </div>
             </div>
           </div>

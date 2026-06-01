@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { TaskCard } from "@/components/task/TaskCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useTaskList } from "@/hooks/useTasks";
+import { useModelMix } from "@/hooks/useCost";
 import type { TaskSummary, TaskStatus, PipelineStage } from "@/types/task";
 import { STAGE_ORDER } from "@/types/task";
 
@@ -49,6 +50,7 @@ const SECTION_LABEL: React.CSSProperties = {
 
 export function BoardPage() {
   const { data, isLoading, error } = useTaskList();
+  const { data: modelMix } = useModelMix();
   const [filter, setFilter] = useState<Filter>("all");
 
   const allTasks = data?.tasks ?? [];
@@ -150,7 +152,18 @@ export function BoardPage() {
                 <span style={{ ...SECTION_LABEL }}>{s.l}</span>
               </div>
             ))}
-            <span className="ml-auto font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>
+            {modelMix?.items && modelMix.items.length > 0 && (
+              <div className="ml-auto flex items-center gap-2">
+                <span style={{ ...SECTION_LABEL }}>models</span>
+                {modelMix.items.slice(0, 4).map((m) => (
+                  <span key={m.alias} className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+                    {m.alias.split("/").pop()}<span style={{ color: "var(--text-dim)" }}>·{m.count}</span>
+                  </span>
+                ))}
+                <span style={{ width: 1, height: 12, background: "var(--border)" }} />
+              </div>
+            )}
+            <span className={modelMix?.items?.length ? "font-mono" : "ml-auto font-mono"} style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>
               session ${(sessionCents / 100).toFixed(2)}
             </span>
           </div>

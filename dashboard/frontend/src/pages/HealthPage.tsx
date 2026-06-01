@@ -13,7 +13,15 @@ function formatUptime(secs?: number): string {
   return `${d}d ${h}h ${m}m`;
 }
 
-function ServiceCard({ name, running, uptime, version }: { name: string; running: boolean; uptime?: number; version?: string }) {
+function fmtBytes(b?: number | null): string {
+  if (b == null) return "—";
+  if (b >= 1e9) return `${(b / 1e9).toFixed(2)} GB`;
+  if (b >= 1e6) return `${(b / 1e6).toFixed(1)} MB`;
+  if (b >= 1e3) return `${(b / 1e3).toFixed(0)} KB`;
+  return `${b} B`;
+}
+
+function ServiceCard({ name, running, uptime, version, pid, rss, port }: { name: string; running: boolean; uptime?: number; version?: string; pid?: number | null; rss?: number | null; port?: number | null }) {
   return (
     <div
       className="rounded-sm p-3"
@@ -43,6 +51,22 @@ function ServiceCard({ name, running, uptime, version }: { name: string; running
             <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>version</span>
             <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{version}</span>
           </div>
+        )}
+        {(pid != null || rss != null || port != null) && (
+          <>
+            <div className="flex justify-between">
+              <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>pid</span>
+              <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{pid ?? "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>memory</span>
+              <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{fmtBytes(rss)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>port</span>
+              <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{port ?? "—"}</span>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -86,7 +110,7 @@ export function HealthPage() {
               <p className="font-mono uppercase mb-3" style={{ fontSize: "var(--text-xs)", letterSpacing: "var(--tracking-wide)", color: "var(--text-dim)" }}>Services</p>
               <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
                 {healthData?.services.map((s) => (
-                  <ServiceCard key={s.name} name={s.name} running={s.running} uptime={s.uptime_seconds} version={s.version} />
+                  <ServiceCard key={s.name} name={s.name} running={s.running} uptime={s.uptime_seconds} version={s.version} pid={s.pid} rss={s.rss_bytes} port={s.port} />
                 ))}
               </div>
             </div>

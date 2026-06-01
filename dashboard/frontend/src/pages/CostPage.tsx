@@ -19,6 +19,18 @@ import {
 
 const CHART_COLORS = ["var(--accent)", "var(--success)", "var(--info)", "var(--warning)", "var(--danger)"];
 
+function DeltaLabel({ cents }: { cents?: number }) {
+  if (cents == null || cents === 0) {
+    return <p className="text-xs text-[--text-dim] mt-1">no change</p>;
+  }
+  const up = cents > 0;
+  return (
+    <p className="text-xs mt-1" style={{ color: up ? "var(--danger)" : "var(--success)" }}>
+      {up ? "▲" : "▼"} {`$${(Math.abs(cents) / 100).toFixed(2)}`} vs prior
+    </p>
+  );
+}
+
 type Period = "7d" | "30d" | "90d" | "all";
 const PERIOD_DAYS: Record<Period, number | null> = { "7d": 7, "30d": 30, "90d": 90, all: null };
 
@@ -107,10 +119,12 @@ export function CostPage() {
               <p className="text-xs text-[--text-muted] mt-1">
                 of {formatCents(summary?.daily_limit_cents ?? 2000)} limit
               </p>
+              <DeltaLabel cents={summary?.today_delta_cents} />
             </div>
             <div className="bg-[--surface] border border-[--border] rounded-sm p-4">
               <p className="text-xs text-[--text-muted] uppercase tracking-wide mb-2">This Month</p>
               <p className="text-[--accent] font-mono text-xl">{formatCents(summary?.this_month_cents ?? 0)}</p>
+              <DeltaLabel cents={summary?.this_month_delta_cents} />
             </div>
             <div className="bg-[--surface] border border-[--border] rounded-sm p-4">
               <p className="text-xs text-[--text-muted] uppercase tracking-wide mb-2">Per-Task Avg</p>

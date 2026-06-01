@@ -183,6 +183,12 @@ export function ReposPage() {
                     className="text-left"
                     style={{ padding: "8px 12px", color: "var(--text-dim)", fontWeight: "var(--font-medium)", letterSpacing: "var(--tracking-wide)", textTransform: "uppercase" }}
                   >
+                    Tasks
+                  </th>
+                  <th
+                    className="text-left"
+                    style={{ padding: "8px 12px", color: "var(--text-dim)", fontWeight: "var(--font-medium)", letterSpacing: "var(--tracking-wide)", textTransform: "uppercase" }}
+                  >
                     Last Used
                   </th>
                   <th style={{ padding: "8px 12px" }} />
@@ -244,6 +250,18 @@ export function ReposPage() {
                       >
                         {repo.active ? "✓ active" : "○ inactive"}
                       </span>
+                    </td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>
+                      {repo.task_count ? (
+                        <span>
+                          <span style={{ color: "var(--text)" }}>{repo.task_count}</span>
+                          {(repo.active_task_count ?? 0) > 0 && (
+                            <span style={{ color: "var(--accent)" }}> ({repo.active_task_count} active)</span>
+                          )}
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--text-dim)" }}>0</span>
+                      )}
                     </td>
                     <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>
                       {repo.last_used ? new Date(repo.last_used).toLocaleDateString() : "never"}
