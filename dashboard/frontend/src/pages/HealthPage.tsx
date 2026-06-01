@@ -5,33 +5,44 @@ import { Progress } from "@/components/ui/progress";
 import { useHealth, useModelReachability, useHealthErrors } from "@/hooks/useHealth";
 import { cn } from "@/lib/utils";
 
-function ServiceRow({ name, running, uptime }: { name: string; running: boolean; uptime?: number }) {
+function formatUptime(secs?: number): string {
+  if (secs == null) return "—";
+  const d = Math.floor(secs / 86400);
+  const h = Math.floor((secs % 86400) / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  return `${d}d ${h}h ${m}m`;
+}
+
+function ServiceCard({ name, running, uptime, version }: { name: string; running: boolean; uptime?: number; version?: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-[--border] py-2 last:border-0">
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            "inline-block h-2 w-2 rounded-full",
-            running ? "bg-[--success]" : "bg-[--danger]",
-          )}
-        />
-        <span className="font-mono text-[--text-base] text-[--text]">{name}</span>
+    <div
+      className="rounded-sm p-3"
+      style={{
+        backgroundColor: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderTop: `2px solid ${running ? "var(--success)" : "var(--danger)"}`,
+      }}
+    >
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="font-mono" style={{ fontSize: "var(--text-sm)", color: "var(--text)" }}>{name}</span>
+        <span className={cn("inline-block h-2 w-2 rounded-full", running ? "bg-[--success]" : "bg-[--danger]")} />
       </div>
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            "font-mono text-xs border px-1.5 py-0.5 rounded-[--radius-sm]",
-            running
-              ? "text-[--success] bg-[--success-bg] border-[--success-border]"
-              : "text-[--danger] bg-[--danger-bg] border-[--danger-border]",
-          )}
-        >
-          {running ? "✓ running" : "✗ stopped"}
-        </span>
-        {uptime != null && (
-          <span className="font-mono text-xs text-[--text-muted]">
-            {Math.floor(uptime / 3600)}h uptime
+      <div className="flex flex-col gap-1.5">
+        <div className="flex justify-between">
+          <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>status</span>
+          <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: running ? "var(--success)" : "var(--danger)" }}>
+            {running ? "running" : "stopped"}
           </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>uptime</span>
+          <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{formatUptime(uptime)}</span>
+        </div>
+        {version && (
+          <div className="flex justify-between">
+            <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>version</span>
+            <span className="font-mono" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>{version}</span>
+          </div>
         )}
       </div>
     </div>
@@ -62,7 +73,7 @@ export function HealthPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Health" description="System status" />
+      <PageHeader title="System Health" description="Service status and system metrics" />
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {isLoading ? (
           <div className="flex justify-center py-16">
@@ -70,19 +81,17 @@ export function HealthPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Services */}
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle className="font-mono text-xs tracking-widest uppercase text-[--text-dim]">Services</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {healthData?.services.map((s) => (
-                    <ServiceRow key={s.name} name={s.name} running={s.running} uptime={s.uptime_seconds} />
-                  ))}
-                </CardContent>
-              </Card>
+            {/* Service cards */}
+            <div>
+              <p className="font-mono uppercase mb-3" style={{ fontSize: "var(--text-xs)", letterSpacing: "var(--tracking-wide)", color: "var(--text-dim)" }}>Services</p>
+              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
+                {healthData?.services.map((s) => (
+                  <ServiceCard key={s.name} name={s.name} running={s.running} uptime={s.uptime_seconds} version={s.version} />
+                ))}
+              </div>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Metrics */}
               <Card>
                 <CardHeader>

@@ -67,7 +67,8 @@ export function ModelsConfigPage() {
           <>
             <Card>
               <CardHeader>
-                <CardTitle className="font-mono text-xs text-[--text-muted] tracking-widest uppercase">Agent → Alias Matrix</CardTitle>
+                <CardTitle className="font-mono text-xs text-[--text-muted] tracking-widest uppercase">Stage → Model Routing</CardTitle>
+                <p className="font-mono text-xs text-[--text-dim] mt-1">Which model alias each pipeline stage uses</p>
               </CardHeader>
               <CardContent>
                 <table className="w-full">
@@ -111,7 +112,8 @@ export function ModelsConfigPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="font-mono text-xs text-[--text-muted] tracking-widest uppercase">Alias Definitions</CardTitle>
+                <CardTitle className="font-mono text-xs text-[--text-muted] tracking-widest uppercase">Model Aliases</CardTitle>
+                <p className="font-mono text-xs text-[--text-dim] mt-1">Named model definitions referenced by stage routing</p>
               </CardHeader>
               <CardContent>
                 <table className="w-full">
@@ -126,7 +128,11 @@ export function ModelsConfigPage() {
                   <tbody>
                     {data?.aliases.map((a) => (
                       <tr key={a.alias} className="border-b border-[--border] last:border-0">
-                        <td className="py-2 font-mono text-xs text-[--text-m]">{a.alias}</td>
+                        <td className="py-2">
+                          <span className="font-mono text-xs px-1.5 py-0.5 rounded-sm" style={{ color: "var(--accent)", backgroundColor: "var(--accent-bg)", border: "1px solid var(--accent-border)" }}>
+                            {a.alias}
+                          </span>
+                        </td>
                         <td className="py-2 font-mono text-xs text-[--text-m]">{a.provider}</td>
                         <td className="py-2 font-mono text-xs text-[--info]">{a.model_id}</td>
                         <td className="py-2">

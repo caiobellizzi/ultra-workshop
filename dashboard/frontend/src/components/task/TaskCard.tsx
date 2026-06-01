@@ -129,10 +129,22 @@ export function TaskCard({ task }: TaskCardProps) {
 
       <StatusBadge status={task.status} />
 
-      {task.current_step != null && task.total_steps != null && (
-        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
-          Step {task.current_step}/{task.total_steps}
-        </span>
+      {task.current_step != null && task.total_steps != null && task.total_steps > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+          <div style={{ height: "3px", backgroundColor: "var(--border)", borderRadius: "2px", overflow: "hidden" }}>
+            <div
+              style={{
+                height: "100%",
+                width: `${Math.min(100, Math.round((task.current_step / task.total_steps) * 100))}%`,
+                backgroundColor: task.status === "pushing" ? "var(--info)" : borderColor,
+                borderRadius: "2px",
+              }}
+            />
+          </div>
+          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>
+            step {task.current_step}/{task.total_steps}
+          </span>
+        </div>
       )}
 
       {/* Meta row: cost · time */}

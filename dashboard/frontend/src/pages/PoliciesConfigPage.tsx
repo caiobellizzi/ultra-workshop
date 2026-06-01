@@ -38,7 +38,7 @@ export function PoliciesConfigPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Policies & Cron" description="Stage policies, gateway, and cron jobs" />
+      <PageHeader title="Policies" description="Controls agent behavior, cost limits, and cron. Changes apply to all new tasks." />
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {isLoading ? (
           <div className="flex justify-center py-8">
@@ -81,8 +81,14 @@ export function PoliciesConfigPage() {
             </Card>
 
             <Card>
-              <CardHeader className="flex-row items-center justify-between">
-                <CardTitle className="font-mono text-xs text-[--text-muted] tracking-widest uppercase">Hermes Service</CardTitle>
+              <CardHeader className="flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="font-mono text-xs text-[--text-muted] tracking-widest uppercase">Hermes Service</CardTitle>
+                  <p className="font-mono text-xs text-[--text-dim] mt-1 max-w-md" style={{ lineHeight: 1.5 }}>
+                    <span style={{ color: "var(--warning)" }}>⚠ </span>
+                    Restarting interrupts in-flight tasks and briefly stalls the queue. Use only when the dispatcher is wedged.
+                  </p>
+                </div>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <button

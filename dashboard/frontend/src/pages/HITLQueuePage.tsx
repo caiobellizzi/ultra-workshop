@@ -21,11 +21,12 @@ export function HITLQueuePage() {
                 color: "var(--danger)",
                 fontFamily: "var(--font-mono)",
                 fontSize: "var(--text-xs)",
+                letterSpacing: "var(--tracking-wide)",
                 borderRadius: "var(--radius-sm)",
-                padding: "2px 6px",
+                padding: "2px 8px",
               }}
             >
-              {count}
+              ✗ {count} TASK{count !== 1 ? "S" : ""} BLOCKED
             </span>
           ) : undefined
         }

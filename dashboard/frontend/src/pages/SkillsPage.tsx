@@ -27,7 +27,17 @@ export function SkillsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Skills" description="SKILL.md editor" />
+      <PageHeader
+        title="Skills"
+        description="SKILL.md registry & editor"
+        actions={
+          data?.skills.length ? (
+            <span className="font-mono px-2 py-0.5 rounded-sm" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", backgroundColor: "var(--surface-raised)", border: "1px solid var(--border)" }}>
+              {data.skills.length} skills
+            </span>
+          ) : undefined
+        }
+      />
       <div className="flex-1 overflow-hidden flex flex-col">
         <div className="p-4 border-b border-[--border]">
           <div className="relative max-w-sm">
@@ -57,7 +67,7 @@ export function SkillsPage() {
                 <div className="text-[--text-d] text-xs font-mono uppercase tracking-[0.08em] mb-3">
                   {group}
                 </div>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {skills?.map((skill) => (
                     <div
                       key={skill.name}
@@ -65,8 +75,15 @@ export function SkillsPage() {
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <div className="text-[--accent] font-mono font-medium text-sm mb-1">
-                            {skill.name}
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[--accent] font-mono font-medium text-sm">
+                              {skill.name}
+                            </span>
+                            {skill.tags[0] && (
+                              <span className="font-mono px-1.5 py-0.5 rounded-sm" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", backgroundColor: "var(--surface-raised)", border: "1px solid var(--border)" }}>
+                                {skill.tags[0]}
+                              </span>
+                            )}
                           </div>
                           <p className="text-[--text-m] font-mono text-xs truncate mb-2">
                             {skill.description}

@@ -208,8 +208,17 @@ export function ReposPage() {
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </td>
-                    <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>
-                      {repo.default_branch}
+                    <td style={{ padding: "8px 12px" }}>
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: "var(--text-xs)", color: "var(--info)",
+                          backgroundColor: "var(--info-bg)", border: "1px solid var(--info-border)",
+                          borderRadius: "var(--radius-sm)", padding: "1px 6px",
+                        }}
+                      >
+                        {repo.default_branch}
+                      </span>
                     </td>
                     <td style={{ padding: "8px 12px" }}>
                       {/* Token-safe badge — no variant="success" */}

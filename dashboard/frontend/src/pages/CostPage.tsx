@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Progress } from "@/components/ui/progress";
@@ -18,18 +19,79 @@ import {
 
 const CHART_COLORS = ["var(--accent)", "var(--success)", "var(--info)", "var(--warning)", "var(--danger)"];
 
+type Period = "7d" | "30d" | "90d" | "all";
+const PERIOD_DAYS: Record<Period, number | null> = { "7d": 7, "30d": 30, "90d": 90, all: null };
+
 export function CostPage() {
-  const { data: summary, isLoading: loadingSummary } = useCostSummary();
-  const { data: tasksData } = useCostTasks();
-  const { data: trends } = useCostTrends();
+  const [period, setPeriod] = useState<Period>("30d");
+
+  const { from, to } = useMemo(() => {
+    const days = PERIOD_DAYS[period];
+    if (days == null) return { from: undefined, to: undefined };
+    const toD = new Date();
+    const fromD = new Date(toD.getTime() - days * 86_400_000);
+    return { from: fromD.toISOString().slice(0, 10), to: toD.toISOString().slice(0, 10) };
+  }, [period]);
+
+  const { data: summary, isLoading: loadingSummary } = useCostSummary(from, to);
+  const { data: tasksData } = useCostTasks(from, to);
+  const { data: trends } = useCostTrends(from, to);
 
   const dailyPct = summary
     ? Math.min((summary.today_cents / summary.daily_limit_cents) * 100, 100)
     : 0;
 
+  const exportCsv = () => {
+    const rows = tasksData?.tasks ?? [];
+    const header = "task_id,goal,repo,date,total_cents\n";
+    const body = rows.map((r) =>
+      [r.task_id, JSON.stringify(r.goal ?? ""), r.repo, r.date, r.total_cents].join(",")
+    ).join("\n");
+    const blob = new Blob([header + body], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cost-${period}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const PeriodBtn = ({ value }: { value: Period }) => (
+    <button
+      onClick={() => setPeriod(value)}
+      className="font-mono rounded-sm"
+      style={{
+        fontSize: "var(--text-xs)", padding: "3px 10px", cursor: "pointer",
+        backgroundColor: period === value ? "var(--accent-bg)" : "transparent",
+        border: `1px solid ${period === value ? "var(--accent-border)" : "var(--border-strong)"}`,
+        color: period === value ? "var(--accent)" : "var(--text-muted)",
+      }}
+    >
+      {value}
+    </button>
+  );
+
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Cost Analytics" description="Spending overview" />
+      <PageHeader
+        title="Cost"
+        actions={
+          <div className="flex items-center gap-2">
+            <PeriodBtn value="7d" />
+            <PeriodBtn value="30d" />
+            <PeriodBtn value="90d" />
+            <PeriodBtn value="all" />
+            <span style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
+            <button
+              onClick={exportCsv}
+              className="font-mono rounded-sm"
+              style={{ fontSize: "var(--text-xs)", padding: "4px 10px", color: "var(--text-muted)", border: "1px solid var(--border-strong)", backgroundColor: "transparent", cursor: "pointer" }}
+            >
+              ↓ Export CSV
+            </button>
+          </div>
+        }
+      />
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Summary cards */}
         {loadingSummary ? (
