@@ -38,7 +38,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-QUEUE_PATH = Path(os.environ.get("WORKSHOP_QUEUE_PATH", "/srv/second-brain/.workshop-queue.jsonl"))
+QUEUE_PATH = Path(
+    os.environ.get("WORKSHOP_QUEUE_PATH")
+    or Path(os.environ.get("VAULT_VPS_PATH", "/srv/second-brain")) / "_system" / ".workshop-queue.jsonl"
+)
 SKILL_DIR = _HERE
 
 
