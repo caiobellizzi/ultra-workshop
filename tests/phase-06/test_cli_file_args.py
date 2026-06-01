@@ -17,55 +17,40 @@ def _load_module(module_name: str, path: str):
     return module
 
 
-def test_workshop_build_dry_run_accepts_quoted_task_file(tmp_path) -> None:
+_QUOTED_TASK = 'create "OpenHarness: Open Agent Harness" integration using https://github.com/HKUDS/OpenHarness'
+
+
+def test_resolve_task_reads_quoted_task_file(tmp_path) -> None:
+    """--task-file is read verbatim, preserving embedded quotes and stripping the trailing newline."""
+    workshop_build = _load_module("workshop_build_for_test", "hermes-skills/workshop_build.py")
     task_file = tmp_path / "task.txt"
-    task_file.write_text(
-        'create "OpenHarness: Open Agent Harness" integration using https://github.com/HKUDS/OpenHarness\n',
-        encoding="utf-8",
-    )
+    task_file.write_text(_QUOTED_TASK + "\n", encoding="utf-8")
 
-    result = subprocess.run(
-        [
-            sys.executable,
-            "hermes-skills/workshop_build.py",
-            "--repo",
-            "test-workshop-sandbox",
-            "--task-file",
-            str(task_file),
-            "--dry-run",
-        ],
-        capture_output=True,
-        text=True,
-        shell=False,
-        check=False,
-    )
+    result = workshop_build._resolve_task("", str(task_file), "")
 
-    assert result.returncode == 0, result.stderr
-    assert 'OpenHarness: Open Agent Harness' in result.stdout
+    assert result == _QUOTED_TASK
 
 
-def test_workshop_build_dry_run_accepts_base64_task() -> None:
-    task = 'create "OpenHarness: Open Agent Harness" integration using https://github.com/HKUDS/OpenHarness'
-    encoded = base64.b64encode(task.encode("utf-8")).decode("ascii")
+def test_resolve_task_decodes_base64() -> None:
+    """--task-b64 round-trips a quote-bearing task without shell mangling."""
+    workshop_build = _load_module("workshop_build_for_test", "hermes-skills/workshop_build.py")
+    encoded = base64.b64encode(_QUOTED_TASK.encode("utf-8")).decode("ascii")
 
-    result = subprocess.run(
-        [
-            sys.executable,
-            "hermes-skills/workshop_build.py",
-            "--repo",
-            "test-workshop-sandbox",
-            "--task-b64",
-            encoded,
-            "--dry-run",
-        ],
-        capture_output=True,
-        text=True,
-        shell=False,
-        check=False,
-    )
+    result = workshop_build._resolve_task("", "", encoded)
 
-    assert result.returncode == 0, result.stderr
-    assert 'OpenHarness: Open Agent Harness' in result.stdout
+    assert result == _QUOTED_TASK
+
+
+def test_resolve_task_file_takes_precedence_over_b64_and_inline(tmp_path) -> None:
+    """Precedence is file > base64 > inline, matching the CLI contract."""
+    workshop_build = _load_module("workshop_build_for_test", "hermes-skills/workshop_build.py")
+    task_file = tmp_path / "task.txt"
+    task_file.write_text("from-file", encoding="utf-8")
+    b64 = base64.b64encode(b"from-b64").decode("ascii")
+
+    assert workshop_build._resolve_task("from-inline", str(task_file), b64) == "from-file"
+    assert workshop_build._resolve_task("from-inline", "", b64) == "from-b64"
+    assert workshop_build._resolve_task("from-inline", "", "") == "from-inline"
 
 
 def test_workshop_push_exposes_file_args() -> None:

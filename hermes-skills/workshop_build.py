@@ -440,6 +440,25 @@ def _decode_b64_arg(value: str, label: str) -> str:
         sys.exit(1)
 
 
+def _resolve_task(task: str, task_file: str, task_b64: str) -> str:
+    """Resolve the task description from the mutually-exclusive CLI inputs.
+
+    --task-file and --task-b64 are quote-safe alternatives to --task for tasks
+    that contain shell-significant characters (quotes, newlines). Precedence:
+    file > base64 > inline. Trailing newlines are stripped so a heredoc/echo'd
+    file matches the inline form byte-for-byte.
+    """
+    if task_file:
+        try:
+            return Path(task_file).read_text(encoding="utf-8").rstrip("\n")
+        except OSError as exc:
+            print(f"[workshop] task file error: {exc}", flush=True)
+            sys.exit(1)
+    if task_b64:
+        return _decode_b64_arg(task_b64, "--task-b64").rstrip("\n")
+    return task
+
+
 def _merge_unique(existing: list[str], new_items: list[str]) -> list[str]:
     merged = list(existing)
     seen = set(merged)
@@ -755,16 +774,7 @@ def main() -> None:
     parser.add_argument("--skip-optional-reviewers", action="store_true", help="Run only always-on reviewers (security+correctness floor); skip pattern-gated optional reviewers")
     args = parser.parse_args()
 
-    if args.task_file:
-        try:
-            task = Path(args.task_file).read_text(encoding="utf-8").rstrip("\n")
-        except OSError as exc:
-            print(f"[workshop] task file error: {exc}", flush=True)
-            sys.exit(1)
-    elif args.task_b64:
-        task = _decode_b64_arg(args.task_b64, "--task-b64").rstrip("\n")
-    else:
-        task = args.task
+    task = _resolve_task(args.task, args.task_file, args.task_b64)
 
     # Dry-run (decision 2) is no longer an early exit: the pipeline runs through
     # the planner, persists the Plan, sets status=plan_ready, and stops before the
