@@ -6,7 +6,7 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 }
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, error, ...props }, ref) => {
+  ({ className, error, style, ...props }, ref) => {
     return (
       <textarea
         ref={ref}
@@ -22,6 +22,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           fontFamily: "var(--font-mono)",
           fontSize: "var(--text-sm)",
           borderRadius: "var(--radius-sm)",
+          ...style,
         }}
         onFocus={(e) => {
           e.currentTarget.style.borderColor = "var(--accent-bd)";
