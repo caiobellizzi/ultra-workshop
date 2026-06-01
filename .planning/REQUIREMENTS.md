@@ -226,6 +226,42 @@ Acceptance: `python -m pytest tests/phase-06/ tests/test_repo_registry.py -q` ex
 
 ---
 
+### Phase 8: Specialist Quality Uplift
+
+**REQ-ws-035** — Lean/behavioral soul rewrite across all five specialists
+All five `skills/*-specialist/SKILL.md` files rewritten with lean/behavioral discipline: explicit decision-rules, escalation behavior, no persona flavor. Covers `planner-specialist`, `coder-specialist`, `reviewer-specialist`, `requirements-specialist`, and `triage-specialist`.
+Acceptance: All five `skills/*-specialist/SKILL.md` files contain explicit decision-rules and escalation behavior sections with no persona flavor text; `hermes skill run <name> --dry-run` exits 0 for each (SC-1)
+
+**REQ-ws-036** — Coder execute-and-verify: build/test gate in Diff JSON
+`hermes-skills/aider_runner.py` runs the repo's build/test command after applying the diff. The returned `Diff` JSON includes `build_passed`, `test_passed`, and `output_tail` fields.
+Acceptance: `grep "build_passed" hermes-skills/aider_runner.py` → ≥1 match; `python -m pytest tests/phase-08/test_quality_uplift.py -x -q` passes (SC-2)
+
+**REQ-ws-037** — Reviewer pass-1 build/test gate before static checks
+`hermes-skills/workshop_reviewer.py` evaluates build/test result before static checks. Two-pass review implemented: pass 1 = spec+build, pass 2 = quality+security.
+Acceptance: `grep "build_passed" hermes-skills/workshop_reviewer.py` → ≥1 match; `python -m pytest tests/phase-06/test_workshop_reviewer.py -x` passes (SC-3 partial)
+
+**REQ-ws-038** — Structured failure contract: [{file, problem, required_fix}]
+All FAIL output from `workshop_reviewer.py` is structured as a list of `{file, problem, required_fix}` dicts. This format is fed back to the coder retry loop.
+Acceptance: `grep "required_fix" hermes-skills/workshop_reviewer.py` → ≥1 match; reviewer output schema validated in `tests/phase-08/test_quality_uplift.py` (SC-3)
+
+**REQ-ws-039** — Two-pass review: spec+build | quality+security
+`workshop_reviewer.py` implements two distinct review passes: first pass evaluates spec compliance and build results; second pass evaluates quality and security. Both passes run before the HITL gate.
+Acceptance: Two distinct review-pass invocations evident in `workshop_reviewer.py`; `python -m pytest tests/phase-08/test_quality_uplift.py -x` passes (SC-3)
+
+**REQ-ws-040** — Escalate to HITL on 2nd retry exhaustion (exit code 2)
+`hermes-skills/workshop_build.py` exits with code 2 (HITL escalation) after the 2nd failed retry instead of emitting a broken diff. The HITL path provides step-level context in the payload.
+Acceptance: `grep "sys.exit(2)\|exit(2)\|returncode.*2\|StageTimeoutForHITL" hermes-skills/workshop_build.py` → ≥1 match; `python -m pytest tests/phase-04/test_workshop_build.py -x` passes (SC-4)
+
+**REQ-ws-041** — Planner and reviewer brain reads for repo conventions and ADRs
+`planner-specialist/SKILL.md` always calls `brain-query` for repo conventions and ADRs before generating the plan. `reviewer-specialist/SKILL.md` queries brain before both review passes. These reads prevent stale-convention false blocks.
+Acceptance: `grep -i "brain.query\|brain_query\|brain-query" skills/planner-specialist/SKILL.md skills/reviewer-specialist/SKILL.md` → ≥2 matches; `bats tests/phase-07/planner-smoke.bats` passes (SC-5)
+
+**REQ-ws-042** — workshop-fix: correct push path + requirements stage documented
+`workshop-fix/SKILL.md` uses `workshop_continue.py` push path (not the old direct-push path). The requirements stage is documented in the skill so the fix pipeline mirrors the build pipeline structure.
+Acceptance: `grep "workshop_continue\|continue" skills/workshop-fix/SKILL.md` → ≥1 match; `grep "requirements" skills/workshop-fix/SKILL.md` → ≥1 match (SC-6)
+
+---
+
 ### Autonomous Step-by-Step Build Execution (Phase 10)
 
 **REQ-ws-051** — Per-stage model map + NVIDIA NIM provider
