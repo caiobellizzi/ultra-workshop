@@ -198,3 +198,36 @@ def test_scaffold_preserves_non_empty_file_collision(tmp_path: Path) -> None:
         workshop_coder._scaffold_target_files(tmp_path, ["src/dashboard/"])
 
     assert (tmp_path / "src" / "dashboard").read_text() == "real content"
+
+
+def test_resolve_step_files_falls_back_when_step_lists_only_directories(tmp_path: Path) -> None:
+    """A step whose files are all directory entries scaffolds the dirs but yields
+    no editable targets; resolution must fall back to the full affected-file set so
+    aider always receives a real --workspace-file. An empty list crashes aider's
+    argparse, and dropping the flag would send aider to a throwaway temp workspace."""
+    all_target_files = [str(tmp_path / "README.md")]
+
+    resolved = workshop_coder._resolve_step_files(tmp_path, ["workshop/", "tests/"], all_target_files)
+
+    assert resolved == all_target_files
+    assert (tmp_path / "workshop").is_dir()
+    assert (tmp_path / "tests").is_dir()
+
+
+def test_resolve_step_files_uses_scaffolded_step_files_when_present(tmp_path: Path) -> None:
+    """When a step lists real files, those scaffolded targets are used, not the fallback."""
+    all_target_files = [str(tmp_path / "README.md")]
+
+    resolved = workshop_coder._resolve_step_files(tmp_path, ["scripts/analyze_db.py"], all_target_files)
+
+    assert resolved == [str(tmp_path / "scripts" / "analyze_db.py")]
+    assert (tmp_path / "scripts" / "analyze_db.py").is_file()
+
+
+def test_resolve_step_files_uses_affected_set_when_step_lists_none(tmp_path: Path) -> None:
+    """A step with no declared files falls back to the affected-file set."""
+    all_target_files = [str(tmp_path / "README.md")]
+
+    resolved = workshop_coder._resolve_step_files(tmp_path, [], all_target_files)
+
+    assert resolved == all_target_files

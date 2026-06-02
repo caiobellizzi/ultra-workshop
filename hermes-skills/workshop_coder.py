@@ -109,6 +109,27 @@ def _scaffold_target_files(workspace: Path, rel_paths: list[str]) -> tuple[list[
     return target_files, scaffolded_any
 
 
+def _resolve_step_files(
+    workspace: Path,
+    step_files_raw: list[str],
+    all_target_files: list[str],
+) -> list[str]:
+    """Resolve the editable target files passed to aider for a plan step.
+
+    Scaffolds the step's declared files under *workspace*. A step that lists only
+    directory entries (trailing slash) scaffolds the dirs but yields no editable
+    targets — fall back to the full affected-file set so aider always receives at
+    least one real ``--workspace-file``. An empty list crashes aider_runner's
+    argparse (``--workspace-file`` is ``nargs='+'``), and dropping the flag would
+    route aider to a throwaway temp workspace instead of the cloned repo.
+    """
+    if step_files_raw:
+        step_files, _ = _scaffold_target_files(workspace, step_files_raw)
+    else:
+        step_files = []
+    return step_files or all_target_files
+
+
 def _changed_paths_since(workspace: Path, base_ref: str) -> list[str]:
     result = subprocess.run(
         ["git", "-C", str(workspace), "diff", "--name-only", "-z", base_ref],
@@ -592,12 +613,10 @@ def main() -> None:
             print(f"[workshop_coder] skipping step {step_idx + 1} (already committed, resume from {start_step})", flush=True)
             continue
 
-        # Scaffold step-specific files (dirs for trailing-slash entries),
-        # falling back to the full affected-file set when the step lists none.
-        if step_files_raw:
-            step_files, _ = _scaffold_target_files(workspace, step_files_raw)
-        else:
-            step_files = all_target_files
+        # Scaffold step-specific files (dirs for trailing-slash entries), falling
+        # back to the full affected-file set when the step yields no editable
+        # targets (lists no files, or lists only directories).
+        step_files = _resolve_step_files(workspace, step_files_raw, all_target_files)
 
         step_head_before = subprocess.run(
             ["git", "-C", str(workspace), "rev-parse", "HEAD"],
