@@ -1,7 +1,7 @@
 stage_policies:
   brainstorm:   {timeout: 300, auto_retries: 0, hitl_on_timeout: true}
-  triage:       {timeout: 180, auto_retries: 1}
-  requirements: {timeout: 180, auto_retries: 1}
+  triage:       {timeout: 600, auto_retries: 1}
+  requirements: {timeout: 600, auto_retries: 1}
   planner:      {timeout: 900, auto_retries: 1}
   coder:        {timeout: 7200, tool_timeout: 7200, auto_retries: 0, hitl_on_timeout: false}
   reviewer:     {timeout: 300, auto_retries: 1}
