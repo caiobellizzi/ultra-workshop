@@ -19,6 +19,7 @@ import json
 import os
 import re
 import select
+import shutil
 import signal
 import subprocess
 import sys
@@ -128,6 +129,37 @@ def _resolve_step_files(
     else:
         step_files = []
     return step_files or all_target_files
+
+
+def _exclude_aider_artifacts(workspace: Path) -> None:
+    """Keep aider's cache/artifacts out of git and remove any stale copies.
+
+    aider runs with ``--no-gitignore`` (it must not mutate the target repo's
+    tracked .gitignore), so it never self-excludes its own ``.aider*`` files. The
+    binary ``.aider.tags.cache.v4/cache.db`` would otherwise be committed and, on
+    the next step, crash aider's repo-map when it reads that tracked binary as
+    UTF-8 (UnicodeDecodeError) — silently producing empty edits. Exclude
+    ``.aider*`` via ``.git/info/exclude`` (local + untracked, so no diff
+    pollution) and delete any stale artifacts before the coder runs.
+    """
+    exclude_file = workspace / ".git" / "info" / "exclude"
+    try:
+        existing = exclude_file.read_text(encoding="utf-8") if exclude_file.exists() else ""
+        if ".aider*" not in existing.splitlines():
+            exclude_file.parent.mkdir(parents=True, exist_ok=True)
+            sep = "" if (not existing or existing.endswith("\n")) else "\n"
+            with exclude_file.open("a", encoding="utf-8") as fh:
+                fh.write(f"{sep}.aider*\n")
+    except OSError:
+        pass
+    for stale in workspace.glob(".aider*"):
+        try:
+            if stale.is_dir():
+                shutil.rmtree(stale, ignore_errors=True)
+            else:
+                stale.unlink()
+        except OSError:
+            pass
 
 
 def _changed_paths_since(workspace: Path, base_ref: str) -> list[str]:
@@ -563,6 +595,10 @@ def main() -> None:
     if checkout.returncode != 0:
         print(f"[workshop_coder] ERROR: git checkout failed: {checkout.stderr}", file=sys.stderr, flush=True)
         sys.exit(1)
+
+    # Keep aider's own cache out of git so it can't be committed and later crash
+    # aider's repo-map (UnicodeDecodeError on the tracked binary tags cache).
+    _exclude_aider_artifacts(workspace)
 
     # 3. Scaffold all affected files so aider can edit them
     affected = plan.get("affected_files") or ["README.md"]

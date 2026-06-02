@@ -231,3 +231,30 @@ def test_resolve_step_files_uses_affected_set_when_step_lists_none(tmp_path: Pat
     resolved = workshop_coder._resolve_step_files(tmp_path, [], all_target_files)
 
     assert resolved == all_target_files
+
+
+def test_exclude_aider_artifacts_excludes_and_clears_stale(tmp_path: Path) -> None:
+    """aider's cache must be git-excluded (via .git/info/exclude, not tracked .gitignore)
+    and any stale .aider* removed, so the binary tags-cache can't be committed and later
+    crash aider's repo-map (UnicodeDecodeError) into producing empty edits."""
+    ws = tmp_path
+    (ws / ".git" / "info").mkdir(parents=True)
+    (ws / ".git" / "info" / "exclude").write_text("# git ignore for this repo\n", encoding="utf-8")
+    cache_dir = ws / ".aider.tags.cache.v4"
+    cache_dir.mkdir()
+    (cache_dir / "cache.db").write_bytes(b"\x00\x86\x01binary-not-utf8")
+    (ws / ".aider.chat.history.md").write_text("history", encoding="utf-8")
+
+    workshop_coder._exclude_aider_artifacts(ws)
+
+    exclude_text = (ws / ".git" / "info" / "exclude").read_text(encoding="utf-8")
+    assert ".aider*" in exclude_text.splitlines()
+    assert "# git ignore for this repo" in exclude_text  # preserves existing entries
+    assert not cache_dir.exists()  # stale binary cache removed
+    assert not (ws / ".aider.chat.history.md").exists()
+    # tracked .gitignore is never touched
+    assert not (ws / ".gitignore").exists()
+
+    # idempotent: a second call does not duplicate the pattern
+    workshop_coder._exclude_aider_artifacts(ws)
+    assert (ws / ".git" / "info" / "exclude").read_text(encoding="utf-8").split().count(".aider*") == 1
