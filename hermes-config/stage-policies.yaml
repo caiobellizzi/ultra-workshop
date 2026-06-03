@@ -9,7 +9,7 @@ model_aliases:
   triage-specialist: cheap-fast
   requirements-specialist: cheap-fast
   planner-specialist: reviewer-model
-  coder-specialist: reviewer-model
+  coder-specialist: cheap-worker
   reviewer-specialist: reviewer-model
   correctness-reviewer: reviewer-model
   security-reviewer: reviewer-model
