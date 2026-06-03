@@ -8,8 +8,8 @@ stage_policies:
 model_aliases:
   triage-specialist: cheap-fast
   requirements-specialist: cheap-fast
-  planner-specialist: planner-reasoner
-  coder-specialist: coder-worker
+  planner-specialist: reviewer-model
+  coder-specialist: reviewer-model
   reviewer-specialist: reviewer-model
   correctness-reviewer: reviewer-model
   security-reviewer: reviewer-model
