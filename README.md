@@ -38,7 +38,7 @@ LiteLLM proxy (127.0.0.1:4000)
 | `scripts/` | `install.sh` — idempotent VPS deployer via rsync + SSH |
 
 **Hard constraints:**
-- Hermes Agent v0.14.0 pinned
+- Hermes Agent v0.15.0 pinned
 - All LLM calls routed through LiteLLM proxy — never directly to providers
 - Coder role uses Aider exclusively (not Claude Code)
 - HITL gate required before any `git push` or PR creation
